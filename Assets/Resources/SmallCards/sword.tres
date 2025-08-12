@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=7 format=3 uid="uid://d21apck5g2qg4"]
+
+[ext_resource type="Texture2D" uid="uid://djex3bfph8as3" path="res://Assets/Sprites/Icons/placeholder-icons/attack-icons/sprite_19.png" id="1_vdpq8"]
+[ext_resource type="Script" uid="uid://d2ueo4m1lbc51" path="res://Assets/Scripts/EffectEntry.cs" id="1_ytfcg"]
+[ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="2_53tfe"]
+[ext_resource type="Resource" uid="uid://c1a0m3ei8u4oj" path="res://Assets/Resources/Effects/attack.tres" id="3_0ivc8"]
+[ext_resource type="Resource" uid="uid://bieypex2q2gcy" path="res://Assets/Resources/Targets/single.tres" id="4_svyft"]
+
+[sub_resource type="Resource" id="Resource_2jgim"]
+script = ExtResource("1_ytfcg")
+Def = ExtResource("3_0ivc8")
+Amount = 10
+metadata/_custom_type_script = "uid://d2ueo4m1lbc51"
+
+[resource]
+script = ExtResource("2_53tfe")
+Title = "Sword"
+Description = "SAsdadsasdasd"
+Art = ExtResource("1_vdpq8")
+ManaCost = 0
+Rarity = 0
+TargetDef = ExtResource("4_svyft")
+Effects = Array[ExtResource("1_ytfcg")]([SubResource("Resource_2jgim")])
+metadata/_custom_type_script = "uid://bvlphxjdc224b"

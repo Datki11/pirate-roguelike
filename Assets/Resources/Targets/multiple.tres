@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TargetDef" load_steps=3 format=3 uid="uid://bcduw272yqold"]
+
+[ext_resource type="Texture2D" uid="uid://c75wfghfvo23j" path="res://Assets/Sprites/Icons/Target Icons/multiple-enemies-target-icon.png" id="1_fb2bi"]
+[ext_resource type="Script" uid="uid://bx18fvc128ycs" path="res://Assets/Scripts/TargetDef.cs" id="1_wdfbe"]
+
+[resource]
+script = ExtResource("1_wdfbe")
+Id = "multiple"
+DisplayName = "Multiple"
+BadgeIcon = ExtResource("1_fb2bi")
+metadata/_custom_type_script = "uid://bx18fvc128ycs"

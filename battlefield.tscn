@@ -4,12 +4,9 @@
 [ext_resource type="PackedScene" uid="uid://bpy0jm33ump60" path="res://Assets/Components/CardList.tscn" id="3_fxwnf"]
 [ext_resource type="PackedScene" uid="uid://deygsr1fw3q0k" path="res://Assets/Components/card.tscn" id="4_vsh2u"]
 [ext_resource type="PackedScene" uid="uid://dalw1nj8vun0c" path="res://Assets/Components/SmallCard.tscn" id="5_tkjg1"]
-
-[sub_resource type="ViewportTexture" id="ViewportTexture_tkjg1"]
-
-[sub_resource type="ViewportTexture" id="ViewportTexture_vsh2u"]
-
-[sub_resource type="ViewportTexture" id="ViewportTexture_y8d5v"]
+[ext_resource type="Resource" uid="uid://bette2m1dy13u" path="res://Assets/Resources/SmallCards/Gun.tres" id="5_y8rib"]
+[ext_resource type="Resource" uid="uid://d21apck5g2qg4" path="res://Assets/Resources/SmallCards/sword.tres" id="6_4eiu0"]
+[ext_resource type="Resource" uid="uid://3812dgq6sqp4" path="res://Assets/Resources/SmallCards/shield.tres" id="7_ki6g1"]
 
 [node name="Battlefield" type="Node2D"]
 
@@ -71,7 +68,7 @@ offset_left = -331.0
 offset_top = -247.0
 offset_right = -291.0
 offset_bottom = -187.0
-ArtTexture = SubResource("ViewportTexture_tkjg1")
+Data = ExtResource("5_y8rib")
 
 [node name="Placeholder-character2" type="Sprite2D" parent="."]
 position = Vector2(-264, -117)
@@ -84,11 +81,11 @@ texture = ExtResource("1_4y0t7")
 [node name="Card6" parent="Placeholder-character2" instance=ExtResource("5_tkjg1")]
 offset_left = -76.0
 offset_right = -36.0
-ArtTexture = SubResource("ViewportTexture_vsh2u")
+Data = ExtResource("6_4eiu0")
 
 [node name="Card7" parent="." instance=ExtResource("5_tkjg1")]
 offset_left = -237.0
 offset_top = -198.0
-offset_right = -197.0
-offset_bottom = -138.0
-ArtTexture = SubResource("ViewportTexture_y8d5v")
+offset_right = -191.0
+offset_bottom = -129.0
+Data = ExtResource("7_ki6g1")

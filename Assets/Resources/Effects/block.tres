@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="EffectDef" load_steps=3 format=3 uid="uid://euroqap1x1mh"]
+
+[ext_resource type="Texture2D" uid="uid://cytk0dt41to3t" path="res://Assets/Sprites/Icons/placeholder-icons/icons/8x8/rpginventory-Sheet/sprite_077.png" id="1_rlsak"]
+[ext_resource type="Script" uid="uid://bfxd4hm28vlf0" path="res://Assets/Scripts/EffectDef.cs" id="1_rn8g2"]
+
+[resource]
+script = ExtResource("1_rn8g2")
+Id = "block"
+DisplayName = "Block"
+Icon = ExtResource("1_rlsak")
+ShortFormat = "{ICON} {AMOUNT}"
+LongFormat = "Gain {AMOUNT} block."
+metadata/_custom_type_script = "uid://bfxd4hm28vlf0"

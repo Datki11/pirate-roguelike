@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=7 format=3 uid="uid://3812dgq6sqp4"]
+
+[ext_resource type="Script" uid="uid://d2ueo4m1lbc51" path="res://Assets/Scripts/EffectEntry.cs" id="1_fs06e"]
+[ext_resource type="Texture2D" uid="uid://jnlb55twd3c1" path="res://Assets/Sprites/Icons/placeholder-icons/attack-icons/sprite_42.png" id="1_h7jgp"]
+[ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="2_etllv"]
+[ext_resource type="Resource" uid="uid://euroqap1x1mh" path="res://Assets/Resources/Effects/block.tres" id="3_wgtgj"]
+[ext_resource type="Resource" uid="uid://dc0aw28r20f5m" path="res://Assets/Resources/Targets/self.tres" id="4_okgb3"]
+
+[sub_resource type="Resource" id="Resource_i0esb"]
+script = ExtResource("1_fs06e")
+Def = ExtResource("3_wgtgj")
+Amount = 5
+metadata/_custom_type_script = "uid://d2ueo4m1lbc51"
+
+[resource]
+script = ExtResource("2_etllv")
+Title = "Shield"
+Description = "asdasdasd"
+Art = ExtResource("1_h7jgp")
+ManaCost = 0
+Rarity = 0
+TargetDef = ExtResource("4_okgb3")
+Effects = Array[ExtResource("1_fs06e")]([SubResource("Resource_i0esb")])
+metadata/_custom_type_script = "uid://bvlphxjdc224b"

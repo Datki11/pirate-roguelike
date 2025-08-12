@@ -28,8 +28,8 @@ offset_right = 80.0
 offset_bottom = 120.0
 script = ExtResource("1_8elti")
 TitlePath = NodePath("Frame/Pad/VBoxContainer/Title")
-ArtPath = NodePath("../../../../../../../../../../../../../../../../../../../../../AspectRatioContainer/Art")
-BodyPath = NodePath("../../../../../../../../../../../../../../../../../../../../../MarginContainer/RichTextLabel")
+ArtPath = NodePath("Frame/Pad/VBoxContainer/AspectRatioContainer/Art")
+BodyPath = NodePath("Frame/Pad/VBoxContainer/MarginContainer/RichTextLabel")
 
 [node name="Frame" type="Panel" parent="."]
 layout_mode = 1

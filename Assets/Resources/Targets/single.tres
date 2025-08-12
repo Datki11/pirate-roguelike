@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TargetDef" load_steps=3 format=3 uid="uid://bieypex2q2gcy"]
+
+[ext_resource type="Script" uid="uid://bx18fvc128ycs" path="res://Assets/Scripts/TargetDef.cs" id="1_3ygnt"]
+[ext_resource type="Texture2D" uid="uid://cy0xw0j5f780u" path="res://Assets/Sprites/Icons/Target Icons/single-enemy-target-icon.png" id="1_ng03o"]
+
+[resource]
+script = ExtResource("1_3ygnt")
+Id = "single"
+DisplayName = "Single"
+BadgeIcon = ExtResource("1_ng03o")
+metadata/_custom_type_script = "uid://bx18fvc128ycs"
