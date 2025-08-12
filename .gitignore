@@ -1,0 +1,21 @@
+# Godot 4
+.godot/
+.import/
+*.import
+
+# C# (Godot/Mono)
+.mono/
+**/bin/
+**/obj/
+
+# Builds/exports
+export//
+
+# IDE cruft
+.vscode/
+.idea/
+.vs/
+
+# OS junk
+.DS_Store
+Thumbs.db

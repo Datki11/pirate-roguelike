@@ -1,0 +1,104 @@
+[gd_scene load_steps=6 format=3 uid="uid://deygsr1fw3q0k"]
+
+[ext_resource type="Script" uid="uid://bslr2h8tvon6s" path="res://Assets/Scripts/Card.cs" id="1_8elti"]
+[ext_resource type="Texture2D" uid="uid://gxpjkped0we" path="res://Assets/Sprites/Cards/placeholder-sword.png" id="1_ax3cw"]
+[ext_resource type="FontFile" uid="uid://dp1hh3c5rfwdw" path="res://Assets/Fonts/minecraftia/Minecraftia-Regular.ttf" id="3_mwkhl"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8elti"]
+bg_color = Color(1, 1, 1, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.0430392, 0.0430392, 0.0430391, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+anti_aliasing = false
+
+[sub_resource type="StyleBoxLine" id="StyleBoxLine_mwkhl"]
+thickness = 2
+
+[node name="Card" type="Control"]
+custom_minimum_size = Vector2(120, 180)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 80.0
+offset_bottom = 120.0
+script = ExtResource("1_8elti")
+TitlePath = NodePath("Frame/Pad/VBoxContainer/Title")
+ArtPath = NodePath("../../../../../../../../../../../../../../../../../../../../../AspectRatioContainer/Art")
+BodyPath = NodePath("../../../../../../../../../../../../../../../../../../../../../MarginContainer/RichTextLabel")
+
+[node name="Frame" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+scale = Vector2(1.01029, 0.990483)
+theme_override_styles/panel = SubResource("StyleBoxFlat_8elti")
+
+[node name="Pad" type="MarginContainer" parent="Frame"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Frame/Pad"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Title" type="Label" parent="Frame/Pad/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 8
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 8
+text = "Card Label"
+horizontal_alignment = 1
+
+[node name="Divider" type="Panel" parent="Frame/Pad/VBoxContainer"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxLine_mwkhl")
+
+[node name="AspectRatioContainer" type="AspectRatioContainer" parent="Frame/Pad/VBoxContainer"]
+custom_minimum_size = Vector2(0, 70)
+layout_mode = 2
+
+[node name="Art" type="TextureRect" parent="Frame/Pad/VBoxContainer/AspectRatioContainer"]
+layout_mode = 2
+texture = ExtResource("1_ax3cw")
+expand_mode = 2
+
+[node name="Divider2" type="Panel" parent="Frame/Pad/VBoxContainer"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxLine_mwkhl")
+
+[node name="MarginContainer" type="MarginContainer" parent="Frame/Pad/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_right = 4
+
+[node name="RichTextLabel" type="RichTextLabel" parent="Frame/Pad/VBoxContainer/MarginContainer"]
+layout_mode = 2
+size_flags_horizontal = 5
+size_flags_vertical = 5
+theme_override_colors/default_color = Color(0, 0, 0, 1)
+theme_override_fonts/normal_font = ExtResource("3_mwkhl")
+theme_override_font_sizes/normal_font_size = 8
+bbcode_enabled = true
+text = "[center][color=\"orange\"]Innate[/color]
+Deal 5 damage to a random enemy twice. If lethal, [color=green]return[/color] this card to your hand.
+[color=red]Consume"
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+offset_top = 17.8287
+offset_right = 83.0
+offset_bottom = 67.8287

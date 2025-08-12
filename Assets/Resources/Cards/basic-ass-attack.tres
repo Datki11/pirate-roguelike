@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3 uid="uid://coy4f8o0upml1"]
+
+[ext_resource type="Texture2D" uid="uid://gxpjkped0we" path="res://Assets/Sprites/Cards/placeholder-sword.png" id="1_0gbkl"]
+[ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_odsyp"]
+
+[resource]
+script = ExtResource("1_odsyp")
+Title = "Basic Ass Attack"
+Description = "It's an attack that does a basic ass amount of damage. Maybe 10, maybe 15, I'm not sure. It's something in that realm."
+Art = ExtResource("1_0gbkl")
+ManaCost = 1
+Rarity = 1
+metadata/_custom_type_script = "uid://bvlphxjdc224b"

@@ -1,0 +1,112 @@
+[gd_scene load_steps=7 format=3 uid="uid://dalw1nj8vun0c"]
+
+[ext_resource type="Script" uid="uid://bslr2h8tvon6s" path="res://Assets/Scripts/Card.cs" id="1_j0vee"]
+[ext_resource type="Texture2D" uid="uid://ddtbgu1levv2i" path="res://Assets/Sprites/Icons/placeholder-icons/attack-icons/sprite_05.png" id="2_j0vee"]
+[ext_resource type="FontFile" uid="uid://dymvhu00k0n1t" path="res://Assets/Fonts/minecraft_standard/MinecraftStandard.otf" id="3_j0vee"]
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_j0vee"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8elti"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(1, 1, 1, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.0430392, 0.0430392, 0.0430391, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+anti_aliasing = false
+
+[sub_resource type="StyleBoxLine" id="StyleBoxLine_j0vee"]
+color = Color(0, 0, 0, 0)
+
+[node name="Card" type="Control"]
+custom_minimum_size = Vector2(46, 69)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 44.0
+offset_bottom = 66.0
+script = ExtResource("1_j0vee")
+TitlePath = NodePath("")
+ArtPath = NodePath("../../../../../../../../../../../../../../../../../../../../../AspectRatioContainer/Art")
+BodyPath = NodePath("../../../../../../../../../../../../../../../../../../../../../MarginContainer/RichTextLabel")
+ArtTexture = SubResource("ViewportTexture_j0vee")
+
+[node name="Frame" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+scale = Vector2(1.01029, 0.990483)
+theme_override_styles/panel = SubResource("StyleBoxFlat_8elti")
+
+[node name="Pad" type="MarginContainer" parent="Frame"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -3.02883
+offset_bottom = 1.97118
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_bottom = 4
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Frame/Pad"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="AspectRatioContainer" type="AspectRatioContainer" parent="Frame/Pad/VBoxContainer"]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+
+[node name="Art" type="TextureRect" parent="Frame/Pad/VBoxContainer/AspectRatioContainer"]
+layout_mode = 2
+texture = ExtResource("2_j0vee")
+expand_mode = 2
+
+[node name="Panel" type="Panel" parent="Frame/Pad/VBoxContainer"]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxLine_j0vee")
+
+[node name="RichTextLabel3" type="RichTextLabel" parent="Frame/Pad/VBoxContainer"]
+clip_contents = false
+custom_minimum_size = Vector2(0, 12)
+layout_mode = 2
+theme_override_colors/default_color = Color(0, 0, 0, 1)
+theme_override_fonts/normal_font = ExtResource("3_j0vee")
+theme_override_font_sizes/normal_font_size = 6
+bbcode_enabled = true
+text = "[center][img=8x8]res://Assets/Sprites/Icons/placeholder-icons/icons/8x8/rpginventory-Sheet/sprite_070.png[/img] 50[/center]"
+autowrap_mode = 0
+
+[node name="RichTextLabel" type="RichTextLabel" parent="Frame/Pad/VBoxContainer"]
+clip_contents = false
+custom_minimum_size = Vector2(0, 12)
+layout_mode = 2
+theme_override_colors/default_color = Color(0, 0, 0, 1)
+theme_override_fonts/normal_font = ExtResource("3_j0vee")
+theme_override_font_sizes/normal_font_size = 6
+bbcode_enabled = true
+text = "[center][img=8x8]res://Assets/Sprites/Icons/placeholder-icons/icons/8x8/rpginventory-Sheet/sprite_024.png[/img][/center] 99x2"
+scroll_active = false
+autowrap_mode = 0
+
+[node name="RichTextLabel4" type="RichTextLabel" parent="Frame/Pad/VBoxContainer"]
+clip_contents = false
+custom_minimum_size = Vector2(0, 12)
+layout_mode = 2
+theme_override_colors/default_color = Color(0, 0, 0, 1)
+theme_override_fonts/normal_font = ExtResource("3_j0vee")
+theme_override_font_sizes/normal_font_size = 6
+bbcode_enabled = true
+text = "[center][img=8x8]res://Assets/Sprites/Icons/placeholder-icons/icons/8x8/rpginventory-Sheet/sprite_070.png[/img][/center] 50"

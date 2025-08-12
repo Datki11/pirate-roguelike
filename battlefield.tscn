@@ -1,0 +1,94 @@
+[gd_scene load_steps=8 format=3 uid="uid://blyun0sui4axj"]
+
+[ext_resource type="Texture2D" uid="uid://c2mc8tpgpylr4" path="res://Assets/Sprites/Characters/placeholder-character.png" id="1_4y0t7"]
+[ext_resource type="PackedScene" uid="uid://bpy0jm33ump60" path="res://Assets/Components/CardList.tscn" id="3_fxwnf"]
+[ext_resource type="PackedScene" uid="uid://deygsr1fw3q0k" path="res://Assets/Components/card.tscn" id="4_vsh2u"]
+[ext_resource type="PackedScene" uid="uid://dalw1nj8vun0c" path="res://Assets/Components/SmallCard.tscn" id="5_tkjg1"]
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_tkjg1"]
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_vsh2u"]
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_y8d5v"]
+
+[node name="Battlefield" type="Node2D"]
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(-194, -85)
+
+[node name="CardList" parent="." instance=ExtResource("3_fxwnf")]
+custom_minimum_size = Vector2(640, 0)
+offset_left = -533.0
+offset_top = 1.0
+offset_right = 107.0
+offset_bottom = 121.0
+scale = Vector2(0.2, 0.2)
+
+[node name="Card" parent="." instance=ExtResource("4_vsh2u")]
+offset_left = -384.0
+offset_top = 13.0
+offset_right = -264.0
+offset_bottom = 193.0
+
+[node name="Card2" parent="." instance=ExtResource("4_vsh2u")]
+z_index = 1
+offset_left = -128.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = 188.0
+TitlePath = NodePath("../Card/Frame/Pad/VBoxContainer/Title")
+
+[node name="Card3" parent="." instance=ExtResource("4_vsh2u")]
+z_index = 4
+offset_left = -192.0
+offset_top = -83.0
+offset_right = -72.0
+offset_bottom = 97.0
+TitlePath = NodePath("../Card/Frame/Pad/VBoxContainer/Title")
+
+[node name="Card4" parent="." instance=ExtResource("4_vsh2u")]
+z_index = 3
+offset_left = -256.0
+offset_top = 11.0
+offset_right = -136.0
+offset_bottom = 191.0
+TitlePath = NodePath("../Card/Frame/Pad/VBoxContainer/Title")
+
+[node name="Card5" parent="." instance=ExtResource("4_vsh2u")]
+z_index = 2
+offset_left = -320.0
+offset_top = 12.0
+offset_right = -200.0
+offset_bottom = 192.0
+TitlePath = NodePath("../Card/Frame/Pad/VBoxContainer/Title")
+
+[node name="Placeholder-character" type="Sprite2D" parent="."]
+position = Vector2(-358, -166)
+texture = ExtResource("1_4y0t7")
+
+[node name="Card6" parent="." instance=ExtResource("5_tkjg1")]
+offset_left = -331.0
+offset_top = -247.0
+offset_right = -291.0
+offset_bottom = -187.0
+ArtTexture = SubResource("ViewportTexture_tkjg1")
+
+[node name="Placeholder-character2" type="Sprite2D" parent="."]
+position = Vector2(-264, -117)
+texture = ExtResource("1_4y0t7")
+
+[node name="Placeholder-character" type="Sprite2D" parent="Placeholder-character2"]
+position = Vector2(-103, 81)
+texture = ExtResource("1_4y0t7")
+
+[node name="Card6" parent="Placeholder-character2" instance=ExtResource("5_tkjg1")]
+offset_left = -76.0
+offset_right = -36.0
+ArtTexture = SubResource("ViewportTexture_vsh2u")
+
+[node name="Card7" parent="." instance=ExtResource("5_tkjg1")]
+offset_left = -237.0
+offset_top = -198.0
+offset_right = -197.0
+offset_bottom = -138.0
+ArtTexture = SubResource("ViewportTexture_y8d5v")
