@@ -1,0 +1,30 @@
+[gd_scene load_steps=5 format=3 uid="uid://bcc2tig505c7l"]
+
+[ext_resource type="Script" uid="uid://ih2ew1gwx07o" path="res://Assets/Scripts/Deck.cs" id="1_035bc"]
+[ext_resource type="Resource" uid="uid://b2k8mwmepw5xv" path="res://Assets/Resources/DeckLists/test-deck-list.tres" id="2_p6el7"]
+[ext_resource type="PackedScene" uid="uid://dalw1nj8vun0c" path="res://Assets/Components/SmallCard.tscn" id="3_4du54"]
+[ext_resource type="Texture2D" uid="uid://cv1nf1pbfmu6a" path="res://Assets/Sprites/Cards/card_back_blue_24x36.png" id="4_likt0"]
+
+[node name="Deck" type="Control"]
+custom_minimum_size = Vector2(24, 36)
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_035bc")
+DeckList = ExtResource("2_p6el7")
+CardViewScene = ExtResource("3_4du54")
+CardBack = ExtResource("4_likt0")
+PilePath = NodePath("Draw Pile")
+TopHolderPath = NodePath("Top Card")
+
+[node name="Draw Pile" type="Control" parent="."]
+anchors_preset = 0
+offset_right = 24.0
+offset_bottom = 36.0
+
+[node name="Top Card" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 0
+offset_left = 14.0
+offset_top = -55.0
+offset_right = 60.0
+offset_bottom = 14.0

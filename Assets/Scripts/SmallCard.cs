@@ -1,6 +1,6 @@
 using Godot;
 
-public partial class SmallCard : Control
+public partial class SmallCard : BaseCardView
 {
 	[Export] public NodePath ArtPath { get; set; }
 	[Export] public NodePath Row1Path { get; set; }
@@ -12,6 +12,12 @@ public partial class SmallCard : Control
 
 	private TextureRect _art, _badgeIcon;
 	private RichTextLabel _row1, _row2, _row3;
+	
+	public override void SetData(CardData data)
+	{
+		Data = data;
+		if (IsInsideTree()) Apply();
+	}
 
 	public override void _Ready()
 	{

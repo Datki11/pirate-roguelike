@@ -1,6 +1,6 @@
 using Godot;
 
-public partial class Card : Control
+public partial class Card : BaseCardView
 {
 	// Drag the child nodes here in the Inspector (safer than hard-coded paths)
 	[Export] public NodePath TitlePath { get; set; }
@@ -25,6 +25,13 @@ public partial class Card : Control
 	private Label _title;
 	private TextureRect _art;
 	private RichTextLabel _body;
+	
+	
+	public override void SetData(CardData data)
+	{
+		Data = data;
+		ApplyData(data);
+	}
 
 	public override void _Ready()
 	{

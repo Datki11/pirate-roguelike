@@ -32,6 +32,7 @@ layout_mode = 3
 anchors_preset = 0
 offset_right = 46.0
 offset_bottom = 69.0
+mouse_filter = 2
 script = ExtResource("1_gnlkw")
 ArtPath = NodePath("Frame/Pad/VBoxContainer/AspectRatioContainer/Art")
 Row1Path = NodePath("Frame/Pad/VBoxContainer/RichTextLabel")
@@ -47,6 +48,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 scale = Vector2(1.01029, 0.990483)
+mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_8elti")
 
 [node name="Pad" type="MarginContainer" parent="Frame"]
@@ -58,11 +60,13 @@ offset_top = -3.02883
 offset_bottom = 1.97118
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 theme_override_constants/margin_top = 6
 theme_override_constants/margin_bottom = 4
 
 [node name="VBoxContainer" type="VBoxContainer" parent="Frame/Pad"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/separation = 0
 
 [node name="AspectRatioContainer" type="AspectRatioContainer" parent="Frame/Pad/VBoxContainer"]
@@ -77,12 +81,14 @@ expand_mode = 2
 [node name="Panel" type="Panel" parent="Frame/Pad/VBoxContainer"]
 custom_minimum_size = Vector2(0, 4)
 layout_mode = 2
+mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxLine_j0vee")
 
 [node name="RichTextLabel" type="RichTextLabel" parent="Frame/Pad/VBoxContainer"]
 clip_contents = false
 custom_minimum_size = Vector2(0, 12)
 layout_mode = 2
+mouse_filter = 2
 theme_override_colors/default_color = Color(0, 0, 0, 1)
 theme_override_fonts/normal_font = ExtResource("3_j0vee")
 theme_override_font_sizes/normal_font_size = 6
@@ -95,6 +101,7 @@ autowrap_mode = 0
 clip_contents = false
 custom_minimum_size = Vector2(0, 12)
 layout_mode = 2
+mouse_filter = 2
 theme_override_colors/default_color = Color(0, 0, 0, 1)
 theme_override_fonts/normal_font = ExtResource("3_j0vee")
 theme_override_font_sizes/normal_font_size = 6
@@ -106,6 +113,7 @@ autowrap_mode = 0
 clip_contents = false
 custom_minimum_size = Vector2(0, 12)
 layout_mode = 2
+mouse_filter = 2
 theme_override_colors/default_color = Color(0, 0, 0, 1)
 theme_override_fonts/normal_font = ExtResource("3_j0vee")
 theme_override_font_sizes/normal_font_size = 6
@@ -132,6 +140,7 @@ offset_top = -8.0
 offset_right = 8.0
 offset_bottom = 8.0
 grow_horizontal = 0
+mouse_filter = 2
 texture = ExtResource("4_30pow")
 
 [node name="TextureRect" type="TextureRect" parent="Overlay/Target Circle"]
@@ -148,5 +157,6 @@ offset_right = 6.0
 offset_bottom = 6.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 texture = ExtResource("5_gnlkw")
 stretch_mode = 3

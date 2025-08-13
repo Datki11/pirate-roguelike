@@ -1,12 +1,13 @@
-[gd_scene load_steps=8 format=3 uid="uid://blyun0sui4axj"]
+[gd_scene load_steps=9 format=3 uid="uid://blyun0sui4axj"]
 
 [ext_resource type="Texture2D" uid="uid://c2mc8tpgpylr4" path="res://Assets/Sprites/Characters/placeholder-character.png" id="1_4y0t7"]
 [ext_resource type="PackedScene" uid="uid://bpy0jm33ump60" path="res://Assets/Components/CardList.tscn" id="3_fxwnf"]
 [ext_resource type="PackedScene" uid="uid://deygsr1fw3q0k" path="res://Assets/Components/card.tscn" id="4_vsh2u"]
 [ext_resource type="PackedScene" uid="uid://dalw1nj8vun0c" path="res://Assets/Components/SmallCard.tscn" id="5_tkjg1"]
-[ext_resource type="Resource" uid="uid://bette2m1dy13u" path="res://Assets/Resources/SmallCards/Gun.tres" id="5_y8rib"]
 [ext_resource type="Resource" uid="uid://d21apck5g2qg4" path="res://Assets/Resources/SmallCards/sword.tres" id="6_4eiu0"]
 [ext_resource type="Resource" uid="uid://3812dgq6sqp4" path="res://Assets/Resources/SmallCards/shield.tres" id="7_ki6g1"]
+[ext_resource type="PackedScene" uid="uid://bcc2tig505c7l" path="res://Assets/Components/deck.tscn" id="7_y8rib"]
+[ext_resource type="Texture2D" uid="uid://c3wqrkfxy2qby" path="res://Assets/Sprites/Characters/pirate_32x32_right.png" id="8_4eiu0"]
 
 [node name="Battlefield" type="Node2D"]
 
@@ -59,17 +60,6 @@ offset_right = -200.0
 offset_bottom = 192.0
 TitlePath = NodePath("../Card/Frame/Pad/VBoxContainer/Title")
 
-[node name="Placeholder-character" type="Sprite2D" parent="."]
-position = Vector2(-358, -166)
-texture = ExtResource("1_4y0t7")
-
-[node name="Card6" parent="." instance=ExtResource("5_tkjg1")]
-offset_left = -331.0
-offset_top = -247.0
-offset_right = -291.0
-offset_bottom = -187.0
-Data = ExtResource("5_y8rib")
-
 [node name="Placeholder-character2" type="Sprite2D" parent="."]
 position = Vector2(-264, -117)
 texture = ExtResource("1_4y0t7")
@@ -89,3 +79,13 @@ offset_top = -198.0
 offset_right = -191.0
 offset_bottom = -129.0
 Data = ExtResource("7_ki6g1")
+
+[node name="Deck" parent="." instance=ExtResource("7_y8rib")]
+offset_left = -369.0
+offset_top = -207.0
+offset_right = -345.0
+offset_bottom = -171.0
+
+[node name="Pirate32x32Right" type="Sprite2D" parent="."]
+position = Vector2(-386, -176)
+texture = ExtResource("8_4eiu0")
