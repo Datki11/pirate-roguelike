@@ -7,5 +7,5 @@
 
 [resource]
 script = ExtResource("1_y504l")
-Cards = [ExtResource("1_lhwxx"), ExtResource("2_jbwci"), ExtResource("3_41ov0"), ExtResource("1_lhwxx"), ExtResource("2_jbwci"), null]
+Cards = [ExtResource("1_lhwxx"), ExtResource("2_jbwci"), ExtResource("3_41ov0"), ExtResource("1_lhwxx"), ExtResource("2_jbwci"), ExtResource("3_41ov0")]
 metadata/_custom_type_script = "uid://osm0e1rmrshh"

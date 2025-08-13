@@ -102,16 +102,31 @@ public partial class Deck : Control
 	return _draw.Count > 0;
 }
 
-// Move current top card to discard and reveal next
 public CardData AdvanceTopToDiscard()
 {
-	GD.Print($"AdvanceTopToDiscard | draw={_draw.Count} discard={_discard.Count}");
-	if (_draw.Count == 0) { EnsureTop(); if (_draw.Count == 0) return null; }
+	// If there is no top right now, refill and JUST REVEAL. Do NOT discard on this click.
+	if (_draw.Count == 0)
+	{
+		if (!EnsureTop()) return null; // nothing to show
+		return null;                    // stop here; user clicks again to discard the new top
+	}
+
+	// Discard current top
 	var c = _draw[^1];
 	_draw.RemoveAt(_draw.Count - 1);
 	_discard.Add(c);
-	RefreshView();
-	EmitSignal(SignalName.TopChanged, Peek());
+
+	// If we just discarded the last card, auto-refill to reveal the next top immediately.
+	if (_draw.Count == 0)
+	{
+		EnsureTop(); // does RefreshView + TopChanged
+	}
+	else
+	{
+		RefreshView();
+		EmitSignal(SignalName.TopChanged, Peek());
+	}
+
 	return c;
 }
 
