@@ -22,9 +22,11 @@ public partial class Deck : Control
 	
 	[Signal] public delegate void TopChangedEventHandler(CardData newTop);
 	[Signal] public delegate void TopClickedEventHandler();
+	[Signal] public delegate void PlayRequestedEventHandler(Deck deck, CardData card);
 	
 	[Export] public bool DiscardOnTopClick { get; set; } = true;  // click-to-advance
-
+	
+	
 	
 	public override void _Ready()
 	{
@@ -34,10 +36,9 @@ public partial class Deck : Control
 		// click the face-up area
 		_top.GuiInput += (InputEvent e) =>
 		{
-			GD.Print("TopHolder.GuiInput fired");
 			if (e is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
 			{
-				EmitSignal(SignalName.TopClicked);
+				EmitSignal(SignalName.PlayRequested, this, Peek());  // <-- tell targeter
 				if (DiscardOnTopClick) AdvanceTopToDiscard();
 			}
 		};
@@ -128,18 +129,6 @@ public CardData AdvanceTopToDiscard()
 	}
 
 	return c;
-}
-
-public override void _GuiInput(InputEvent e)
-{
-	GD.Print("Deck._GuiInput fired");
-	if (e is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
-	{
-		// Only trigger when clicking the face-up area (TopHolder)
-		var gp = mb.GlobalPosition;
-		if (_top.GetGlobalRect().HasPoint(gp))
-			EmitSignal(SignalName.TopClicked);
-	}
 }
 
 	private void RefreshView()

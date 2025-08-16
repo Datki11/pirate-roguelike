@@ -15,6 +15,7 @@ CardViewScene = ExtResource("3_4du54")
 CardBack = ExtResource("4_likt0")
 PilePath = NodePath("Draw Pile")
 TopHolderPath = NodePath("Top Card")
+DiscardOnTopClick = false
 
 [node name="Draw Pile" type="Control" parent="."]
 anchors_preset = 0

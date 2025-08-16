@@ -1,11 +1,9 @@
-[gd_resource type="Resource" script_class="DeckList" load_steps=5 format=3 uid="uid://b2k8mwmepw5xv"]
+[gd_resource type="Resource" script_class="DeckList" load_steps=3 format=3 uid="uid://b2k8mwmepw5xv"]
 
-[ext_resource type="Resource" uid="uid://bette2m1dy13u" path="res://Assets/Resources/SmallCards/Gun.tres" id="1_lhwxx"]
 [ext_resource type="Script" uid="uid://osm0e1rmrshh" path="res://Assets/Scripts/DeckList.cs" id="1_y504l"]
-[ext_resource type="Resource" uid="uid://3812dgq6sqp4" path="res://Assets/Resources/SmallCards/shield.tres" id="2_jbwci"]
 [ext_resource type="Resource" uid="uid://d21apck5g2qg4" path="res://Assets/Resources/SmallCards/sword.tres" id="3_41ov0"]
 
 [resource]
 script = ExtResource("1_y504l")
-Cards = [ExtResource("1_lhwxx"), ExtResource("2_jbwci"), ExtResource("3_41ov0"), ExtResource("1_lhwxx"), ExtResource("2_jbwci"), ExtResource("3_41ov0")]
+Cards = [ExtResource("3_41ov0"), ExtResource("3_41ov0"), ExtResource("3_41ov0"), ExtResource("3_41ov0")]
 metadata/_custom_type_script = "uid://osm0e1rmrshh"

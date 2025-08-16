@@ -1,11 +1,8 @@
-[gd_scene load_steps=9 format=3 uid="uid://blyun0sui4axj"]
+[gd_scene load_steps=6 format=3 uid="uid://blyun0sui4axj"]
 
-[ext_resource type="Texture2D" uid="uid://c2mc8tpgpylr4" path="res://Assets/Sprites/Characters/placeholder-character.png" id="1_4y0t7"]
-[ext_resource type="PackedScene" uid="uid://bpy0jm33ump60" path="res://Assets/Components/CardList.tscn" id="3_fxwnf"]
 [ext_resource type="PackedScene" uid="uid://deygsr1fw3q0k" path="res://Assets/Components/card.tscn" id="4_vsh2u"]
-[ext_resource type="PackedScene" uid="uid://dalw1nj8vun0c" path="res://Assets/Components/SmallCard.tscn" id="5_tkjg1"]
-[ext_resource type="Resource" uid="uid://d21apck5g2qg4" path="res://Assets/Resources/SmallCards/sword.tres" id="6_4eiu0"]
-[ext_resource type="Resource" uid="uid://3812dgq6sqp4" path="res://Assets/Resources/SmallCards/shield.tres" id="7_ki6g1"]
+[ext_resource type="PackedScene" uid="uid://c341vh8po86n6" path="res://Assets/Components/CombatTargeting.tscn" id="5_tkjg1"]
+[ext_resource type="PackedScene" uid="uid://nu0fyjda0sg6" path="res://Assets/Components/enemy.tscn" id="6_y8d5v"]
 [ext_resource type="PackedScene" uid="uid://bcc2tig505c7l" path="res://Assets/Components/deck.tscn" id="7_y8rib"]
 [ext_resource type="Texture2D" uid="uid://c3wqrkfxy2qby" path="res://Assets/Sprites/Characters/pirate_32x32_right.png" id="8_4eiu0"]
 
@@ -13,14 +10,6 @@
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(-194, -85)
-
-[node name="CardList" parent="." instance=ExtResource("3_fxwnf")]
-custom_minimum_size = Vector2(640, 0)
-offset_left = -533.0
-offset_top = 1.0
-offset_right = 107.0
-offset_bottom = 121.0
-scale = Vector2(0.2, 0.2)
 
 [node name="Card" parent="." instance=ExtResource("4_vsh2u")]
 offset_left = -384.0
@@ -60,32 +49,66 @@ offset_right = -200.0
 offset_bottom = 192.0
 TitlePath = NodePath("../Card/Frame/Pad/VBoxContainer/Title")
 
-[node name="Placeholder-character2" type="Sprite2D" parent="."]
-position = Vector2(-264, -117)
-texture = ExtResource("1_4y0t7")
-
-[node name="Placeholder-character" type="Sprite2D" parent="Placeholder-character2"]
-position = Vector2(-103, 81)
-texture = ExtResource("1_4y0t7")
-
-[node name="Card6" parent="Placeholder-character2" instance=ExtResource("5_tkjg1")]
-offset_left = -76.0
-offset_right = -36.0
-Data = ExtResource("6_4eiu0")
-
-[node name="Card7" parent="." instance=ExtResource("5_tkjg1")]
-offset_left = -237.0
-offset_top = -198.0
-offset_right = -191.0
-offset_bottom = -129.0
-Data = ExtResource("7_ki6g1")
-
-[node name="Deck" parent="." instance=ExtResource("7_y8rib")]
-offset_left = -369.0
-offset_top = -207.0
-offset_right = -345.0
-offset_bottom = -171.0
-
 [node name="Pirate32x32Right" type="Sprite2D" parent="."]
-position = Vector2(-386, -176)
+position = Vector2(-454, -152)
 texture = ExtResource("8_4eiu0")
+
+[node name="Deck" parent="Pirate32x32Right" instance=ExtResource("7_y8rib")]
+offset_left = 14.0
+offset_top = -45.0
+offset_right = 38.0
+offset_bottom = -9.0
+
+[node name="Pirate32x32Right2" type="Sprite2D" parent="."]
+position = Vector2(-321, -85)
+texture = ExtResource("8_4eiu0")
+
+[node name="Deck" parent="Pirate32x32Right2" instance=ExtResource("7_y8rib")]
+offset_left = 14.0
+offset_top = -45.0
+offset_right = 38.0
+offset_bottom = -9.0
+
+[node name="Pirate32x32Right3" type="Sprite2D" parent="."]
+position = Vector2(-431, -32)
+texture = ExtResource("8_4eiu0")
+
+[node name="Deck" parent="Pirate32x32Right3" instance=ExtResource("7_y8rib")]
+offset_left = 14.0
+offset_top = -45.0
+offset_right = 38.0
+offset_bottom = -9.0
+
+[node name="CombatTargeting" parent="." instance=ExtResource("5_tkjg1")]
+offset_left = -823.0
+offset_top = -275.0
+offset_right = -823.0
+offset_bottom = -275.0
+DeckPaths = Array[NodePath]([NodePath("../Pirate32x32Right/Deck"), NodePath("../Pirate32x32Right2/Deck"), NodePath("../Pirate32x32Right3/Deck")])
+EnemiesPath = NodePath("../Enemies")
+
+[node name="Enemies" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 0
+offset_left = -76.0
+offset_top = -139.0
+offset_right = -36.0
+offset_bottom = -99.0
+
+[node name="Enemy" parent="Enemies" instance=ExtResource("6_y8d5v")]
+offset_left = 105.0
+offset_top = -62.0
+offset_right = 145.0
+offset_bottom = -22.0
+
+[node name="Enemy2" parent="Enemies" instance=ExtResource("6_y8d5v")]
+offset_left = 27.0
+offset_top = -3.0
+offset_right = 67.0
+offset_bottom = 37.0
+
+[node name="Enemy3" parent="Enemies" instance=ExtResource("6_y8d5v")]
+offset_left = 102.0
+offset_top = 62.0
+offset_right = 142.0
+offset_bottom = 102.0

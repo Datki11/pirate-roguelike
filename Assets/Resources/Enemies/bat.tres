@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="EnemyDef" load_steps=2 format=3 uid="uid://b7vho1whohwnk"]
+
+[ext_resource type="Script" uid="uid://dx3m62wyoviov" path="res://Assets/Scripts/EnemyDef.cs" id="1_clt2x"]
+
+[resource]
+script = ExtResource("1_clt2x")
+Id = "bat"
+Name = "Bat"
+MaxHp = 30
+metadata/_custom_type_script = "uid://dx3m62wyoviov"
