@@ -1,8 +1,10 @@
-[gd_scene load_steps=6 format=3 uid="uid://blyun0sui4axj"]
+[gd_scene load_steps=8 format=3 uid="uid://blyun0sui4axj"]
 
 [ext_resource type="PackedScene" uid="uid://deygsr1fw3q0k" path="res://Assets/Components/card.tscn" id="4_vsh2u"]
 [ext_resource type="PackedScene" uid="uid://c341vh8po86n6" path="res://Assets/Components/CombatTargeting.tscn" id="5_tkjg1"]
 [ext_resource type="PackedScene" uid="uid://nu0fyjda0sg6" path="res://Assets/Components/enemy.tscn" id="6_y8d5v"]
+[ext_resource type="Script" uid="uid://1vk3jcgibvbm" path="res://Assets/Scripts/CombatManager.cs" id="6_y8rib"]
+[ext_resource type="PackedScene" uid="uid://dvs6k8vrvcbvw" path="res://Assets/Components/DamagePopup.tscn" id="7_4eiu0"]
 [ext_resource type="PackedScene" uid="uid://bcc2tig505c7l" path="res://Assets/Components/deck.tscn" id="7_y8rib"]
 [ext_resource type="Texture2D" uid="uid://c3wqrkfxy2qby" path="res://Assets/Sprites/Characters/pirate_32x32_right.png" id="8_4eiu0"]
 
@@ -86,6 +88,7 @@ offset_right = -823.0
 offset_bottom = -275.0
 DeckPaths = Array[NodePath]([NodePath("../Pirate32x32Right/Deck"), NodePath("../Pirate32x32Right2/Deck"), NodePath("../Pirate32x32Right3/Deck")])
 EnemiesPath = NodePath("../Enemies")
+CombatPath = NodePath("../CombatManager")
 
 [node name="Enemies" type="Control" parent="."]
 layout_mode = 3
@@ -112,3 +115,7 @@ offset_left = 102.0
 offset_top = 62.0
 offset_right = 142.0
 offset_bottom = 102.0
+
+[node name="CombatManager" type="Node" parent="."]
+script = ExtResource("6_y8rib")
+DamagePopupScene = ExtResource("7_4eiu0")

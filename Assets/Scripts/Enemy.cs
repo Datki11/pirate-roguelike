@@ -1,64 +1,105 @@
 using Godot;
 
-public partial class Enemy : Control
+public partial class Enemy : Control, IDamageable
 {
-	[Export] public EnemyDef Def;   // assign a .tres in Inspector
-	[Export] public NodePath SpritePath { get; set; } = "Sprite";
-	[Export] public NodePath HPPath     { get; set; } = "HP";
-	[Export] public NodePath RingPath   { get; set; } = "Ring";
+	// Data
+	[Export] public EnemyDef Def { get; set; }
 
-	[Signal] public delegate void ClickedEventHandler(Enemy who);
-	public bool Alive => HP > 0;    // not exported
-	
-	public int HP = 0;
+	// Scene refs
+	[Export] public NodePath SpritePath { get; set; }
+	[Export] public NodePath HpPath { get; set; }
+	[Export] public NodePath RingPath { get; set; }
+	[Export] public NodePath PopupAnchorPath { get; set; } // small Control above head
 
 	private TextureRect _sprite;
 	private HPBar _hp;
 	private Control _ring;
+	private Control _popupAnchor;
+
+	// Signals (keep old API)
+	[Signal] public delegate void ClickedEventHandler(Enemy who);
+	[Signal] public delegate void DamagedEventHandler(int amount);
+	[Signal] public delegate void HealedEventHandler(int amount);
+	[Signal] public delegate void DiedEventHandler();
+
+	// IDamageable
+	public int MaxHP { get; private set; } = 10;
+	public int HP    { get; private set; } = 10;
+	public bool Alive => HP > 0;
 
 	public override void _Ready()
 	{
-		_sprite = GetNode<TextureRect>(SpritePath);
-		_hp     = GetNode<HPBar>(HPPath);
-		_ring   = GetNode<Control>(RingPath);
+		_sprite       = GetNodeOrNull<TextureRect>(SpritePath);
+		_hp           = GetNodeOrNull<HPBar>(HpPath);
+		_ring         = GetNodeOrNull<Control>(RingPath);
+		_popupAnchor  = GetNodeOrNull<Control>(PopupAnchorPath);
 
+		// Make the whole Enemy clickable; children should pass events up.
 		MouseFilter = MouseFilterEnum.Stop;
+		if (_sprite != null) _sprite.MouseFilter = MouseFilterEnum.Pass;
+		if (_hp     != null) _hp.MouseFilter     = MouseFilterEnum.Pass;
+		if (_ring   != null) _ring.MouseFilter   = MouseFilterEnum.Pass;
 
-		// Load data from resource if provided
+		// Hover highlight for ring (only when visible)
+		MouseEntered += () => { if (_ring is TargetRing tr && tr.Visible) tr.SetHover(true); };
+		MouseExited  += () => { if (_ring is TargetRing tr) tr.SetHover(false); };
+
+		// Load from definition
 		if (Def != null)
 		{
-			HP    = Def.MaxHP;
-			if (Def.Art != null) _sprite.Texture = Def.Art;
+			// NOTE: EnemyDef uses MaxHP (capital P)
+			MaxHP = Mathf.Max(1, Def.MaxHP);
+			HP    = MaxHP;
+			if (_sprite != null && Def.Art != null)
+				_sprite.Texture = Def.Art;
 		}
 
-		_hp.Set(HP, Def.MaxHP);
-		_ring.Visible = false;
-
-		Position = Position.Floor();  // integer pixels only
-		
-		MouseEntered += () => (_ring as TargetRing)?.SetHover(true);
-		MouseExited  += () => (_ring as TargetRing)?.SetHover(false);
+		_hp?.Set(HP, MaxHP);
 	}
 
-	public void SetTargetable(bool on) => _ring.Visible = on;
-
-	public void TakeDamage(int n)
-	{
-		HP = Mathf.Max(0, HP - Mathf.Max(0, n));
-		_hp.Set(HP, Def.MaxHP);
-		if (HP == 0) Die();
-	}
-
-	private void Die()
-	{
-		SetTargetable(false);
-		Modulate = new Color(0.6f, 0.6f, 0.6f, 1f);
-		MouseFilter = MouseFilterEnum.Ignore;
-	}
-
+	// Restore old click signal
 	public override void _GuiInput(InputEvent e)
 	{
 		if (e is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
 			EmitSignal(SignalName.Clicked, this);
+	}
+
+	// Target ring visibility toggle used by CombatTargeting
+	public void SetTargetable(bool on)
+	{
+		if (_ring != null) _ring.Visible = on;
+		if (!on && _ring is TargetRing tr) tr.SetHover(false);
+	}
+
+	// IDamageable
+	public void TakeDamage(int amount)
+	{
+		if (amount <= 0 || !Alive) return;
+
+		HP = Mathf.Max(0, HP - amount);
+		_hp?.Set(HP, MaxHP);
+		EmitSignal(SignalName.Damaged, amount);
+
+		if (!Alive)
+		{
+			SetTargetable(false);
+			EmitSignal(SignalName.Died);
+		}
+	}
+
+	public void Heal(int amount)
+	{
+		if (amount <= 0 || !Alive) return;
+
+		HP = Mathf.Min(MaxHP, HP + amount);
+		_hp?.Set(HP, MaxHP);
+		EmitSignal(SignalName.Healed, amount);
+	}
+
+	public Vector2 GetPopupAnchorGlobal()
+	{
+		if (_popupAnchor != null) return _popupAnchor.GlobalPosition;
+		var r = GetGlobalRect();
+		return new Vector2(r.Position.X + r.Size.X * 0.5f, r.Position.Y); // top-center fallback
 	}
 }

@@ -7,10 +7,12 @@ public partial class CombatTargeting : Node
 {
 	[Export] public Array<NodePath> DeckPaths { get; set; } = new();
 	[Export] public NodePath EnemiesPath { get; set; }
+	[Export] public NodePath CombatPath { get; set; }   // NEW: hook to CombatManager
 
 	private Deck[] _decks;
 	private Control _enemiesRoot;
 	private Enemy[] _enemies;
+	private CombatManager _combat;                      // NEW
 
 	private bool _targeting = false;
 	private CardData _pendingCard;
@@ -18,16 +20,23 @@ public partial class CombatTargeting : Node
 
 	public override void _Ready()
 	{
+		_combat = GetNodeOrNull<CombatManager>(CombatPath);
+		GD.Print($"CombatTargeting ready | combat? {(_combat != null)}");
+
 		_enemiesRoot = GetNode<Control>(EnemiesPath);
 		_enemies = _enemiesRoot.GetChildren().OfType<Enemy>().ToArray();
+
+		// make sure rings start hidden
+		foreach (var e in _enemies)
+			e?.SetTargetable(false);
 
 		var tmp = new System.Collections.Generic.List<Deck>();
 		foreach (var p in DeckPaths)
 		{
 			var d = GetNodeOrNull<Deck>(p);
 			if (d == null) continue;
-			d.DiscardOnTopClick = false;                 // centralize discard logic here
-			d.PlayRequested += OnPlayRequested;          // listen to all decks
+			d.DiscardOnTopClick = false;     // we discard here after resolving
+			d.PlayRequested += OnPlayRequested;
 			tmp.Add(d);
 		}
 		_decks = tmp.ToArray();
@@ -35,9 +44,9 @@ public partial class CombatTargeting : Node
 
 	private void OnPlayRequested(Deck deck, CardData card)
 	{
-		GD.Print("OnPlayRequested Reached");
-		if (_targeting) return;          // ignore spam while choosing a target
-		if (card == null) return;        // deck was empty and EnsureTop found nothing
+		GD.Print("OnPlayRequested");
+		if (_targeting) return;
+		if (card == null) return;
 
 		if (IsSingleTargetAttack(card))
 		{
@@ -47,7 +56,8 @@ public partial class CombatTargeting : Node
 		}
 		else
 		{
-			deck.AdvanceTopToDiscard();  // no targeting needed
+			// TODO: resolve non-targeted effects (AOE, self, etc.) via _combat
+			deck.AdvanceTopToDiscard();
 		}
 	}
 
@@ -57,6 +67,7 @@ public partial class CombatTargeting : Node
 		bool hasAttack = c.Effects != null && c.Effects.Any(e => e?.Def?.Id == "attack");
 		return single && hasAttack;
 	}
+
 	private int GetAttackAmount(CardData c)
 		=> c.Effects.Where(e => e?.Def?.Id == "attack").Select(e => e.Amount).FirstOrDefault();
 
@@ -90,10 +101,16 @@ public partial class CombatTargeting : Node
 		if (!_targeting || _pendingDeck == null || _pendingCard == null) return;
 
 		int dmg = GetAttackAmount(_pendingCard);
-		if (dmg > 0 && who != null && who.Alive) who.TakeDamage(dmg);
+		GD.Print($"OnEnemyClicked -> {who?.Name} dmg={dmg} | combat? {(_combat != null)}");
 
-		_pendingDeck.AdvanceTopToDiscard();     // reveal next top in that deck
-		EndTargeting();
+		if (dmg > 0 && who != null && who.Alive)
+		{
+			if (_combat != null) _combat.DealDamage(who, dmg);     // <<< use manager
+		}
+
+		var deck = _pendingDeck;   // snapshot before clearing
+		EndTargeting();            // hide rings / detach signals
+		deck.AdvanceTopToDiscard();
 	}
 
 	public override void _UnhandledInput(InputEvent e)

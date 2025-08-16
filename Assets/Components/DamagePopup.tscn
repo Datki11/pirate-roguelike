@@ -1,0 +1,15 @@
+[gd_scene load_steps=3 format=3 uid="uid://dvs6k8vrvcbvw"]
+
+[ext_resource type="Script" uid="uid://dilt47bqqs0vw" path="res://Assets/Scripts/DamagePopup.cs" id="1_78vij"]
+[ext_resource type="FontFile" uid="uid://buo7n3j6h7yj7" path="res://Assets/Fonts/m5x7.ttf" id="2_jdppw"]
+
+[node name="Damage Popup" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+offset_left = -2.0
+offset_right = 38.0
+offset_bottom = 40.0
+mouse_filter = 2
+script = ExtResource("1_78vij")
+Font = ExtResource("2_jdppw")
+Duration = 2.0
