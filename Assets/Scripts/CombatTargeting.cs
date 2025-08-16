@@ -42,11 +42,19 @@ public partial class CombatTargeting : Node
 		_decks = tmp.ToArray();
 	}
 
-	private void OnPlayRequested(Deck deck, CardData card)
+	   private void OnPlayRequested(Deck deck, CardData card)
 	{
 		GD.Print("OnPlayRequested");
-		if (_targeting) return;
-		if (card == null) return;
+		if (_targeting || card == null) return;
+
+		if (IsAllEnemiesAttack(card))
+		{
+			int dmg = GetAttackAmount(card);
+			if (_combat != null) _combat.DealDamageMany(_combat.AliveEnemies(), dmg);
+			else GD.PushWarning("CombatManager missing; AoE skipped.");
+			deck.AdvanceTopToDiscard();
+			return;
+		}
 
 		if (IsSingleTargetAttack(card))
 		{
@@ -56,16 +64,22 @@ public partial class CombatTargeting : Node
 		}
 		else
 		{
-			// TODO: resolve non-targeted effects (AOE, self, etc.) via _combat
-			deck.AdvanceTopToDiscard();
+			deck.AdvanceTopToDiscard();  // non-attack or self/ally effects later
 		}
 	}
 
 	private bool IsSingleTargetAttack(CardData c)
 	{
-		var single = (c.TargetDef as TargetDef)?.Id == "single";
+		var tid = (c.TargetDef as TargetDef)?.Id;
 		bool hasAttack = c.Effects != null && c.Effects.Any(e => e?.Def?.Id == "attack");
-		return single && hasAttack;
+		return tid == "single" && hasAttack;
+	}
+
+	private bool IsAllEnemiesAttack(CardData c)
+	{
+		var tid = (c.TargetDef as TargetDef)?.Id;
+		bool hasAttack = c.Effects != null && c.Effects.Any(e => e?.Def?.Id == "attack");
+		return (tid == "multiple" || tid == "all_enemies") && hasAttack;
 	}
 
 	private int GetAttackAmount(CardData c)

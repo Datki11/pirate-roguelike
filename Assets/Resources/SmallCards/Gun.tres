@@ -4,7 +4,7 @@
 [ext_resource type="Script" uid="uid://d2ueo4m1lbc51" path="res://Assets/Scripts/EffectEntry.cs" id="2_1nv4u"]
 [ext_resource type="Resource" uid="uid://c1a0m3ei8u4oj" path="res://Assets/Resources/Effects/attack.tres" id="3_pjql7"]
 [ext_resource type="Resource" uid="uid://euroqap1x1mh" path="res://Assets/Resources/Effects/block.tres" id="4_uwnkp"]
-[ext_resource type="Resource" uid="uid://bieypex2q2gcy" path="res://Assets/Resources/Targets/single.tres" id="5_mkg4b"]
+[ext_resource type="Resource" uid="uid://bcduw272yqold" path="res://Assets/Resources/Targets/multiple.tres" id="5_ca32n"]
 [ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="6_06us6"]
 
 [sub_resource type="Resource" id="Resource_t7362"]
@@ -26,6 +26,6 @@ Description = "dsfsdfds"
 Art = ExtResource("1_ca32n")
 ManaCost = 0
 Rarity = 2
-TargetDef = ExtResource("5_mkg4b")
+TargetDef = ExtResource("5_ca32n")
 Effects = Array[ExtResource("2_1nv4u")]([SubResource("Resource_t7362"), SubResource("Resource_k7x1t")])
 metadata/_custom_type_script = "uid://bvlphxjdc224b"

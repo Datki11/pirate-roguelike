@@ -119,3 +119,4 @@ offset_bottom = 102.0
 [node name="CombatManager" type="Node" parent="."]
 script = ExtResource("6_y8rib")
 DamagePopupScene = ExtResource("7_4eiu0")
+EnemiesRootPath = NodePath("../Enemies")
