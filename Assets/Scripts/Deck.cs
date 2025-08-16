@@ -1,47 +1,60 @@
-// DeckWidget.cs
+// Deck.cs
 using Godot;
 using System.Collections.Generic;
-using Godot.Collections;
 
 public partial class Deck : Control
 {
+	// ---- Side (who owns this deck) -------------------------------------------
+	public enum DeckSide { Player, Enemy }
+	[Export] public DeckSide Side { get; set; } = DeckSide.Player;
+	public bool IsPlayer => Side == DeckSide.Player;
+	public bool IsEnemy  => Side == DeckSide.Enemy;
+
+	// ---- Data / visuals -------------------------------------------------------
 	[Export] public DeckList DeckList { get; set; }
 	[Export] public PackedScene CardViewScene { get; set; }   // SmallCard.tscn now, Card.tscn later
 	[Export] public Texture2D CardBack { get; set; }          // 24x36 PNG (nearest)
 
+	// ---- Scene wiring ---------------------------------------------------------
 	[Export] public NodePath PilePath { get; set; }           // Control
 	[Export] public NodePath TopHolderPath { get; set; }      // Control
 
+	// ---- Layout ---------------------------------------------------------------
 	[Export] public int MaxBacksShown = 5;
 	[Export] public Vector2I BackOffset = new Vector2I(2, -2);
 
+	// ---- Interaction toggles --------------------------------------------------
+	[Export] public bool EnableInput { get; set; } = true;    // player=true, enemy=false
+	[Export] public bool DiscardOnTopClick { get; set; } = true;
+
+	// ---- Signals --------------------------------------------------------------
+	[Signal] public delegate void TopChangedEventHandler(CardData newTop);
+	[Signal] public delegate void PlayRequestedEventHandler(Deck deck, CardData card);
+
+	// ---- State ----------------------------------------------------------------
 	private Control _pile, _top;
-	private readonly List<CardData> _draw = new();
+	private readonly List<CardData> _draw    = new();
 	private readonly List<CardData> _discard = new();
 	private readonly RandomNumberGenerator _rng = new();
-	
-	[Signal] public delegate void TopChangedEventHandler(CardData newTop);
-	[Signal] public delegate void TopClickedEventHandler();
-	[Signal] public delegate void PlayRequestedEventHandler(Deck deck, CardData card);
-	
-	[Export] public bool DiscardOnTopClick { get; set; } = true;  // click-to-advance
-	
-	
-	
+
 	public override void _Ready()
 	{
 		_pile = GetNode<Control>(PilePath);
 		_top  = GetNode<Control>(TopHolderPath);
 
-		// click the face-up area
-		_top.GuiInput += (InputEvent e) =>
+		// Input only if enabled (players)
+		if (_top != null)
 		{
-			if (e is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
+			_top.MouseFilter = EnableInput ? MouseFilterEnum.Stop : MouseFilterEnum.Ignore;
+			if (EnableInput)
 			{
-				EmitSignal(SignalName.PlayRequested, this, Peek());  // <-- tell targeter
-				if (DiscardOnTopClick) AdvanceTopToDiscard();
+				_top.GuiInput += (InputEvent e) =>
+				{
+					if (e is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
+						RequestPlay();
+				};
 			}
-		};
+		}
 
 		BuildDeck();
 		Shuffle(_draw);
@@ -49,12 +62,25 @@ public partial class Deck : Control
 		EmitSignal(SignalName.TopChanged, Peek());
 	}
 
+	/// Single entry-point to attempt to play the current top card (UI or AI).
+	public void RequestPlay()
+	{
+		EmitSignal(SignalName.PlayRequested, this, Peek());
+		if (DiscardOnTopClick)
+			AdvanceTopToDiscard();
+	}
+
+	public void SetBack(Texture2D tex) { CardBack = tex; RefreshView(); }
+
+	// ---------------- Deck ops ----------------
+
 	private void BuildDeck()
 	{
-		_draw.Clear(); _discard.Clear();
+		_draw.Clear();
+		_discard.Clear();
 		if (DeckList == null) return;
 		foreach (var c in DeckList.Cards)
-			if (c != null) _draw.Add(c);     // duplicates allowed
+			if (c != null) _draw.Add(c); // duplicates allowed
 	}
 
 	private void Shuffle(List<CardData> list)
@@ -69,7 +95,8 @@ public partial class Deck : Control
 
 	public CardData Peek() => _draw.Count > 0 ? _draw[^1] : null;
 
-	public CardData Draw()
+	// Renamed to avoid hiding CanvasItem.Draw()
+	public CardData DrawCard()
 	{
 		if (_draw.Count == 0)
 		{
@@ -89,47 +116,47 @@ public partial class Deck : Control
 		if (c != null) _discard.Add(c);
 		RefreshView();
 	}
-	
+
 	public bool EnsureTop()
-{
-	if (_draw.Count == 0 && _discard.Count > 0)
 	{
-		_draw.AddRange(_discard);
-		_discard.Clear();
-		Shuffle(_draw);
-	}
-	RefreshView();
-	EmitSignal(SignalName.TopChanged, Peek());
-	return _draw.Count > 0;
-}
-
-public CardData AdvanceTopToDiscard()
-{
-	// If there is no top right now, refill and JUST REVEAL. Do NOT discard on this click.
-	if (_draw.Count == 0)
-	{
-		if (!EnsureTop()) return null; // nothing to show
-		return null;                    // stop here; user clicks again to discard the new top
-	}
-
-	// Discard current top
-	var c = _draw[^1];
-	_draw.RemoveAt(_draw.Count - 1);
-	_discard.Add(c);
-
-	// If we just discarded the last card, auto-refill to reveal the next top immediately.
-	if (_draw.Count == 0)
-	{
-		EnsureTop(); // does RefreshView + TopChanged
-	}
-	else
-	{
+		if (_draw.Count == 0 && _discard.Count > 0)
+		{
+			_draw.AddRange(_discard);
+			_discard.Clear();
+			Shuffle(_draw);
+		}
 		RefreshView();
 		EmitSignal(SignalName.TopChanged, Peek());
+		return _draw.Count > 0;
 	}
 
-	return c;
-}
+	public CardData AdvanceTopToDiscard()
+	{
+		// No top? Refill and just reveal; don't discard on this click.
+		if (_draw.Count == 0)
+		{
+			if (!EnsureTop()) return null;
+			return null;
+		}
+
+		// Discard current top
+		var c = _draw[^1];
+		_draw.RemoveAt(_draw.Count - 1);
+		_discard.Add(c);
+
+		// If that was the last card, auto-refill to immediately reveal next
+		if (_draw.Count == 0)
+			EnsureTop();
+		else
+		{
+			RefreshView();
+			EmitSignal(SignalName.TopChanged, Peek());
+		}
+
+		return c;
+	}
+
+	// ---------------- Visuals ----------------
 
 	private void RefreshView()
 	{
@@ -144,9 +171,9 @@ public CardData AdvanceTopToDiscard()
 				StretchMode = TextureRect.StretchModeEnum.Keep,
 				ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
 				Position = new Vector2(i * BackOffset.X, i * BackOffset.Y),
-				MouseFilter = Control.MouseFilterEnum.Ignore
+				MouseFilter = MouseFilterEnum.Ignore
 			};
-			tr.Position = tr.Position.Floor(); // integer pixels
+			tr.Position = tr.Position.Floor(); // pixel-snap
 			_pile.AddChild(tr);
 		}
 

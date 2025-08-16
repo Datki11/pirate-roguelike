@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=7 format=3 uid="uid://c7sc3dhyh31hl"]
+
+[ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_rwesb"]
+[ext_resource type="Texture2D" uid="uid://cy3qo6valqq5x" path="res://Assets/Sprites/Icons/placeholder-icons/attack-icons/bat_fangs_24.png" id="1_v6h7v"]
+[ext_resource type="Resource" uid="uid://c1a0m3ei8u4oj" path="res://Assets/Resources/Effects/attack.tres" id="2_dshwh"]
+[ext_resource type="Script" uid="uid://d2ueo4m1lbc51" path="res://Assets/Scripts/EffectEntry.cs" id="3_rs1se"]
+[ext_resource type="Resource" uid="uid://bieypex2q2gcy" path="res://Assets/Resources/Targets/single.tres" id="4_gqx4w"]
+
+[sub_resource type="Resource" id="Resource_16fek"]
+script = ExtResource("3_rs1se")
+Def = ExtResource("2_dshwh")
+Amount = 6
+metadata/_custom_type_script = "uid://d2ueo4m1lbc51"
+
+[resource]
+script = ExtResource("1_rwesb")
+Title = "Bite"
+Description = "Bite"
+Art = ExtResource("1_v6h7v")
+ManaCost = 0
+Rarity = 0
+TargetDef = ExtResource("4_gqx4w")
+Effects = [SubResource("Resource_16fek")]
+metadata/_custom_type_script = "uid://bvlphxjdc224b"

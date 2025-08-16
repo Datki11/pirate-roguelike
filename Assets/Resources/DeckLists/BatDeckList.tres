@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="DeckList" load_steps=5 format=3 uid="uid://ewl7fgxohm3l"]
+
+[ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_gr2jn"]
+[ext_resource type="Script" uid="uid://osm0e1rmrshh" path="res://Assets/Scripts/DeckList.cs" id="2_8yqeg"]
+[ext_resource type="Resource" uid="uid://w5pl53s3vlh8" path="res://Assets/Resources/SmallCards/ClawSwipe.tres" id="2_p60jl"]
+[ext_resource type="Resource" uid="uid://c7sc3dhyh31hl" path="res://Assets/Resources/SmallCards/bite.tres" id="3_2mnra"]
+
+[resource]
+script = ExtResource("2_8yqeg")
+Cards = Array[ExtResource("1_gr2jn")]([ExtResource("2_p60jl"), ExtResource("3_2mnra"), ExtResource("2_p60jl"), ExtResource("3_2mnra")])
+metadata/_custom_type_script = "uid://osm0e1rmrshh"

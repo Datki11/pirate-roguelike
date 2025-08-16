@@ -2,84 +2,115 @@ using Godot;
 
 public partial class Enemy : Control, IDamageable
 {
-	// Data
 	[Export] public EnemyDef Def { get; set; }
 
-	// Scene refs
 	[Export] public NodePath SpritePath { get; set; }
-	[Export] public NodePath HpPath { get; set; }
-	[Export] public NodePath RingPath { get; set; }
-	[Export] public NodePath PopupAnchorPath { get; set; } // small Control above head
+	[Export] public NodePath HpPath     { get; set; }
+	[Export] public NodePath RingPath   { get; set; }
+	[Export] public NodePath PopupAnchorPath { get; set; }
+
+	// Deck + combat
+	[Export] public NodePath DeckPath { get; set; }
+	[Export] public NodePath CombatPath { get; set; }
+	[Export] public float ThinkDelaySec { get; set; } = 0.6f;
 
 	private TextureRect _sprite;
 	private HPBar _hp;
 	private Control _ring;
+	private TargetRing _ringTR;     // <— cached cast
 	private Control _popupAnchor;
 
-	// Signals (keep old API)
+	private Deck _deck;
+	private CombatManager _combat;
+
+	// --- Signals (ADD THIS BACK) ---
 	[Signal] public delegate void ClickedEventHandler(Enemy who);
-	[Signal] public delegate void DamagedEventHandler(int amount);
-	[Signal] public delegate void HealedEventHandler(int amount);
-	[Signal] public delegate void DiedEventHandler();
 
 	// IDamageable
 	public int MaxHP { get; private set; } = 10;
 	public int HP    { get; private set; } = 10;
 	public bool Alive => HP > 0;
 
+	[Signal] public delegate void DamagedEventHandler(int amount);
+	[Signal] public delegate void HealedEventHandler(int amount);
+	[Signal] public delegate void DiedEventHandler();
+
 	public override void _Ready()
 	{
-		_sprite       = GetNodeOrNull<TextureRect>(SpritePath);
-		_hp           = GetNodeOrNull<HPBar>(HpPath);
-		_ring         = GetNodeOrNull<Control>(RingPath);
-		_popupAnchor  = GetNodeOrNull<Control>(PopupAnchorPath);
+		_sprite      = GetNodeOrNull<TextureRect>(SpritePath);
+		_hp          = GetNodeOrNull<HPBar>(HpPath);
+		_ring        = GetNodeOrNull<Control>(RingPath);
+		_ringTR      = _ring as TargetRing;           // <— keep a typed ref
+		_popupAnchor = GetNodeOrNull<Control>(PopupAnchorPath);
 
-		// Make the whole Enemy clickable; children should pass events up.
+		// We want clicks on the whole enemy rect
 		MouseFilter = MouseFilterEnum.Stop;
 		if (_sprite != null) _sprite.MouseFilter = MouseFilterEnum.Pass;
 		if (_hp     != null) _hp.MouseFilter     = MouseFilterEnum.Pass;
 		if (_ring   != null) _ring.MouseFilter   = MouseFilterEnum.Pass;
+		
+		// hook hover
+		MouseEntered += OnMouseEntered;
+		MouseExited  += OnMouseExited;
 
-		// Hover highlight for ring (only when visible)
-		MouseEntered += () => { if (_ring is TargetRing tr && tr.Visible) tr.SetHover(true); };
-		MouseExited  += () => { if (_ring is TargetRing tr) tr.SetHover(false); };
-
-		// Load from definition
+		// ------ NAME ALIGNMENT: EnemyDef.MaxHP ------
 		if (Def != null)
 		{
-			// NOTE: EnemyDef uses MaxHP (capital P)
-			MaxHP = Mathf.Max(1, Def.MaxHP);
+			MaxHP = Mathf.Max(1, Def.MaxHP);           // << use MaxHP (capital HP)
 			HP    = MaxHP;
-			if (_sprite != null && Def.Art != null)
-				_sprite.Texture = Def.Art;
+			if (Def.Art != null && _sprite != null) _sprite.Texture = Def.Art;
+		}
+		_hp?.Set(HP, MaxHP);
+
+		_deck   = GetNodeOrNull<Deck>(DeckPath);
+		_combat = GetNodeOrNull<CombatManager>(CombatPath)
+				  ?? GetTree().Root.FindChild("CombatManager", true, false) as CombatManager;
+
+		if (_deck != null)
+		{
+			_deck.EnableInput = false;
+			_deck.DiscardOnTopClick = false;
+			_deck.Side = Deck.DeckSide.Enemy;
+			_deck.PlayRequested += OnDeckPlayRequested;
 		}
 
-		_hp?.Set(HP, MaxHP);
+		_combat?.RegisterEnemy(this);
+		SetTargetable(false);
 	}
 
-	// Restore old click signal
+	public override void _ExitTree()
+	{
+		if (_deck != null) _deck.PlayRequested -= OnDeckPlayRequested;
+		_combat?.UnregisterEnemy(this);
+	}
+
+	// Emit Clicked so CombatTargeting keeps working
 	public override void _GuiInput(InputEvent e)
 	{
-		if (e is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
+		if (e is InputEventMouseButton mb && mb.ButtonIndex == MouseButton.Left && mb.Pressed)
 			EmitSignal(SignalName.Clicked, this);
 	}
 
-	// Target ring visibility toggle used by CombatTargeting
-	public void SetTargetable(bool on)
+	private void OnDeckPlayRequested(Deck deck, CardData card)
 	{
-		if (_ring != null) _ring.Visible = on;
-		if (!on && _ring is TargetRing tr) tr.SetHover(false);
+		if (!Alive || _combat == null || card == null) return;
+		_combat.PlayCardAuto(deck, card, Deck.DeckSide.Enemy);
 	}
 
-	// IDamageable
+	public async void PlayTurn()
+	{
+		if (!Alive || _deck == null) return;
+		if (_deck.Peek() == null) _deck.EnsureTop();
+		await ToSignal(GetTree().CreateTimer(ThinkDelaySec), "timeout");
+		_deck.RequestPlay();
+	}
+
 	public void TakeDamage(int amount)
 	{
 		if (amount <= 0 || !Alive) return;
-
 		HP = Mathf.Max(0, HP - amount);
 		_hp?.Set(HP, MaxHP);
 		EmitSignal(SignalName.Damaged, amount);
-
 		if (!Alive)
 		{
 			SetTargetable(false);
@@ -90,7 +121,6 @@ public partial class Enemy : Control, IDamageable
 	public void Heal(int amount)
 	{
 		if (amount <= 0 || !Alive) return;
-
 		HP = Mathf.Min(MaxHP, HP + amount);
 		_hp?.Set(HP, MaxHP);
 		EmitSignal(SignalName.Healed, amount);
@@ -100,6 +130,23 @@ public partial class Enemy : Control, IDamageable
 	{
 		if (_popupAnchor != null) return _popupAnchor.GlobalPosition;
 		var r = GetGlobalRect();
-		return new Vector2(r.Position.X + r.Size.X * 0.5f, r.Position.Y); // top-center fallback
+		return new Vector2(r.Position.X + r.Size.X * 0.5f, r.Position.Y);
+	}
+
+	public void SetTargetable(bool on)
+	{
+		if (_ring != null) _ring.Visible = on;
+		if (!on && _ring is TargetRing tr) tr.SetHover(false);
+	}
+	
+	private void OnMouseEntered()
+	{
+		// Only show hover while targetable
+		if (_ring != null && _ring.Visible) _ringTR?.SetHover(true);
+	}
+
+	private void OnMouseExited()
+	{
+		_ringTR?.SetHover(false);
 	}
 }
