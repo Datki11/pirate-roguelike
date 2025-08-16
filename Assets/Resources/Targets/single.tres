@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="TargetDef" load_steps=3 format=3 uid="uid://bieypex2q2gcy"]
 
 [ext_resource type="Script" uid="uid://bx18fvc128ycs" path="res://Assets/Scripts/TargetDef.cs" id="1_3ygnt"]
-[ext_resource type="Texture2D" uid="uid://cy0xw0j5f780u" path="res://Assets/Sprites/Icons/Target Icons/single-enemy-target-icon.png" id="1_ng03o"]
+[ext_resource type="Texture2D" uid="uid://c18i66ciejb4r" path="res://Assets/Sprites/Icons/Target Icons/target_single_enemy.png" id="1_ng03o"]
 
 [resource]
 script = ExtResource("1_3ygnt")
