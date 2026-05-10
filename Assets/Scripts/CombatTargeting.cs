@@ -8,11 +8,13 @@ public partial class CombatTargeting : Node
 	[Export] public Array<NodePath> DeckPaths { get; set; } = new();
 	[Export] public NodePath EnemiesPath { get; set; }
 	[Export] public NodePath CombatPath { get; set; }   // NEW: hook to CombatManager
+	[Export] public NodePath EnergyPath { get; set; }
 
 	private Deck[] _decks;
 	private Control _enemiesRoot;
 	private Enemy[] _enemies;
 	private CombatManager _combat;                      // NEW
+	private EnergyManager _energy;
 
 	private bool _targeting = false;
 	private CardData _pendingCard;
@@ -21,6 +23,7 @@ public partial class CombatTargeting : Node
 	public override void _Ready()
 	{
 		_combat = GetNodeOrNull<CombatManager>(CombatPath);
+		_energy = GetNodeOrNull<EnergyManager>(EnergyPath);
 		GD.Print($"CombatTargeting ready | combat? {(_combat != null)}");
 
 		_enemiesRoot = GetNode<Control>(EnemiesPath);
@@ -37,34 +40,39 @@ public partial class CombatTargeting : Node
 			if (d == null) continue;
 			d.DiscardOnTopClick = false;     // we discard here after resolving
 			d.PlayRequested += OnPlayRequested;
+			d.Shuffled += OnDeckShuffled;
 			tmp.Add(d);
 		}
 		_decks = tmp.ToArray();
 	}
 
-	   private void OnPlayRequested(Deck deck, CardData card)
+	private void OnPlayRequested(Deck deck, CardData card)
 	{
 		GD.Print("OnPlayRequested");
 		if (_targeting || card == null) return;
 
 		if (IsAllEnemiesAttack(card))
 		{
-			int dmg = GetAttackAmount(card);
-			if (_combat != null) _combat.DealDamageMany(_combat.AliveEnemies(), dmg);
+			if (!TrySpendCardEnergy()) return;
+			if (_combat != null) _combat.PlayCardAuto(deck, card, Deck.DeckSide.Player, GetDeckOwner(deck));
 			else GD.PushWarning("CombatManager missing; AoE skipped.");
-			deck.AdvanceTopToDiscard();
 			return;
 		}
 
 		if (IsSingleTargetAttack(card))
 		{
+			if (!CanSpendCardEnergy()) return;
 			_pendingCard = card;
 			_pendingDeck = deck;
 			BeginTargeting();
 		}
 		else
 		{
-			deck.AdvanceTopToDiscard();  // non-attack or self/ally effects later
+			if (TrySpendCardEnergy())
+			{
+				if (GetDeckOwner(deck) is PlayerUnit playerUnit) playerUnit.PlayCardAnimation();
+				deck.AdvanceTopToDiscard();  // non-attack or self/ally effects later
+			}
 		}
 	}
 
@@ -114,18 +122,32 @@ public partial class CombatTargeting : Node
 	{
 		if (!_targeting || _pendingDeck == null || _pendingCard == null) return;
 
-		int dmg = GetAttackAmount(_pendingCard);
-		GD.Print($"OnEnemyClicked -> {who?.Name} dmg={dmg} | combat? {(_combat != null)}");
+		GD.Print($"OnEnemyClicked -> {who?.Name} | combat? {(_combat != null)}");
 
-		if (dmg > 0 && who != null && who.Alive)
-		{
-			if (_combat != null) _combat.DealDamage(who, dmg);     // <<< use manager
-		}
-
-		var deck = _pendingDeck;   // snapshot before clearing
+		var deck = _pendingDeck;     // snapshot before clearing
+		var card = _pendingCard;
 		EndTargeting();            // hide rings / detach signals
-		deck.AdvanceTopToDiscard();
+		if (!TrySpendCardEnergy()) return;
+		if (_combat != null) _combat.PlayCardOnTarget(deck, card, Deck.DeckSide.Player, who, GetDeckOwner(deck));
+		else deck.AdvanceTopToDiscard();
 	}
+
+	private void OnDeckShuffled(Deck deck, CardData newTop)
+	{
+		if (_targeting || deck == null || newTop == null || !newTop.PlayTopCardOnShuffle)
+			return;
+
+		OnPlayRequested(deck, newTop);
+	}
+
+	private IDamageable GetDeckOwner(Deck deck)
+		=> deck?.GetParent() as IDamageable;
+
+	private bool CanSpendCardEnergy()
+		=> _energy == null || _energy.CanSpend(_energy.CardEnergyCost);
+
+	private bool TrySpendCardEnergy()
+		=> _energy == null || _energy.TrySpend(_energy.CardEnergyCost);
 
 	public override void _UnhandledInput(InputEvent e)
 	{

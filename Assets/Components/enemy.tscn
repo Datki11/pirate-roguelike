@@ -1,8 +1,6 @@
-[gd_scene load_steps=10 format=3 uid="uid://nu0fyjda0sg6"]
+[gd_scene load_steps=8 format=3 uid="uid://nu0fyjda0sg6"]
 
-[ext_resource type="Texture2D" uid="uid://q6b2po3lg8ka" path="res://Assets/Sprites/Enemies/bat_32x32_left.png" id="1_7br3f"]
 [ext_resource type="Script" uid="uid://dynv03gjgjc8x" path="res://Assets/Scripts/Enemy.cs" id="1_t6tus"]
-[ext_resource type="Resource" uid="uid://b7vho1whohwnk" path="res://Assets/Resources/Enemies/bat.tres" id="2_sdvpo"]
 [ext_resource type="Script" uid="uid://dghg25xqhrcyh" path="res://Assets/Scripts/HPBar.cs" id="4_sdvpo"]
 [ext_resource type="Script" uid="uid://dliotwwlwl71h" path="res://Assets/Scripts/TargetRing.cs" id="5_dcwce"]
 [ext_resource type="FontFile" uid="uid://buo7n3j6h7yj7" path="res://Assets/Fonts/m5x7.ttf" id="5_ylgap"]
@@ -13,33 +11,30 @@
 [node name="Enemy" type="Control"]
 layout_mode = 3
 anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 32.0
+offset_right = 315.0
+offset_bottom = 150.0
 script = ExtResource("1_t6tus")
-Def = ExtResource("2_sdvpo")
 SpritePath = NodePath("Sprite")
 HpPath = NodePath("HP")
 RingPath = NodePath("Ring")
 PopupAnchorPath = NodePath("Damage Popup Anchor")
 DeckPath = NodePath("Deck")
+CombatPath = NodePath("")
 
 [node name="Sprite" type="TextureRect" parent="."]
 layout_mode = 1
-offset_right = 32.0
-offset_bottom = 32.0
-texture = ExtResource("1_7br3f")
+offset_left = 165.0
+offset_right = 315.0
+offset_bottom = 150.0
 
 [node name="HP" type="Control" parent="."]
 custom_minimum_size = Vector2(0, 4)
 layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -20.0
-offset_top = -4.0
-offset_right = 20.0
+anchors_preset = 0
+offset_left = 210.0
+offset_top = 146.0
+offset_right = 270.0
+offset_bottom = 150.0
 grow_horizontal = 2
 grow_vertical = 0
 script = ExtResource("4_sdvpo")
@@ -50,26 +45,28 @@ PixelFont = ExtResource("5_ylgap")
 visible = false
 z_index = -5
 anchors_preset = 0
-offset_left = -1.0
-offset_top = 29.0
-offset_right = 39.0
-offset_bottom = 69.0
+offset_left = 192.0
+offset_top = 106.0
+offset_right = 288.0
+offset_bottom = 164.0
+mouse_filter = 1
 script = ExtResource("5_dcwce")
 Thickness = 1
 
 [node name="Damage Popup Anchor" type="Control" parent="."]
 anchors_preset = 0
-offset_left = 11.0
-offset_top = 1.0
-offset_right = 19.0
-offset_bottom = 9.0
+offset_left = 236.0
+offset_top = 18.0
+offset_right = 244.0
+offset_bottom = 26.0
 
 [node name="Deck" parent="." instance=ExtResource("7_qtvry")]
-offset_left = -44.0
-offset_top = -56.0
-offset_right = 4.0
-offset_bottom = 16.0
+offset_left = 120.0
+offset_top = 40.0
+offset_right = 168.0
+offset_bottom = 112.0
 DeckList = ExtResource("8_nn7m1")
 CardBack = ExtResource("8_8sbev")
+BackOffset = Vector2i(-4, -4)
 Side = 1
 EnableInput = false

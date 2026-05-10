@@ -2,12 +2,14 @@ using Godot;
 using Godot.Collections;
 
 public enum Rarity { Common, Uncommon, Rare, Legendary }
+public enum CardTrigger { None, Lethal, Revenge, Shuffle }
 
 [GlobalClass] // so it shows up in "New Resource"
 public partial class CardData : Resource
 {
 	[Export] public string Title { get; set; } = "";
 	[Export(PropertyHint.MultilineText)] public string Description { get; set; } = "";
+	[Export(PropertyHint.MultilineText)] public string RulesText { get; set; } = "";
 	[Export] public Texture2D Art { get; set; }
 	[Export] public int ManaCost { get; set; } = 0;
 	[Export] public Rarity Rarity { get; set; } = Rarity.Common;
@@ -16,4 +18,11 @@ public partial class CardData : Resource
 	// Or keep your old enum for logic and map to an icon elsewhere.
 
 	[Export] public Array<EffectEntry> Effects { get; set; } = new(); // up to 3
+
+	[ExportGroup("Unit Card Triggers")]
+	[Export] public CardTrigger Trigger { get; set; } = CardTrigger.None;
+	[Export(PropertyHint.MultilineText)] public string TriggerText { get; set; } = "";
+	[Export] public int LethalHealAmount { get; set; } = 0;
+	[Export] public bool ReturnToDrawOnLethal { get; set; } = false;
+	[Export] public bool PlayTopCardOnShuffle { get; set; } = false;
 }

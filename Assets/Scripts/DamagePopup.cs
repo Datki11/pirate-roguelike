@@ -16,6 +16,7 @@ public partial class DamagePopup : Control
 	public override void _Ready()
 	{
 		MouseFilter = MouseFilterEnum.Ignore;
+		ConfigurePixelFont(Font);
 		if (Size == Vector2.Zero) { CustomMinimumSize = new Vector2(32, 16); Size = CustomMinimumSize; }
 		ZIndex = 1000;
 	}
@@ -45,6 +46,7 @@ public partial class DamagePopup : Control
 
 		var font = Font ?? GetThemeFont("font") ?? GetThemeFont("normal_font");
 		if (font == null) { GD.PushWarning("DamagePopup: no font available."); return; }
+		ConfigurePixelFont(font);
 
 		var fs = Font != null ? FontSize
 			   : (GetThemeFontSize("font_size") > 0 ? GetThemeFontSize("font_size") : 16);
@@ -54,5 +56,15 @@ public partial class DamagePopup : Control
 
 		DrawStringOutline(font, pos, _text, HorizontalAlignment.Center, Size.X, fs, 1, Outline);
 		DrawString(font, pos, _text, HorizontalAlignment.Center, Size.X, fs, _use);
+	}
+
+	private void ConfigurePixelFont(Font font)
+	{
+		if (font is FontFile fontFile)
+		{
+			fontFile.Antialiasing = TextServer.FontAntialiasing.None;
+			fontFile.GenerateMipmaps = false;
+			fontFile.SubpixelPositioning = TextServer.SubpixelPositioning.Disabled;
+		}
 	}
 }

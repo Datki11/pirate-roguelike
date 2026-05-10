@@ -1,8 +1,10 @@
 using Godot;
+using System.Collections.Generic;
 
+[Tool]
 public partial class Enemy : Control, IDamageable
 {
-	[Export] public EnemyDef Def { get; set; }
+	[Export] public Resource Def { get; set; }
 
 	[Export] public NodePath SpritePath { get; set; }
 	[Export] public NodePath HpPath     { get; set; }
@@ -13,6 +15,12 @@ public partial class Enemy : Control, IDamageable
 	[Export] public NodePath DeckPath { get; set; }
 	[Export] public NodePath CombatPath { get; set; }
 	[Export] public float ThinkDelaySec { get; set; } = 0.6f;
+	[Export] public Texture2D SpriteSheet { get; set; }
+	[Export] public Vector2I FrameSize { get; set; } = new(150, 150);
+	[Export] public int IdleFrameCount { get; set; } = 3;
+	[Export] public float IdleFrameSeconds { get; set; } = 0.12f;
+	[Export] public float ActionFrameSeconds { get; set; } = 0.07f;
+	[Export] public bool FaceLeft { get; set; } = true;
 
 	private TextureRect _sprite;
 	private HPBar _hp;
@@ -22,6 +30,10 @@ public partial class Enemy : Control, IDamageable
 
 	private Deck _deck;
 	private CombatManager _combat;
+	private readonly List<AtlasTexture> _sheetFrames = new();
+	private float _frameTime;
+	private int _frameIndex;
+	private bool _playingAction;
 
 	// --- Signals (ADD THIS BACK) ---
 	[Signal] public delegate void ClickedEventHandler(Enemy who);
@@ -42,6 +54,7 @@ public partial class Enemy : Control, IDamageable
 		_ring        = GetNodeOrNull<Control>(RingPath);
 		_ringTR      = _ring as TargetRing;           // <— keep a typed ref
 		_popupAnchor = GetNodeOrNull<Control>(PopupAnchorPath);
+		BuildSheetFrames();
 
 		// We want clicks on the whole enemy rect
 		MouseFilter = MouseFilterEnum.Stop;
@@ -54,13 +67,16 @@ public partial class Enemy : Control, IDamageable
 		MouseExited  += OnMouseExited;
 
 		// ------ NAME ALIGNMENT: EnemyDef.MaxHP ------
-		if (Def != null)
+		if (Def is EnemyDef enemyDef)
 		{
-			MaxHP = Mathf.Max(1, Def.MaxHP);           // << use MaxHP (capital HP)
+			MaxHP = Mathf.Max(1, enemyDef.MaxHP);           // << use MaxHP (capital HP)
 			HP    = MaxHP;
-			if (Def.Art != null && _sprite != null) _sprite.Texture = Def.Art;
+			if (_sheetFrames.Count == 0 && enemyDef.Art != null && _sprite != null) _sprite.Texture = enemyDef.Art;
 		}
+		ApplyFrame();
 		_hp?.Set(HP, MaxHP);
+		if (Engine.IsEditorHint())
+			return;
 
 		_deck   = GetNodeOrNull<Deck>(DeckPath);
 		_combat = GetNodeOrNull<CombatManager>(CombatPath)
@@ -72,15 +88,52 @@ public partial class Enemy : Control, IDamageable
 			_deck.DiscardOnTopClick = false;
 			_deck.Side = Deck.DeckSide.Enemy;
 			_deck.PlayRequested += OnDeckPlayRequested;
+			_deck.Shuffled += OnDeckShuffled;
 		}
 
 		_combat?.RegisterEnemy(this);
 		SetTargetable(false);
 	}
 
+	public override void _Process(double delta)
+	{
+		if (Engine.IsEditorHint())
+			return;
+
+		if (_sheetFrames.Count == 0 || _sprite == null) return;
+
+		float frameSeconds = _playingAction ? ActionFrameSeconds : IdleFrameSeconds;
+		_frameTime += (float)delta;
+		while (_frameTime >= frameSeconds)
+		{
+			_frameTime -= frameSeconds;
+			_frameIndex++;
+			if (_playingAction)
+			{
+				if (_frameIndex >= _sheetFrames.Count)
+				{
+					_playingAction = false;
+					_frameIndex = 0;
+				}
+			}
+			else if (_frameIndex >= Mathf.Min(IdleFrameCount, _sheetFrames.Count))
+			{
+				_frameIndex = 0;
+			}
+			ApplyFrame();
+		}
+	}
+
 	public override void _ExitTree()
 	{
-		if (_deck != null) _deck.PlayRequested -= OnDeckPlayRequested;
+		if (Engine.IsEditorHint())
+			return;
+
+		if (_deck != null)
+		{
+			_deck.PlayRequested -= OnDeckPlayRequested;
+			_deck.Shuffled -= OnDeckShuffled;
+		}
 		_combat?.UnregisterEnemy(this);
 	}
 
@@ -94,7 +147,17 @@ public partial class Enemy : Control, IDamageable
 	private void OnDeckPlayRequested(Deck deck, CardData card)
 	{
 		if (!Alive || _combat == null || card == null) return;
-		_combat.PlayCardAuto(deck, card, Deck.DeckSide.Enemy);
+		PlayCardAnimation();
+		_combat.PlayCardAuto(deck, card, Deck.DeckSide.Enemy, this);
+	}
+
+	private void OnDeckShuffled(Deck deck, CardData newTop)
+	{
+		if (!Alive || _combat == null || deck == null || newTop == null || !newTop.PlayTopCardOnShuffle)
+			return;
+
+		PlayCardAnimation();
+		_combat.PlayCardAuto(deck, newTop, Deck.DeckSide.Enemy, this);
 	}
 
 	public async void PlayTurn()
@@ -148,5 +211,39 @@ public partial class Enemy : Control, IDamageable
 	private void OnMouseExited()
 	{
 		_ringTR?.SetHover(false);
+	}
+
+	public void PlayCardAnimation()
+	{
+		if (_sheetFrames.Count == 0) return;
+		_playingAction = true;
+		_frameIndex = 0;
+		_frameTime = 0;
+		ApplyFrame();
+	}
+
+	private void BuildSheetFrames()
+	{
+		_sheetFrames.Clear();
+		if (SpriteSheet == null || FrameSize.X <= 0 || FrameSize.Y <= 0) return;
+
+		int frameCount = Mathf.Max(1, SpriteSheet.GetWidth() / FrameSize.X);
+		for (int i = 0; i < frameCount; i++)
+		{
+			var atlas = new AtlasTexture
+			{
+				Atlas = SpriteSheet,
+				Region = new Rect2(i * FrameSize.X, 0, FrameSize.X, FrameSize.Y)
+			};
+			_sheetFrames.Add(atlas);
+		}
+	}
+
+	private void ApplyFrame()
+	{
+		if (_sprite == null || _sheetFrames.Count == 0) return;
+		_frameIndex = Mathf.Clamp(_frameIndex, 0, _sheetFrames.Count - 1);
+		_sprite.Texture = _sheetFrames[_frameIndex];
+		_sprite.FlipH = !FaceLeft;
 	}
 }

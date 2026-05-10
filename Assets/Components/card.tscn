@@ -1,6 +1,6 @@
-[gd_scene load_steps=7 format=3 uid="uid://deygsr1fw3q0k"]
+[gd_scene load_steps=7 format=3 uid="uid://dturu5bepcvgo"]
 
-[ext_resource type="Script" uid="uid://bslr2h8tvon6s" path="res://Assets/Scripts/Card.cs" id="1_8elti"]
+[ext_resource type="Script" path="res://Assets/Scripts/Card.cs" id="1_8elti"]
 [ext_resource type="Texture2D" uid="uid://gxpjkped0we" path="res://Assets/Sprites/Cards/placeholder-sword.png" id="1_ax3cw"]
 [ext_resource type="FontFile" uid="uid://dtn7toydgbwse" path="res://Assets/Fonts/terminus-ttf-4.49.3/TerminusTTF-Bold-4.49.3.ttf" id="3_mwkhl"]
 [ext_resource type="FontFile" uid="uid://d2u7uyfachinb" path="res://Assets/Fonts/terminus-ttf-4.49.3/TerminusTTF-4.49.3.ttf" id="4_n3r1g"]
@@ -31,6 +31,8 @@ script = ExtResource("1_8elti")
 TitlePath = NodePath("Frame/Pad/VBoxContainer/Title")
 ArtPath = NodePath("Frame/Pad/VBoxContainer/AspectRatioContainer/Art")
 BodyPath = NodePath("Frame/Pad/VBoxContainer/MarginContainer/RichTextLabel")
+TitleText = null
+DescriptionText = null
 
 [node name="Frame" type="Panel" parent="."]
 layout_mode = 1

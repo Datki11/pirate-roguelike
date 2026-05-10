@@ -2,11 +2,12 @@
 using Godot;
 using System.Collections.Generic;
 
+[Tool]
 public partial class Deck : Control
 {
 	public enum DeckSide { Player, Enemy }
 
-	[Export] public DeckList DeckList { get; set; }
+	[Export] public Resource DeckList { get; set; }
 	[Export] public PackedScene CardViewScene { get; set; }   // SmallCard.tscn now, Card.tscn later
 	[Export] public Texture2D CardBack { get; set; }          // 48x72 PNG (nearest)
 
@@ -30,40 +31,65 @@ public partial class Deck : Control
 	private readonly List<CardData> _draw = new();
 	private readonly List<CardData> _discard = new();
 	private readonly RandomNumberGenerator _rng = new();
+	private readonly Color _previewCard = new(1f, 1f, 1f, 1f);
+	private readonly Color _previewInk = Colors.Black;
 
 	[Signal] public delegate void TopChangedEventHandler(CardData newTop);
 	[Signal] public delegate void TopClickedEventHandler();
 	[Signal] public delegate void PlayRequestedEventHandler(Deck deck, CardData card);
+	[Signal] public delegate void ShuffledEventHandler(Deck deck, CardData newTop);
 
 	public override void _Ready()
 	{
-		_pile = GetNode<Control>(PilePath);
-		_top  = GetNode<Control>(TopHolderPath);
+		_pile = GetNodeOrNull<Control>(PilePath);
+		_top  = GetNodeOrNull<Control>(TopHolderPath);
 		_origTopPos = _top?.Position ?? Vector2.Zero;
 
 		ApplySideLayout(); // set stack direction and provisional top position
+		BuildDeck();
+
+		if (Engine.IsEditorHint())
+		{
+			QueueRedraw();
+			return;
+		}
 
 		if (EnableInput && _top != null)
 		{
 			_top.MouseFilter = MouseFilterEnum.Stop;
-			_top.GuiInput += (InputEvent e) =>
-			{
-				if (e is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left)
-				{
-					EmitSignal(SignalName.PlayRequested, this, Peek());
-					if (DiscardOnTopClick) AdvanceTopToDiscard();
-				}
-			};
+			_top.GuiInput += OnTopGuiInput;
 		}
 		else if (_top != null)
 		{
 			_top.MouseFilter = MouseFilterEnum.Ignore;
 		}
 
-		BuildDeck();
 		Shuffle(_draw);
 		RefreshView();
 		EmitSignal(SignalName.TopChanged, Peek());
+	}
+
+	public override void _Input(InputEvent e)
+	{
+		if (Engine.IsEditorHint())
+			return;
+
+		if (!EnableInput || e is not InputEventMouseButton mb || !mb.Pressed || mb.ButtonIndex != MouseButton.Left)
+			return;
+
+		if (!GetPlayableCardRect().HasPoint(GetGlobalMousePosition()))
+			return;
+
+		RequestTopCardPlay();
+		GetViewport().SetInputAsHandled();
+	}
+
+	public override void _Draw()
+	{
+		if (!Engine.IsEditorHint())
+			return;
+
+		DrawEditorPreview();
 	}
 
 	// Let AI/enemy “click” the deck
@@ -76,8 +102,8 @@ public partial class Deck : Control
 	private void BuildDeck()
 	{
 		_draw.Clear(); _discard.Clear();
-		if (DeckList == null) return;
-		foreach (var c in DeckList.Cards)
+		if (DeckList is not global::DeckList deckList) return;
+		foreach (var c in deckList.Cards)
 			if (c != null) _draw.Add(c);
 	}
 
@@ -101,6 +127,7 @@ public partial class Deck : Control
 			_draw.AddRange(_discard);
 			_discard.Clear();
 			Shuffle(_draw);
+			EmitSignal(SignalName.Shuffled, this, Peek());
 		}
 		var c = _draw[^1];
 		_draw.RemoveAt(_draw.Count - 1);
@@ -121,6 +148,7 @@ public partial class Deck : Control
 			_draw.AddRange(_discard);
 			_discard.Clear();
 			Shuffle(_draw);
+			EmitSignal(SignalName.Shuffled, this, Peek());
 		}
 		RefreshView();
 		EmitSignal(SignalName.TopChanged, Peek());
@@ -153,6 +181,8 @@ public partial class Deck : Control
 	// ---------- View ----------
 	private void RefreshView()
 	{
+		if (_pile == null || _top == null) return;
+
 		// backs
 		foreach (var n in _pile.GetChildren()) n.QueueFree();
 		int backs = Mathf.Min(MaxBacksShown, Mathf.Max(0, _draw.Count - 1));
@@ -178,21 +208,94 @@ public partial class Deck : Control
 			var node = CardViewScene.Instantiate<Control>();
 			if (node is BaseCardView view) view.SetData(top);
 			else GD.PushError("CardViewScene must inherit BaseCardView.");
+
+			Vector2 faceSize = node.CustomMinimumSize;
+			if (faceSize.X <= 1f || faceSize.Y <= 1f)
+				faceSize = new Vector2(Mathf.Max(node.Size.X, CardBack?.GetSize().X ?? 48f), Mathf.Max(node.Size.Y, CardBack?.GetSize().Y ?? 72f));
+			node.Size = faceSize;
+			_top.CustomMinimumSize = faceSize;
+			_top.Size = faceSize;
+
 			_top.AddChild(node);
+			if (EnableInput)
+			{
+				node.MouseFilter = MouseFilterEnum.Stop;
+				node.GuiInput += OnTopGuiInput;
+			}
+			else
+			{
+				node.MouseFilter = MouseFilterEnum.Ignore;
+			}
 
 			// Reposition top holder using the ACTUAL face-up width
 			if (AutoPlaceTop)
 			{
-				float faceW = node.GetRect().Size.X;
-				if (faceW <= 1f)
-				{
-					// fallbacks if size isn't ready yet
-					faceW = Mathf.Max(node.Size.X, node.CustomMinimumSize.X);
-					if (faceW <= 1f) faceW = CardBack?.GetSize().X ?? 48f;
-				}
-				PlaceTopHolder(faceW);
+				PlaceTopHolder(faceSize.X);
 			}
 		}
+	}
+
+	private void DrawEditorPreview()
+	{
+		if (_pile == null || _top == null) return;
+
+		int backs = Mathf.Max(1, Mathf.Min(MaxBacksShown, _draw.Count));
+		Vector2 backSize = CardBack?.GetSize() ?? new Vector2(48, 72);
+		for (int i = 0; i < backs; i++)
+		{
+			Vector2 pos = (_pile.Position + new Vector2(i * BackOffset.X, i * BackOffset.Y)).Floor();
+			if (CardBack != null)
+				DrawTexture(CardBack, pos);
+			else
+			{
+				DrawRect(new Rect2(pos, backSize), Side == DeckSide.Enemy ? new Color(0.55f, 0.12f, 0.16f) : new Color(0.1f, 0.28f, 0.55f), true);
+				DrawRect(new Rect2(pos, backSize), _previewInk, false, 2);
+			}
+		}
+
+		Vector2 faceSize = new(112, 168);
+		Vector2 topPosition = _top.Position;
+		if (AutoPlaceTop)
+		{
+			float gap = Mathf.Max(0, TopGap);
+			float x = (Side == DeckSide.Enemy)
+				? _pile.Position.X - faceSize.X - gap
+				: _pile.Position.X + (CardBack?.GetSize().X ?? faceSize.X) + gap;
+			topPosition = new Vector2(Mathf.Floor(x), Mathf.Floor(_top.Position.Y));
+		}
+
+		var face = new Rect2(topPosition.Floor(), faceSize);
+		DrawRect(face, _previewCard, true);
+		DrawRect(face, _previewInk, false, 2);
+		DrawLine(face.Position + new Vector2(0, 18), face.Position + new Vector2(face.Size.X, 18), _previewInk, 2);
+		DrawLine(face.Position + new Vector2(0, 70), face.Position + new Vector2(face.Size.X, 70), _previewInk, 2);
+	}
+
+	private void OnTopGuiInput(InputEvent e)
+	{
+		if (e is not InputEventMouseButton mb || !mb.Pressed || mb.ButtonIndex != MouseButton.Left)
+			return;
+
+		RequestTopCardPlay();
+		AcceptEvent();
+	}
+
+	private void RequestTopCardPlay()
+	{
+		EmitSignal(SignalName.PlayRequested, this, Peek());
+		if (DiscardOnTopClick) AdvanceTopToDiscard();
+	}
+
+	private Rect2 GetPlayableCardRect()
+	{
+		if (_top == null) return new Rect2();
+		var rect = _top.GetGlobalRect();
+		foreach (var child in _top.GetChildren())
+		{
+			if (child is Control c)
+				rect = rect.Merge(c.GetGlobalRect());
+		}
+		return rect;
 	}
 
 	// ---------- Layout helpers ----------

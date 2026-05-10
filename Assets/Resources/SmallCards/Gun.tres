@@ -11,21 +11,25 @@
 script = ExtResource("2_1nv4u")
 Def = ExtResource("3_pjql7")
 Amount = 6
-metadata/_custom_type_script = "uid://d2ueo4m1lbc51"
 
 [sub_resource type="Resource" id="Resource_k7x1t"]
 script = ExtResource("2_1nv4u")
 Def = ExtResource("4_uwnkp")
 Amount = 4
-metadata/_custom_type_script = "uid://d2ueo4m1lbc51"
 
 [resource]
 script = ExtResource("6_06us6")
-Title = "Shit"
-Description = "dsfsdfds"
+Title = "Gun"
+Description = "Volley fire."
+RulesText = "Blast all enemies."
 Art = ExtResource("1_ca32n")
 ManaCost = 0
 Rarity = 2
 TargetDef = ExtResource("5_ca32n")
-Effects = Array[ExtResource("2_1nv4u")]([SubResource("Resource_t7362"), SubResource("Resource_k7x1t")])
+Effects = [SubResource("Resource_t7362"), SubResource("Resource_k7x1t")]
+Trigger = 0
+TriggerText = ""
+LethalHealAmount = 0
+ReturnToDrawOnLethal = false
+PlayTopCardOnShuffle = false
 metadata/_custom_type_script = "uid://bvlphxjdc224b"

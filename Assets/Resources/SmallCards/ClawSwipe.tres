@@ -10,15 +10,20 @@
 script = ExtResource("3_g6xnc")
 Def = ExtResource("2_mibji")
 Amount = 3
-metadata/_custom_type_script = "uid://d2ueo4m1lbc51"
 
 [resource]
 script = ExtResource("1_hvolb")
 Title = "Claw Swipe"
-Description = "	"
+Description = "Rake the enemy line."
+RulesText = ""
 Art = ExtResource("1_j481d")
 ManaCost = 0
 Rarity = 0
 TargetDef = ExtResource("4_kxqjd")
-Effects = Array[ExtResource("3_g6xnc")]([SubResource("Resource_p80uk")])
+Effects = [SubResource("Resource_p80uk")]
+Trigger = 3
+TriggerText = "Play top card."
+LethalHealAmount = 0
+ReturnToDrawOnLethal = false
+PlayTopCardOnShuffle = true
 metadata/_custom_type_script = "uid://bvlphxjdc224b"

@@ -15,6 +15,11 @@ public partial class HPBar : Control
 	[Export] public FontFile PixelFont;
 	[Export] public int PixelFontSize = 16;
 
+	public override void _Ready()
+	{
+		ConfigurePixelFont(PixelFont);
+	}
+
 	public void Set(int value, int max)
 	{
 		Max = Mathf.Max(1, max);
@@ -38,6 +43,7 @@ public partial class HPBar : Control
 
 		// pick font (exported takes priority, then theme)
 		Font font = PixelFont ?? GetThemeFont("font") ?? GetThemeFont("normal_font");
+		ConfigurePixelFont(font);
 		int fs = PixelFont != null ? PixelFontSize
 				 : (GetThemeFontSize("font_size") > 0 ? GetThemeFontSize("font_size") : 16);
 
@@ -48,5 +54,15 @@ public partial class HPBar : Control
 		// 1px outline for readability, centered horizontally
 		DrawStringOutline(font, pos, s, HorizontalAlignment.Center, size.X, fs, 1, Colors.Black);
 		DrawString(font,         pos, s, HorizontalAlignment.Center, size.X, fs, TextColor);
+	}
+
+	private void ConfigurePixelFont(Font font)
+	{
+		if (font is FontFile fontFile)
+		{
+			fontFile.Antialiasing = TextServer.FontAntialiasing.None;
+			fontFile.GenerateMipmaps = false;
+			fontFile.SubpixelPositioning = TextServer.SubpixelPositioning.Disabled;
+		}
 	}
 }

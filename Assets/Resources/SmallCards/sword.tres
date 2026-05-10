@@ -10,15 +10,20 @@
 script = ExtResource("1_ytfcg")
 Def = ExtResource("3_0ivc8")
 Amount = 10
-metadata/_custom_type_script = "uid://d2ueo4m1lbc51"
 
 [resource]
 script = ExtResource("2_53tfe")
 Title = "Sword"
-Description = "SAsdadsasdasd"
+Description = "Strike one enemy."
+RulesText = ""
 Art = ExtResource("1_vdpq8")
 ManaCost = 0
 Rarity = 0
 TargetDef = ExtResource("4_svyft")
-Effects = Array[ExtResource("1_ytfcg")]([SubResource("Resource_2jgim")])
+Effects = [SubResource("Resource_2jgim")]
+Trigger = 1
+TriggerText = "Gain 5 HP."
+LethalHealAmount = 5
+ReturnToDrawOnLethal = false
+PlayTopCardOnShuffle = false
 metadata/_custom_type_script = "uid://bvlphxjdc224b"

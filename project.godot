@@ -29,8 +29,8 @@ project/assembly_name="Pirate Roguelike"
 [gui]
 
 theme/custom_font="uid://d2u7uyfachinb"
-theme/default_font_subpixel_positioning=4
-theme/default_font_generate_mipmaps=true
+theme/default_font_antialiasing=0
+theme/default_font_subpixel_positioning=0
 
 [rendering]
 

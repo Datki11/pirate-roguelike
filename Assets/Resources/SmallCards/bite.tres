@@ -10,15 +10,20 @@
 script = ExtResource("3_rs1se")
 Def = ExtResource("2_dshwh")
 Amount = 6
-metadata/_custom_type_script = "uid://d2ueo4m1lbc51"
 
 [resource]
 script = ExtResource("1_rwesb")
 Title = "Bite"
-Description = "Bite"
+Description = "Bite one target."
+RulesText = ""
 Art = ExtResource("1_v6h7v")
 ManaCost = 0
 Rarity = 0
 TargetDef = ExtResource("4_gqx4w")
-Effects = Array[ExtResource("3_rs1se")]([SubResource("Resource_16fek")])
+Effects = [SubResource("Resource_16fek")]
+Trigger = 1
+TriggerText = "Gain 3 HP."
+LethalHealAmount = 3
+ReturnToDrawOnLethal = false
+PlayTopCardOnShuffle = false
 metadata/_custom_type_script = "uid://bvlphxjdc224b"

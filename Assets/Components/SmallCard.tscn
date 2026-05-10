@@ -1,12 +1,13 @@
-[gd_scene load_steps=8 format=3 uid="uid://dalw1nj8vun0c"]
+[gd_scene load_steps=9 format=3 uid="uid://dalw1nj8vun0c"]
 
 [ext_resource type="Script" uid="uid://bpyombue3awvk" path="res://Assets/Scripts/SmallCard.cs" id="1_gnlkw"]
 [ext_resource type="Texture2D" uid="uid://ddtbgu1levv2i" path="res://Assets/Sprites/Icons/placeholder-icons/attack-icons/sprite_05.png" id="2_j0vee"]
 [ext_resource type="FontFile" uid="uid://dtn7toydgbwse" path="res://Assets/Fonts/terminus-ttf-4.49.3/TerminusTTF-Bold-4.49.3.ttf" id="3_j0vee"]
 [ext_resource type="Texture2D" uid="uid://bkw3tyd3a8ju8" path="res://Assets/Sprites/Icons/16x16-circle.png" id="4_30pow"]
 [ext_resource type="Texture2D" uid="uid://c75wfghfvo23j" path="res://Assets/Sprites/Icons/Target Icons/multiple-enemies-target-icon.png" id="5_gnlkw"]
+[ext_resource type="Script" uid="uid://c0d1xtooltips" path="res://Assets/Scripts/TooltipDisplay.cs" id="6_tooltip"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8elti"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_frame"]
 content_margin_left = 0.0
 content_margin_top = 0.0
 content_margin_right = 0.0
@@ -16,29 +17,36 @@ border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.0430392, 0.0430392, 0.0430391, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
+border_color = Color(0, 0, 0, 1)
 anti_aliasing = false
 
-[sub_resource type="StyleBoxLine" id="StyleBoxLine_j0vee"]
-color = Color(0, 0, 0, 0)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_section"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(1, 1, 1, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 1)
+anti_aliasing = false
 
 [node name="Card2" type="Control"]
-custom_minimum_size = Vector2(92, 138)
+custom_minimum_size = Vector2(112, 168)
 layout_mode = 3
 anchors_preset = 0
-offset_right = 92.0
-offset_bottom = 138.0
-mouse_filter = 2
+offset_right = 112.0
+offset_bottom = 168.0
+mouse_filter = 1
 script = ExtResource("1_gnlkw")
-ArtPath = NodePath("Frame/Pad/VBoxContainer/AspectRatioContainer/Art")
-Row1Path = NodePath("Frame/Pad/VBoxContainer/RichTextLabel")
-Row2Path = NodePath("Frame/Pad/VBoxContainer/RichTextLabel3")
-Row3Path = NodePath("Frame/Pad/VBoxContainer/RichTextLabel4")
+TitlePath = NodePath("Frame/Pad/VBoxContainer/TitleBox/Title")
+ArtPath = NodePath("Frame/Pad/VBoxContainer/ArtBox/Art")
+BodyPath = NodePath("Frame/Pad/VBoxContainer/BodyBox/Body")
 BadgeIconPath = NodePath("Overlay/Target Circle/TextureRect")
+TooltipDisplayPath = NodePath("TooltipDisplay")
+EffectIconSize = 10
 
 [node name="Frame" type="Panel" parent="."]
 layout_mode = 1
@@ -48,76 +56,94 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_8elti")
+theme_override_styles/panel = SubResource("StyleBoxFlat_frame")
 
 [node name="Pad" type="MarginContainer" parent="Frame"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = -6.05766
-offset_bottom = 3.94236
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-theme_override_constants/margin_top = 12
-theme_override_constants/margin_bottom = 8
+theme_override_constants/margin_left = 5
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 5
+theme_override_constants/margin_bottom = 5
 
 [node name="VBoxContainer" type="VBoxContainer" parent="Frame/Pad"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 0
 
-[node name="AspectRatioContainer" type="AspectRatioContainer" parent="Frame/Pad/VBoxContainer"]
-custom_minimum_size = Vector2(0, 48)
+[node name="TitleBox" type="Panel" parent="Frame/Pad/VBoxContainer"]
+custom_minimum_size = Vector2(0, 18)
 layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_section")
 
-[node name="Art" type="TextureRect" parent="Frame/Pad/VBoxContainer/AspectRatioContainer"]
+[node name="Title" type="Label" parent="Frame/Pad/VBoxContainer/TitleBox"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_fonts/font = ExtResource("3_j0vee")
+theme_override_font_sizes/font_size = 13
+text = "Card"
+horizontal_alignment = 1
+vertical_alignment = 1
+clip_text = true
+
+[node name="ArtBox" type="Panel" parent="Frame/Pad/VBoxContainer"]
+custom_minimum_size = Vector2(0, 52)
 layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_section")
+
+[node name="Art" type="TextureRect" parent="Frame/Pad/VBoxContainer/ArtBox"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 3.0
+offset_top = 3.0
+offset_right = -3.0
+offset_bottom = -3.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 texture = ExtResource("2_j0vee")
 expand_mode = 2
+stretch_mode = 5
 
-[node name="Panel" type="Panel" parent="Frame/Pad/VBoxContainer"]
-custom_minimum_size = Vector2(0, 8)
+[node name="BodyBox" type="Panel" parent="Frame/Pad/VBoxContainer"]
+custom_minimum_size = Vector2(0, 86)
 layout_mode = 2
+size_flags_vertical = 3
 mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxLine_j0vee")
+theme_override_styles/panel = SubResource("StyleBoxFlat_section")
 
-[node name="RichTextLabel" type="RichTextLabel" parent="Frame/Pad/VBoxContainer"]
-clip_contents = false
-custom_minimum_size = Vector2(0, 20)
-layout_mode = 2
+[node name="Body" type="RichTextLabel" parent="Frame/Pad/VBoxContainer/BodyBox"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 2.0
+offset_top = 3.0
+offset_right = -2.0
+offset_bottom = -2.0
+grow_horizontal = 2
+grow_vertical = 2
 mouse_filter = 2
 theme_override_colors/default_color = Color(0, 0, 0, 1)
 theme_override_fonts/normal_font = ExtResource("3_j0vee")
-theme_override_font_sizes/normal_font_size = 14
+theme_override_font_sizes/normal_font_size = 10
 bbcode_enabled = true
-text = "[center][img=16x16]res://Assets/Sprites/Icons/placeholder-icons/icons/8x8/rpginventory-Sheet/sprite_024.png[/img][/center] 99x2"
+text = "[center][img=10x10]res://Assets/Sprites/Icons/placeholder-icons/icons/8x8/rpginventory-Sheet/sprite_024.png[/img] 99[/center]"
 scroll_active = false
-autowrap_mode = 0
-
-[node name="RichTextLabel3" type="RichTextLabel" parent="Frame/Pad/VBoxContainer"]
-clip_contents = false
-custom_minimum_size = Vector2(0, 20)
-layout_mode = 2
-mouse_filter = 2
-theme_override_colors/default_color = Color(0, 0, 0, 1)
-theme_override_fonts/normal_font = ExtResource("3_j0vee")
-theme_override_font_sizes/normal_font_size = 14
-bbcode_enabled = true
-text = "[center][img=16x16]res://Assets/Sprites/Icons/placeholder-icons/icons/8x8/rpginventory-Sheet/sprite_070.png[/img] 50[/center]"
-autowrap_mode = 0
-
-[node name="RichTextLabel4" type="RichTextLabel" parent="Frame/Pad/VBoxContainer"]
-clip_contents = false
-custom_minimum_size = Vector2(0, 20)
-layout_mode = 2
-mouse_filter = 2
-theme_override_colors/default_color = Color(0, 0, 0, 1)
-theme_override_fonts/normal_font = ExtResource("3_j0vee")
-theme_override_font_sizes/normal_font_size = 14
-bbcode_enabled = true
-text = "[center][img=16x16]res://Assets/Sprites/Icons/placeholder-icons/icons/8x8/rpginventory-Sheet/sprite_014.png[/img][/center] 5"
 
 [node name="Overlay" type="Control" parent="."]
 layout_mode = 1
@@ -159,3 +185,17 @@ grow_vertical = 2
 mouse_filter = 2
 texture = ExtResource("5_gnlkw")
 stretch_mode = 3
+
+[node name="TooltipDisplay" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = 8.0
+offset_right = 140.0
+offset_bottom = 160.0
+grow_horizontal = 0
+mouse_filter = 2
+script = ExtResource("6_tooltip")
+PixelFont = ExtResource("3_j0vee")

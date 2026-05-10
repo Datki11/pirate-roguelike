@@ -85,8 +85,18 @@ public partial class CombatManager : Node
 	// Auto play entry point (used by enemies, or any auto-cards)
 	// -------------------------------------------------------------------------
 	public void PlayCardAuto(Deck deck, CardData card, Deck.DeckSide side)
+		=> PlayCard(deck, card, side, null, null);
+
+	public void PlayCardAuto(Deck deck, CardData card, Deck.DeckSide side, IDamageable source)
+		=> PlayCard(deck, card, side, null, source);
+
+	public void PlayCardOnTarget(Deck deck, CardData card, Deck.DeckSide side, IDamageable target, IDamageable source = null)
+		=> PlayCard(deck, card, side, target, source);
+
+	private void PlayCard(Deck deck, CardData card, Deck.DeckSide side, IDamageable chosenTarget, IDamageable source)
 	{
 		if (deck == null || card == null) return;
+		if (source is PlayerUnit playerUnit) playerUnit.PlayCardAnimation();
 
 		// Which group does this card act ON?
 		// Player deck typically targets enemies; Enemy deck typically targets players.
@@ -94,33 +104,44 @@ public partial class CombatManager : Node
 
 		var targetId = (card.TargetDef as TargetDef)?.Id ?? "single";   // "single" | "all" (or "multiple")
 		int attack = SumEffect(card, "attack");
-		if (attack <= 0)
-		{
-			GD.Print("PlayCardAuto | no attack on card, just discarding.");
-			deck.AdvanceTopToDiscard();
-			return;
-		}
+		bool lethal = false;
 
-		if (targetId == "all" || targetId == "multiple")
+		if (attack > 0)
 		{
-			var group = targetsEnemies ? AliveEnemies().ToList() : AlivePlayers().ToList();
-			if (group.Count == 0)
+			if (targetId == "all" || targetId == "multiple" || targetId == "all_enemies")
 			{
-				GD.Print("PlayCardAuto | no targets for ALL.");
-				deck.AdvanceTopToDiscard();
-				return;
+				var group = targetsEnemies ? AliveEnemies().ToList() : AlivePlayers().ToList();
+				if (group.Count == 0)
+				{
+					GD.Print("PlayCard | no targets for ALL.");
+					deck.AdvanceTopToDiscard();
+					return;
+				}
+				lethal = DealDamageMany(group, attack);
 			}
-			DealDamageMany(group, attack);
-		}
-		else // "single" (default/fallback)
-		{
-			var group = targetsEnemies ? AliveEnemies().ToList() : AlivePlayers().ToList();
-			var tgt = PickRandom(group);
-			if (tgt != null) DealDamage(tgt, attack);
-			else GD.Print("PlayCardAuto | no single target found.");
+			else // "single" (default/fallback)
+			{
+				var tgt = chosenTarget;
+				if (tgt == null)
+				{
+					var group = targetsEnemies ? AliveEnemies().ToList() : AlivePlayers().ToList();
+					tgt = PickRandom(group);
+				}
+				if (tgt != null) lethal = DealDamage(tgt, attack);
+				else GD.Print("PlayCard | no single target found.");
+			}
 		}
 
-		deck.AdvanceTopToDiscard();
+		if (lethal && card.LethalHealAmount > 0 && source != null && source.Alive)
+		{
+			source.Heal(card.LethalHealAmount);
+			SpawnDamagePopupAt(source, card.LethalHealAmount, isHeal: true);
+		}
+
+		if (lethal && card.ReturnToDrawOnLethal)
+			deck.EnsureTop();
+		else
+			deck.AdvanceTopToDiscard();
 	}
 
 	private T PickRandom<T>(IList<T> list) where T : class
@@ -138,18 +159,22 @@ public partial class CombatManager : Node
 	// -------------------------------------------------------------------------
 	// Effects
 	// -------------------------------------------------------------------------
-	public void DealDamage(IDamageable target, int amount)
+	public bool DealDamage(IDamageable target, int amount)
 	{
 		GD.Print($"CombatManager.DealDamage -> {amount} on {target?.GetType().Name}");
-		if (target == null || !target.Alive || amount <= 0) return;
+		if (target == null || !target.Alive || amount <= 0) return false;
 
 		target.TakeDamage(amount);
 		SpawnDamagePopupAt(target, amount, isHeal: false);
+		return !target.Alive;
 	}
 
-	public void DealDamageMany(IEnumerable<IDamageable> targets, int amount)
+	public bool DealDamageMany(IEnumerable<IDamageable> targets, int amount)
 	{
-		foreach (var t in targets) DealDamage(t, amount);
+		bool anyLethal = false;
+		foreach (var t in targets)
+			anyLethal |= DealDamage(t, amount);
+		return anyLethal;
 	}
 
 	private void SpawnDamagePopupAt(IDamageable target, int amount, bool isHeal)

@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="EffectDef" load_steps=2 format=3 uid="uid://dftmisupkolto"]
+[gd_resource type="Resource" load_steps=2 format=3 uid="uid://dftmisupkolto"]
 
 [ext_resource type="Script" uid="uid://bfxd4hm28vlf0" path="res://Assets/Scripts/EffectDef.cs" id="1_fs76t"]
 
@@ -8,4 +8,3 @@ Id = "bleed"
 DisplayName = "Bleed"
 ShortFormat = "{ICON} {AMOUNT}"
 LongFormat = "Inflict {AMOUNT} bleed."
-metadata/_custom_type_script = "uid://bfxd4hm28vlf0"

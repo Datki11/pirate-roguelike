@@ -1,8 +1,8 @@
-[gd_scene load_steps=5 format=3 uid="uid://bpy0jm33ump60"]
+[gd_scene load_steps=5 format=3 uid="uid://7wqlv7wijh7u"]
 
-[ext_resource type="Script" uid="uid://t6djbp16y4of" path="res://Assets/Scripts/CardList.cs" id="1_iws6i"]
-[ext_resource type="PackedScene" uid="uid://deygsr1fw3q0k" path="res://Assets/Components/card.tscn" id="2_yapj0"]
-[ext_resource type="Resource" uid="uid://coy4f8o0upml1" path="res://Assets/Resources/Cards/basic-ass-attack.tres" id="3_w8i6e"]
+[ext_resource type="Script" path="res://Assets/Scripts/CardList.cs" id="1_iws6i"]
+[ext_resource type="PackedScene" path="res://Assets/Components/card.tscn" id="2_yapj0"]
+[ext_resource type="Resource" path="res://Assets/Resources/Cards/basic-ass-attack.tres" id="3_w8i6e"]
 [ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="3_yapj0"]
 
 [node name="CardList" type="Control"]
@@ -14,6 +14,11 @@ script = ExtResource("1_iws6i")
 RowPath = NodePath("HBoxContainer")
 CardScene = ExtResource("2_yapj0")
 Cards = Array[ExtResource("3_yapj0")]([ExtResource("3_w8i6e"), ExtResource("3_w8i6e"), ExtResource("3_w8i6e")])
+BaselineSlots = null
+SidePadding = null
+Spacing = null
+AspectYOverX = null
+MinCardWidth = null
 
 [node name="HBoxContainer" type="HBoxContainer" parent="."]
 layout_mode = 0
