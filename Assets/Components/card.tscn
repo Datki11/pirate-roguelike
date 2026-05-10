@@ -1,31 +1,32 @@
-[gd_scene load_steps=6 format=3 uid="uid://deygsr1fw3q0k"]
+[gd_scene load_steps=7 format=3 uid="uid://deygsr1fw3q0k"]
 
 [ext_resource type="Script" uid="uid://bslr2h8tvon6s" path="res://Assets/Scripts/Card.cs" id="1_8elti"]
 [ext_resource type="Texture2D" uid="uid://gxpjkped0we" path="res://Assets/Sprites/Cards/placeholder-sword.png" id="1_ax3cw"]
-[ext_resource type="FontFile" uid="uid://dp1hh3c5rfwdw" path="res://Assets/Fonts/minecraftia/Minecraftia-Regular.ttf" id="3_mwkhl"]
+[ext_resource type="FontFile" uid="uid://dtn7toydgbwse" path="res://Assets/Fonts/terminus-ttf-4.49.3/TerminusTTF-Bold-4.49.3.ttf" id="3_mwkhl"]
+[ext_resource type="FontFile" uid="uid://d2u7uyfachinb" path="res://Assets/Fonts/terminus-ttf-4.49.3/TerminusTTF-4.49.3.ttf" id="4_n3r1g"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8elti"]
 bg_color = Color(1, 1, 1, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
 border_color = Color(0.0430392, 0.0430392, 0.0430391, 1)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 anti_aliasing = false
 
 [sub_resource type="StyleBoxLine" id="StyleBoxLine_mwkhl"]
-thickness = 2
+thickness = 4
 
 [node name="Card" type="Control"]
-custom_minimum_size = Vector2(120, 180)
+custom_minimum_size = Vector2(240, 360)
 layout_mode = 3
 anchors_preset = 0
-offset_right = 80.0
-offset_bottom = 120.0
+offset_right = 240.0
+offset_bottom = 360.0
 script = ExtResource("1_8elti")
 TitlePath = NodePath("Frame/Pad/VBoxContainer/Title")
 ArtPath = NodePath("Frame/Pad/VBoxContainer/AspectRatioContainer/Art")
@@ -38,7 +39,6 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-scale = Vector2(1.01029, 0.990483)
 theme_override_styles/panel = SubResource("StyleBoxFlat_8elti")
 
 [node name="Pad" type="MarginContainer" parent="Frame"]
@@ -57,7 +57,8 @@ theme_override_constants/separation = 2
 layout_mode = 2
 size_flags_vertical = 8
 theme_override_colors/font_color = Color(0, 0, 0, 1)
-theme_override_font_sizes/font_size = 8
+theme_override_fonts/font = ExtResource("3_mwkhl")
+theme_override_font_sizes/font_size = 20
 text = "Card Label"
 horizontal_alignment = 1
 
@@ -66,7 +67,7 @@ layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxLine_mwkhl")
 
 [node name="AspectRatioContainer" type="AspectRatioContainer" parent="Frame/Pad/VBoxContainer"]
-custom_minimum_size = Vector2(0, 70)
+custom_minimum_size = Vector2(0, 140)
 layout_mode = 2
 
 [node name="Art" type="TextureRect" parent="Frame/Pad/VBoxContainer/AspectRatioContainer"]
@@ -81,24 +82,24 @@ theme_override_styles/panel = SubResource("StyleBoxLine_mwkhl")
 [node name="MarginContainer" type="MarginContainer" parent="Frame/Pad/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/margin_left = 4
-theme_override_constants/margin_right = 4
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_right = 8
 
 [node name="RichTextLabel" type="RichTextLabel" parent="Frame/Pad/VBoxContainer/MarginContainer"]
 layout_mode = 2
 size_flags_horizontal = 5
 size_flags_vertical = 5
 theme_override_colors/default_color = Color(0, 0, 0, 1)
-theme_override_fonts/normal_font = ExtResource("3_mwkhl")
-theme_override_font_sizes/normal_font_size = 8
+theme_override_fonts/normal_font = ExtResource("4_n3r1g")
+theme_override_font_sizes/normal_font_size = 18
 bbcode_enabled = true
 text = "[center][color=\"orange\"]Innate[/color]
 Deal 5 damage to a random enemy twice. If lethal, [color=green]return[/color] this card to your hand.
 [color=red]Consume"
 
 [node name="CenterContainer" type="CenterContainer" parent="."]
-custom_minimum_size = Vector2(0, 50)
+custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
-offset_top = 17.8287
-offset_right = 83.0
-offset_bottom = 67.8287
+offset_top = 35.6574
+offset_right = 166.0
+offset_bottom = 135.657

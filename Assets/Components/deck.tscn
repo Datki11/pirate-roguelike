@@ -6,7 +6,7 @@
 [ext_resource type="Texture2D" uid="uid://cv1nf1pbfmu6a" path="res://Assets/Sprites/Cards/card_back_blue_24x36.png" id="4_likt0"]
 
 [node name="Deck" type="Control"]
-custom_minimum_size = Vector2(24, 36)
+custom_minimum_size = Vector2(48, 72)
 layout_mode = 3
 anchors_preset = 0
 script = ExtResource("1_035bc")
@@ -19,13 +19,13 @@ DiscardOnTopClick = false
 
 [node name="Draw Pile" type="Control" parent="."]
 anchors_preset = 0
-offset_right = 24.0
-offset_bottom = 36.0
+offset_right = 48.0
+offset_bottom = 72.0
 
 [node name="Top Card" type="Control" parent="."]
 layout_mode = 1
 anchors_preset = 0
-offset_left = 14.0
-offset_top = -55.0
-offset_right = 60.0
-offset_bottom = 14.0
+offset_left = 28.0
+offset_top = -110.0
+offset_right = 120.0
+offset_bottom = 28.0

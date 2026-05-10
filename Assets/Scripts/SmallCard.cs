@@ -7,6 +7,8 @@ public partial class SmallCard : BaseCardView
 	[Export] public NodePath Row2Path { get; set; }
 	[Export] public NodePath Row3Path { get; set; }
 	[Export] public NodePath BadgeIconPath { get; set; }
+	[Export] public int EffectRowHeight { get; set; } = 20;
+	[Export] public int EffectIconSize { get; set; } = 16;
 
 	[Export] public CardData Data { get; set; }
 
@@ -42,7 +44,7 @@ public partial class SmallCard : BaseCardView
 
 		var font = r.GetThemeFont("normal_font");
 		var fs = r.GetThemeFontSize("normal_font_size");
-		int h = Mathf.CeilToInt(font.GetHeight(fs)) + 1;   // avoid bottom shave
+		int h = Mathf.Max(EffectRowHeight, Mathf.CeilToInt(font.GetHeight(fs)) + 1);
 		r.CustomMinimumSize = new Vector2(0, h);
 	}
 
@@ -60,23 +62,20 @@ public partial class SmallCard : BaseCardView
 			if (i < Data.Effects.Count && Data.Effects[i]?.Def != null)
 			{
 				rows[i].Visible = true;
-				rows[i].Text = BuildRowBBCode(Data.Effects[i], rows[i]);
+				rows[i].Text = BuildRowBBCode(Data.Effects[i]);
 			}
 			else { rows[i].Visible = false; rows[i].Text = ""; }
 		}
 	}
 
-	private string BuildRowBBCode(EffectEntry e, RichTextLabel r)
+	private string BuildRowBBCode(EffectEntry e)
 	{
-		var font = r.GetThemeFont("normal_font");
-		var fs = r.GetThemeFontSize("normal_font_size");
-		int lineH = Mathf.CeilToInt(font.GetHeight(fs));
-		int iconPx = Mathf.Max(1, lineH - 1);
+		int iconPx = Mathf.Max(1, EffectIconSize);
 
 		string iconPath = e.Def.Icon?.ResourcePath ?? "";
 		// Use EffectDef.ShortFormat later if you want text, colors, etc.
 		return string.IsNullOrEmpty(iconPath)
 			? e.Amount.ToString()
-			: $"[center][img={8}x{8}]{iconPath}[/img] {e.Amount}[/center]";
+			: $"[center][img={iconPx}x{iconPx}]{iconPath}[/img] {e.Amount}[/center]";
 	}
 }

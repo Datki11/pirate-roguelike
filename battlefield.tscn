@@ -14,41 +14,46 @@
 position = Vector2(-194, -85)
 
 [node name="Card" parent="." instance=ExtResource("4_vsh2u")]
-offset_left = -384.0
-offset_top = 13.0
-offset_right = -264.0
-offset_bottom = 193.0
+custom_minimum_size = Vector2(120, 180)
+offset_left = -732.0
+offset_top = -79.0
+offset_right = -492.0
+offset_bottom = 281.0
 
 [node name="Card2" parent="." instance=ExtResource("4_vsh2u")]
 z_index = 1
-offset_left = -128.0
-offset_top = 8.0
-offset_right = -8.0
-offset_bottom = 188.0
+custom_minimum_size = Vector2(120, 180)
+offset_left = -155.0
+offset_top = -83.0
+offset_right = 85.0
+offset_bottom = 277.0
 TitlePath = NodePath("../Card/Frame/Pad/VBoxContainer/Title")
 
 [node name="Card3" parent="." instance=ExtResource("4_vsh2u")]
 z_index = 4
-offset_left = -192.0
-offset_top = -83.0
-offset_right = -72.0
-offset_bottom = 97.0
+custom_minimum_size = Vector2(120, 180)
+offset_left = -255.0
+offset_top = -80.0
+offset_right = -15.0
+offset_bottom = 280.0
 TitlePath = NodePath("../Card/Frame/Pad/VBoxContainer/Title")
 
 [node name="Card4" parent="." instance=ExtResource("4_vsh2u")]
 z_index = 3
-offset_left = -256.0
-offset_top = 11.0
-offset_right = -136.0
-offset_bottom = 191.0
+custom_minimum_size = Vector2(120, 180)
+offset_left = -398.0
+offset_top = -79.0
+offset_right = -158.0
+offset_bottom = 281.0
 TitlePath = NodePath("../Card/Frame/Pad/VBoxContainer/Title")
 
 [node name="Card5" parent="." instance=ExtResource("4_vsh2u")]
 z_index = 2
-offset_left = -320.0
-offset_top = 12.0
-offset_right = -200.0
-offset_bottom = 192.0
+custom_minimum_size = Vector2(120, 180)
+offset_left = -556.0
+offset_top = -80.0
+offset_right = -316.0
+offset_bottom = 280.0
 TitlePath = NodePath("../Card/Frame/Pad/VBoxContainer/Title")
 
 [node name="Pirate32x32Right" type="Sprite2D" parent="."]
@@ -56,30 +61,30 @@ position = Vector2(-454, -152)
 texture = ExtResource("8_4eiu0")
 
 [node name="Deck" parent="Pirate32x32Right" instance=ExtResource("7_y8rib")]
-offset_left = 14.0
-offset_top = -45.0
-offset_right = 38.0
-offset_bottom = -9.0
+offset_left = 28.0
+offset_top = -90.0
+offset_right = 76.0
+offset_bottom = -18.0
 
 [node name="Pirate32x32Right2" type="Sprite2D" parent="."]
 position = Vector2(-321, -85)
 texture = ExtResource("8_4eiu0")
 
 [node name="Deck" parent="Pirate32x32Right2" instance=ExtResource("7_y8rib")]
-offset_left = 14.0
-offset_top = -45.0
-offset_right = 38.0
-offset_bottom = -9.0
+offset_left = 28.0
+offset_top = -90.0
+offset_right = 76.0
+offset_bottom = -18.0
 
 [node name="Pirate32x32Right3" type="Sprite2D" parent="."]
 position = Vector2(-431, -32)
 texture = ExtResource("8_4eiu0")
 
 [node name="Deck" parent="Pirate32x32Right3" instance=ExtResource("7_y8rib")]
-offset_left = 14.0
-offset_top = -45.0
-offset_right = 38.0
-offset_bottom = -9.0
+offset_left = 28.0
+offset_top = -90.0
+offset_right = 76.0
+offset_bottom = -18.0
 
 [node name="CombatTargeting" parent="." instance=ExtResource("5_tkjg1")]
 offset_left = -823.0

@@ -20,5 +20,5 @@ Art = ExtResource("1_v6h7v")
 ManaCost = 0
 Rarity = 0
 TargetDef = ExtResource("4_gqx4w")
-Effects = [SubResource("Resource_16fek")]
+Effects = Array[ExtResource("3_rs1se")]([SubResource("Resource_16fek")])
 metadata/_custom_type_script = "uid://bvlphxjdc224b"

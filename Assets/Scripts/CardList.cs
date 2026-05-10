@@ -9,10 +9,10 @@ public partial class CardList : Control
 
 	// Layout knobs
 	[Export] public int BaselineSlots = 5;        // act like 5 must fit, always
-	[Export] public int SidePadding = 24;         // L/R padding inside THIS Control
-	[Export] public int Spacing = 12;             // gap between slots/cards
+	[Export] public int SidePadding = 48;         // L/R padding inside THIS Control
+	[Export] public int Spacing = 24;             // gap between slots/cards
 	[Export] public float AspectYOverX = 1.5f;    // 2:3 cards => 480/320 = 1.5
-	[Export] public int MinCardWidth = 120;       // clamp so text isn’t microscopic
+	[Export] public int MinCardWidth = 240;       // clamp so text isn’t microscopic
 
 	private HBoxContainer _row;
 
@@ -79,7 +79,7 @@ public partial class CardList : Control
 			return;
 
 		// Effective width inside padding (HBox is already padded via offsets)
-		float rowWidth = 48;
+		float rowWidth = _row.Size.X;
 		if (rowWidth <= 0) rowWidth = Size.X - (SidePadding * 2); // fallback
 
 		// Compute width per slot as if exactly BaselineSlots must fit

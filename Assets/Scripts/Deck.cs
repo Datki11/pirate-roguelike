@@ -8,13 +8,13 @@ public partial class Deck : Control
 
 	[Export] public DeckList DeckList { get; set; }
 	[Export] public PackedScene CardViewScene { get; set; }   // SmallCard.tscn now, Card.tscn later
-	[Export] public Texture2D CardBack { get; set; }          // 24x36 PNG (nearest)
+	[Export] public Texture2D CardBack { get; set; }          // 48x72 PNG (nearest)
 
 	[Export] public NodePath PilePath { get; set; }           // Control (draw pile origin)
 	[Export] public NodePath TopHolderPath { get; set; }      // Control (face-up card anchor)
 
 	[Export] public int MaxBacksShown = 5;
-	[Export] public Vector2I BackOffset = new Vector2I(2, -2);
+	[Export] public Vector2I BackOffset = new Vector2I(4, -4);
 
 	[Export] public DeckSide Side { get; set; } = DeckSide.Player;
 	[Export] public bool EnableInput { get; set; } = true;        // player decks true, enemy decks false
@@ -22,7 +22,7 @@ public partial class Deck : Control
 
 	// Auto place the top card next to the pile
 	[Export] public bool AutoPlaceTop { get; set; } = true;
-	[Export] public int TopGap { get; set; } = 2;                 // pixels between pile and top card
+	[Export] public int TopGap { get; set; } = 4;                 // pixels between pile and top card
 
 	private Control _pile, _top;
 	private Vector2 _origTopPos;
@@ -93,7 +93,7 @@ public partial class Deck : Control
 
 	public CardData Peek() => _draw.Count > 0 ? _draw[^1] : null;
 
-	public CardData Draw()
+	public new CardData Draw()
 	{
 		if (_draw.Count == 0)
 		{
@@ -188,7 +188,7 @@ public partial class Deck : Control
 				{
 					// fallbacks if size isn't ready yet
 					faceW = Mathf.Max(node.Size.X, node.CustomMinimumSize.X);
-					if (faceW <= 1f) faceW = CardBack?.GetSize().X ?? 24f;
+					if (faceW <= 1f) faceW = CardBack?.GetSize().X ?? 48f;
 				}
 				PlaceTopHolder(faceW);
 			}
@@ -208,7 +208,7 @@ public partial class Deck : Control
 		// Provisional positioning using back width; we'll refine after we know face width
 		if (AutoPlaceTop)
 		{
-			float w = CardBack?.GetSize().X ?? 24f;
+			float w = CardBack?.GetSize().X ?? 48f;
 			PlaceTopHolder(w);
 		}
 	}

@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://bpyombue3awvk" path="res://Assets/Scripts/SmallCard.cs" id="1_gnlkw"]
 [ext_resource type="Texture2D" uid="uid://ddtbgu1levv2i" path="res://Assets/Sprites/Icons/placeholder-icons/attack-icons/sprite_05.png" id="2_j0vee"]
-[ext_resource type="FontFile" uid="uid://dymvhu00k0n1t" path="res://Assets/Fonts/minecraft_standard/MinecraftStandard.otf" id="3_j0vee"]
+[ext_resource type="FontFile" uid="uid://dtn7toydgbwse" path="res://Assets/Fonts/terminus-ttf-4.49.3/TerminusTTF-Bold-4.49.3.ttf" id="3_j0vee"]
 [ext_resource type="Texture2D" uid="uid://bkw3tyd3a8ju8" path="res://Assets/Sprites/Icons/16x16-circle.png" id="4_30pow"]
 [ext_resource type="Texture2D" uid="uid://c75wfghfvo23j" path="res://Assets/Sprites/Icons/Target Icons/multiple-enemies-target-icon.png" id="5_gnlkw"]
 
@@ -12,26 +12,26 @@ content_margin_top = 0.0
 content_margin_right = 0.0
 content_margin_bottom = 0.0
 bg_color = Color(1, 1, 1, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
 border_color = Color(0.0430392, 0.0430392, 0.0430391, 1)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 anti_aliasing = false
 
 [sub_resource type="StyleBoxLine" id="StyleBoxLine_j0vee"]
 color = Color(0, 0, 0, 0)
 
-[node name="Card" type="Control"]
-custom_minimum_size = Vector2(46, 69)
+[node name="Card2" type="Control"]
+custom_minimum_size = Vector2(92, 138)
 layout_mode = 3
 anchors_preset = 0
-offset_right = 46.0
-offset_bottom = 69.0
+offset_right = 92.0
+offset_bottom = 138.0
 mouse_filter = 2
 script = ExtResource("1_gnlkw")
 ArtPath = NodePath("Frame/Pad/VBoxContainer/AspectRatioContainer/Art")
@@ -47,7 +47,6 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-scale = Vector2(1.01029, 0.990483)
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_8elti")
 
@@ -56,13 +55,13 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = -3.02883
-offset_bottom = 1.97118
+offset_top = -6.05766
+offset_bottom = 3.94236
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-theme_override_constants/margin_top = 6
-theme_override_constants/margin_bottom = 4
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_bottom = 8
 
 [node name="VBoxContainer" type="VBoxContainer" parent="Frame/Pad"]
 layout_mode = 2
@@ -70,7 +69,7 @@ mouse_filter = 2
 theme_override_constants/separation = 0
 
 [node name="AspectRatioContainer" type="AspectRatioContainer" parent="Frame/Pad/VBoxContainer"]
-custom_minimum_size = Vector2(0, 24)
+custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
 
 [node name="Art" type="TextureRect" parent="Frame/Pad/VBoxContainer/AspectRatioContainer"]
@@ -79,46 +78,46 @@ texture = ExtResource("2_j0vee")
 expand_mode = 2
 
 [node name="Panel" type="Panel" parent="Frame/Pad/VBoxContainer"]
-custom_minimum_size = Vector2(0, 4)
+custom_minimum_size = Vector2(0, 8)
 layout_mode = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxLine_j0vee")
 
 [node name="RichTextLabel" type="RichTextLabel" parent="Frame/Pad/VBoxContainer"]
 clip_contents = false
-custom_minimum_size = Vector2(0, 12)
+custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
 mouse_filter = 2
 theme_override_colors/default_color = Color(0, 0, 0, 1)
 theme_override_fonts/normal_font = ExtResource("3_j0vee")
-theme_override_font_sizes/normal_font_size = 6
+theme_override_font_sizes/normal_font_size = 14
 bbcode_enabled = true
-text = "[center][img=8x8]res://Assets/Sprites/Icons/placeholder-icons/icons/8x8/rpginventory-Sheet/sprite_024.png[/img][/center] 99x2"
+text = "[center][img=16x16]res://Assets/Sprites/Icons/placeholder-icons/icons/8x8/rpginventory-Sheet/sprite_024.png[/img][/center] 99x2"
 scroll_active = false
 autowrap_mode = 0
 
 [node name="RichTextLabel3" type="RichTextLabel" parent="Frame/Pad/VBoxContainer"]
 clip_contents = false
-custom_minimum_size = Vector2(0, 12)
+custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
 mouse_filter = 2
 theme_override_colors/default_color = Color(0, 0, 0, 1)
 theme_override_fonts/normal_font = ExtResource("3_j0vee")
-theme_override_font_sizes/normal_font_size = 6
+theme_override_font_sizes/normal_font_size = 14
 bbcode_enabled = true
-text = "[center][img=8x8]res://Assets/Sprites/Icons/placeholder-icons/icons/8x8/rpginventory-Sheet/sprite_070.png[/img] 50[/center]"
+text = "[center][img=16x16]res://Assets/Sprites/Icons/placeholder-icons/icons/8x8/rpginventory-Sheet/sprite_070.png[/img] 50[/center]"
 autowrap_mode = 0
 
 [node name="RichTextLabel4" type="RichTextLabel" parent="Frame/Pad/VBoxContainer"]
 clip_contents = false
-custom_minimum_size = Vector2(0, 12)
+custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
 mouse_filter = 2
 theme_override_colors/default_color = Color(0, 0, 0, 1)
 theme_override_fonts/normal_font = ExtResource("3_j0vee")
-theme_override_font_sizes/normal_font_size = 6
+theme_override_font_sizes/normal_font_size = 14
 bbcode_enabled = true
-text = "[center][img=8x8]res://Assets/Sprites/Icons/placeholder-icons/icons/8x8/rpginventory-Sheet/sprite_014.png[/img][/center] 5"
+text = "[center][img=16x16]res://Assets/Sprites/Icons/placeholder-icons/icons/8x8/rpginventory-Sheet/sprite_014.png[/img][/center] 5"
 
 [node name="Overlay" type="Control" parent="."]
 layout_mode = 1
@@ -130,31 +129,31 @@ grow_vertical = 2
 mouse_filter = 2
 
 [node name="Target Circle" type="TextureRect" parent="Overlay"]
-custom_minimum_size = Vector2(16, 16)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -8.0
-offset_top = -8.0
-offset_right = 8.0
-offset_bottom = 8.0
+offset_left = -16.0
+offset_top = -16.0
+offset_right = 16.0
+offset_bottom = 16.0
 grow_horizontal = 0
 mouse_filter = 2
 texture = ExtResource("4_30pow")
 
 [node name="TextureRect" type="TextureRect" parent="Overlay/Target Circle"]
-custom_minimum_size = Vector2(8, 8)
+custom_minimum_size = Vector2(24, 24)
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -6.0
-offset_top = -6.0
-offset_right = 6.0
-offset_bottom = 6.0
+offset_left = -12.0
+offset_top = -12.0
+offset_right = 12.0
+offset_bottom = 12.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
