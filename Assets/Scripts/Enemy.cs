@@ -7,13 +7,23 @@ public partial class Enemy : Control, IDamageable
 {
 	[Export] public Resource Def { get; set; }
 
-	[Export] public NodePath SpritePath { get; set; }
-	[Export] public NodePath HpPath     { get; set; }
-	[Export] public NodePath RingPath   { get; set; }
-	[Export] public NodePath PopupAnchorPath { get; set; }
+	[Export] public NodePath SpritePath { get; set; } = "Sprite";
+	[Export] public NodePath HpPath     { get; set; } = "HP";
+	[Export] public NodePath RingPath   { get; set; } = "Ring";
+	[Export] public NodePath PopupAnchorPath { get; set; } = "Damage Popup Anchor";
+	[ExportGroup("Standard Layout")]
+	[Export] public bool AutoLayoutAttachments { get; set; } = true;
+	[Export] public Vector2 HealthBarSize { get; set; } = new(60, 4);
+	[Export] public float HealthBarGap { get; set; } = -4f;
+	[Export] public Vector2 DeckGap { get; set; } = new(8, 8);
+	[Export] public Vector2 DefaultDeckSize { get; set; } = new(48, 72);
+	[Export] public Vector2 PopupAnchorGap { get; set; } = new(0, 16);
+	[Export] public float TargetRingWidthMultiplier { get; set; } = 1.8f;
+	[Export] public float TargetRingMinimumWidth { get; set; } = 42f;
+	[Export] public float TargetRingVerticalOffset { get; set; } = -2f;
 
 	// Deck + combat
-	[Export] public NodePath DeckPath { get; set; }
+	[Export] public NodePath DeckPath { get; set; } = "Deck";
 	[Export] public NodePath CombatPath { get; set; }
 	[Export] public float ThinkDelaySec { get; set; } = 0.6f;
 	[Export] public Texture2D SpriteSheet { get; set; }
@@ -58,6 +68,7 @@ public partial class Enemy : Control, IDamageable
 		_ring        = GetNodeOrNull<Control>(RingPath);
 		_ringTR      = _ring as TargetRing;           // <— keep a typed ref
 		_popupAnchor = GetNodeOrNull<Control>(PopupAnchorPath);
+		_deck        = GetNodeOrNull<Deck>(DeckPath);
 		BuildSheetFrames();
 
 		// We want clicks on the whole enemy rect
@@ -78,11 +89,11 @@ public partial class Enemy : Control, IDamageable
 			if (_sheetFrames.Count == 0 && enemyDef.Art != null && _sprite != null) _sprite.Texture = enemyDef.Art;
 		}
 		ApplyFrame();
+		ApplyStandardLayout();
 		_hp?.Set(HP, MaxHP);
 		if (Engine.IsEditorHint())
 			return;
 
-		_deck   = GetNodeOrNull<Deck>(DeckPath);
 		_combat = GetNodeOrNull<CombatManager>(CombatPath)
 				  ?? GetTree().Root.FindChild("CombatManager", true, false) as CombatManager;
 
@@ -204,6 +215,12 @@ public partial class Enemy : Control, IDamageable
 
 	public Vector2 GetPopupAnchorGlobal()
 	{
+		if (AutoLayoutAttachments && TryGetSpriteRect(out Rect2 spriteRect))
+		{
+			var local = new Vector2(spriteRect.Position.X + spriteRect.Size.X * 0.5f + PopupAnchorGap.X, spriteRect.Position.Y - PopupAnchorGap.Y);
+			return GetGlobalTransformWithCanvas() * local;
+		}
+
 		if (_popupAnchor != null) return _popupAnchor.GlobalPosition;
 		var r = GetGlobalRect();
 		return new Vector2(r.Position.X + r.Size.X * 0.5f, r.Position.Y);
@@ -258,5 +275,78 @@ public partial class Enemy : Control, IDamageable
 		_frameIndex = Mathf.Clamp(_frameIndex, 0, _sheetFrames.Count - 1);
 		_sprite.Texture = _sheetFrames[_frameIndex];
 		_sprite.FlipH = !FaceLeft;
+		Vector2 frameSize = _sprite.Texture?.GetSize() ?? FrameSize;
+		_sprite.CustomMinimumSize = frameSize;
+		_sprite.Size = frameSize;
 	}
+
+	private void ApplyStandardLayout()
+	{
+		if (!AutoLayoutAttachments || !TryGetSpriteRect(out Rect2 spriteRect))
+			return;
+
+		if (_hp != null)
+		{
+			_hp.CustomMinimumSize = HealthBarSize;
+			_hp.Size = HealthBarSize;
+			_hp.Position = new Vector2(
+				Mathf.Round(spriteRect.Position.X + (spriteRect.Size.X - HealthBarSize.X) * 0.5f),
+				Mathf.Round(spriteRect.End.Y + HealthBarGap)
+			);
+		}
+
+		if (_ring != null)
+		{
+			float ringWidth = Mathf.Max(TargetRingMinimumWidth, spriteRect.Size.X * TargetRingWidthMultiplier);
+			float ringHeight = Mathf.Max(18f, ringWidth * 0.62f);
+			_ring.CustomMinimumSize = new Vector2(ringWidth, ringHeight);
+			_ring.Size = new Vector2(ringWidth, ringHeight);
+			_ring.Position = new Vector2(
+				Mathf.Round(spriteRect.Position.X + (spriteRect.Size.X - ringWidth) * 0.5f),
+				Mathf.Round(spriteRect.End.Y - ringHeight * 0.5f + TargetRingVerticalOffset)
+			);
+		}
+
+		if (_deck != null)
+		{
+			Vector2 deckSize = GetDeckSize();
+			_deck.CustomMinimumSize = deckSize;
+			_deck.Size = deckSize;
+			float x = FaceLeft
+				? spriteRect.Position.X - deckSize.X - DeckGap.X
+				: spriteRect.End.X + DeckGap.X;
+			float y = spriteRect.Position.Y - deckSize.Y - DeckGap.Y;
+			_deck.Position = new Vector2(Mathf.Round(x), Mathf.Round(y));
+		}
+	}
+
+	private bool TryGetSpriteRect(out Rect2 rect)
+	{
+		rect = default;
+		if (_sprite == null)
+			return false;
+
+		Vector2 size = _sprite.Size;
+		if ((size.X <= 0 || size.Y <= 0) && _sprite.Texture != null)
+			size = _sprite.Texture.GetSize();
+		if (size.X <= 0 || size.Y <= 0)
+			return false;
+
+		rect = new Rect2(_sprite.Position, size);
+		return true;
+	}
+
+	private Vector2 GetDeckSize()
+	{
+		if (_deck == null)
+			return DefaultDeckSize;
+
+		Vector2 size = _deck.Size;
+		if (size.X <= 0 || size.Y <= 0)
+			size = _deck.CustomMinimumSize;
+		if (size.X <= 0 || size.Y <= 0)
+			size = DefaultDeckSize;
+		return size;
+	}
+
 }

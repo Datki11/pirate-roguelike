@@ -7,8 +7,17 @@ public partial class PlayerUnit : Node2D, IDamageable
 {
 	[Export] public int StartingMaxHP { get; set; } = 30;
 	[Export] public Vector2 PopupAnchorOffset { get; set; } = new(0, -96);
-	[Export] public NodePath SpritePath { get; set; }
-	[Export] public NodePath HpPath { get; set; }
+	[Export] public NodePath SpritePath { get; set; } = "Sprite";
+	[Export] public NodePath HpPath { get; set; } = "HP";
+	[Export] public NodePath DeckPath { get; set; } = "Deck";
+	[ExportGroup("Standard Layout")]
+	[Export] public bool AutoLayoutAttachments { get; set; } = true;
+	[Export] public Vector2 HealthBarSize { get; set; } = new(70, 8);
+	[Export] public float HealthBarGap { get; set; } = 4f;
+	[Export] public Vector2 DeckGap { get; set; } = new(8, 8);
+	[Export] public Vector2 DefaultDeckSize { get; set; } = new(48, 72);
+	[Export] public Vector2 PopupAnchorGap { get; set; } = new(0, 16);
+	[ExportGroup("Animation")]
 	[Export(PropertyHint.Dir)] public string SpriteRootPath { get; set; } = "";
 	[Export] public string IdleFolderName { get; set; } = "1-Idle";
 	[Export] public string ActionFolderName { get; set; } = "7-Attack";
@@ -19,6 +28,7 @@ public partial class PlayerUnit : Node2D, IDamageable
 	private CombatManager _combat;
 	private Sprite2D _sprite;
 	private HPBar _hpBar;
+	private Deck _deck;
 	private Tween _hurtTween;
 	private List<Texture2D> _idleFrames = new();
 	private List<Texture2D> _actionFrames = new();
@@ -41,6 +51,7 @@ public partial class PlayerUnit : Node2D, IDamageable
 		HP = MaxHP;
 		_sprite = GetNodeOrNull<Sprite2D>(SpritePath);
 		_hpBar = GetNodeOrNull<HPBar>(HpPath);
+		_deck = GetNodeOrNull<Deck>(DeckPath);
 		if (_sprite != null)
 		{
 			_sprite.TextureFilter = TextureFilterEnum.Nearest;
@@ -48,9 +59,16 @@ public partial class PlayerUnit : Node2D, IDamageable
 		}
 		LoadAnimations();
 		PlayIdle();
+		ApplyStandardLayout();
 		_hpBar?.Set(HP, MaxHP);
 		if (Engine.IsEditorHint())
 			return;
+
+		if (_deck != null)
+		{
+			_deck.EnableInput = true;
+			_deck.Side = Deck.DeckSide.Player;
+		}
 
 		_combat = GetTree().Root.FindChild("CombatManager", true, false) as CombatManager;
 		_combat?.RegisterPlayer(this);
@@ -105,7 +123,15 @@ public partial class PlayerUnit : Node2D, IDamageable
 	}
 
 	public Vector2 GetPopupAnchorGlobal()
-		=> GlobalPosition + PopupAnchorOffset;
+	{
+		if (AutoLayoutAttachments && TryGetSpriteRect(out Rect2 spriteRect))
+		{
+			var local = new Vector2(spriteRect.Position.X + spriteRect.Size.X * 0.5f + PopupAnchorGap.X, spriteRect.Position.Y - PopupAnchorGap.Y);
+			return ToGlobal(local);
+		}
+
+		return GlobalPosition + PopupAnchorOffset;
+	}
 
 	public void PlayCardAnimation()
 	{
@@ -179,5 +205,57 @@ public partial class PlayerUnit : Node2D, IDamageable
 		if (_sprite == null || _currentFrames.Count == 0) return;
 		_frameIndex = Mathf.Clamp(_frameIndex, 0, _currentFrames.Count - 1);
 		_sprite.Texture = _currentFrames[_frameIndex];
+	}
+
+	private void ApplyStandardLayout()
+	{
+		if (!AutoLayoutAttachments || !TryGetSpriteRect(out Rect2 spriteRect))
+			return;
+
+		if (_hpBar != null)
+		{
+			_hpBar.CustomMinimumSize = HealthBarSize;
+			_hpBar.Size = HealthBarSize;
+			_hpBar.Position = new Vector2(
+				Mathf.Round(spriteRect.Position.X + (spriteRect.Size.X - HealthBarSize.X) * 0.5f),
+				Mathf.Round(spriteRect.End.Y + HealthBarGap)
+			);
+		}
+
+		if (_deck != null)
+		{
+			Vector2 deckSize = GetDeckSize();
+			_deck.CustomMinimumSize = deckSize;
+			_deck.Size = deckSize;
+			float x = FaceRight
+				? spriteRect.End.X + DeckGap.X
+				: spriteRect.Position.X - deckSize.X - DeckGap.X;
+			float y = spriteRect.Position.Y - deckSize.Y - DeckGap.Y;
+			_deck.Position = new Vector2(Mathf.Round(x), Mathf.Round(y));
+		}
+	}
+
+	private bool TryGetSpriteRect(out Rect2 rect)
+	{
+		rect = default;
+		if (_sprite?.Texture == null)
+			return false;
+
+		Vector2 size = _sprite.Texture.GetSize() * _sprite.Scale.Abs();
+		rect = new Rect2(_sprite.Position - size * 0.5f, size);
+		return true;
+	}
+
+	private Vector2 GetDeckSize()
+	{
+		if (_deck == null)
+			return DefaultDeckSize;
+
+		Vector2 size = _deck.Size;
+		if (size.X <= 0 || size.Y <= 0)
+			size = _deck.CustomMinimumSize;
+		if (size.X <= 0 || size.Y <= 0)
+			size = DefaultDeckSize;
+		return size;
 	}
 }

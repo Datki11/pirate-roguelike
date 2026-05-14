@@ -1,123 +1,37 @@
-[gd_scene load_steps=17 format=3 uid="uid://blyun0sui4axj"]
+[gd_scene load_steps=12 format=3 uid="uid://blyun0sui4axj"]
 
-[ext_resource type="Texture2D" uid="uid://xadv7ohuvyqj" path="res://Assets/Sprites/pirate-placeholder-sprites/Sprites/2-Enemy-Bald Pirate/1-Idle/1.png" id="2_cho8x"]
-[ext_resource type="Texture2D" uid="uid://dqluko4bbu0fr" path="res://Assets/Sprites/pirate-placeholder-sprites/Sprites/4-Enemy-Big Guy/1-Idle/1.png" id="4_t7362"]
-[ext_resource type="Texture2D" uid="uid://cpoo10x0emqy1" path="res://Assets/Sprites/pirate-placeholder-sprites/Sprites/5-Enemy-Captain/1-Idle/1.png" id="5_k7x1t"]
 [ext_resource type="PackedScene" uid="uid://c341vh8po86n6" path="res://Assets/Components/CombatTargeting.tscn" id="5_tkjg1"]
 [ext_resource type="PackedScene" uid="uid://nu0fyjda0sg6" path="res://Assets/Components/enemy.tscn" id="6_y8d5v"]
 [ext_resource type="Script" uid="uid://1vk3jcgibvbm" path="res://Assets/Scripts/CombatManager.cs" id="6_y8rib"]
 [ext_resource type="PackedScene" uid="uid://dvs6k8vrvcbvw" path="res://Assets/Components/DamagePopup.tscn" id="7_4eiu0"]
-[ext_resource type="PackedScene" uid="uid://bcc2tig505c7l" path="res://Assets/Components/deck.tscn" id="7_y8rib"]
-[ext_resource type="Script" uid="uid://bdeskaf8f380h" path="res://Assets/Scripts/PlayerUnit.cs" id="9_4eiu0"]
+[ext_resource type="PackedScene" path="res://Assets/Components/player_unit.tscn" id="8_player_unit"]
 [ext_resource type="Script" uid="uid://c0d1xenergy01" path="res://Assets/Scripts/EnergyManager.cs" id="10_energy"]
 [ext_resource type="Script" uid="uid://l816cj8pyhn0" path="res://Assets/Scripts/CombatHud.cs" id="11_hud"]
 [ext_resource type="FontFile" uid="uid://dtn7toydgbwse" path="res://Assets/Fonts/terminus-ttf-4.49.3/TerminusTTF-Bold-4.49.3.ttf" id="12_font"]
 [ext_resource type="Texture2D" uid="uid://bvb5tyfh1r7t" path="res://Assets/Sprites/monster-placeholder-sprites/Mushroom/Attack3.png" id="13_mushroom"]
 [ext_resource type="Texture2D" uid="uid://qm1s03e5nq2u" path="res://Assets/Sprites/monster-placeholder-sprites/Skeleton/Attack3.png" id="14_skeleton"]
 [ext_resource type="Texture2D" uid="uid://bk42io7an2ljx" path="res://Assets/Sprites/monster-placeholder-sprites/Flying eye/Attack3.png" id="15_eye"]
-[ext_resource type="Script" uid="uid://dghg25xqhrcyh" path="res://Assets/Scripts/HPBar.cs" id="16_hpbar"]
 
 [node name="Battlefield" type="Node2D"]
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(-194, -85)
 
-[node name="BaldPirate" type="Node2D" parent="."]
-position = Vector2(-690, -198)
-script = ExtResource("9_4eiu0")
+[node name="BaldPirate" parent="." instance=ExtResource("8_player_unit")]
+position = Vector2(-788, -185)
 PopupAnchorOffset = Vector2(0, -95)
-SpritePath = NodePath("Sprite")
-HpPath = NodePath("HP")
 SpriteRootPath = "res://Assets/Sprites/pirate-placeholder-sprites/Sprites/2-Enemy-Bald Pirate"
 
-[node name="Sprite" type="Sprite2D" parent="BaldPirate"]
-texture_filter = 1
-position = Vector2(69, -66)
-texture = ExtResource("2_cho8x")
-
-[node name="HP" type="Control" parent="BaldPirate"]
-custom_minimum_size = Vector2(64, 8)
-layout_mode = 3
-anchors_preset = 0
-offset_left = 38.0
-offset_top = -18.0
-offset_right = 102.0
-offset_bottom = -10.0
-script = ExtResource("16_hpbar")
-Fill = Color(0.1, 0.72, 0.18, 1)
-PixelFont = ExtResource("12_font")
-PixelFontSize = 10
-
-[node name="Deck" parent="BaldPirate" instance=ExtResource("7_y8rib")]
-offset_left = 104.0
-offset_top = -114.0
-offset_right = 152.0
-offset_bottom = -42.0
-
-[node name="BigGuy" type="Node2D" parent="."]
-position = Vector2(-690, 40)
-script = ExtResource("9_4eiu0")
+[node name="BigGuy" parent="." instance=ExtResource("8_player_unit")]
+position = Vector2(-485, -49)
 PopupAnchorOffset = Vector2(0, -105)
-SpritePath = NodePath("Sprite")
-HpPath = NodePath("HP")
 SpriteRootPath = "res://Assets/Sprites/pirate-placeholder-sprites/Sprites/4-Enemy-Big Guy"
 ActionFolderName = "11-Throw (Bomb)"
 
-[node name="Sprite" type="Sprite2D" parent="BigGuy"]
-texture_filter = 1
-position = Vector2(8, -63)
-texture = ExtResource("4_t7362")
-
-[node name="HP" type="Control" parent="BigGuy"]
-custom_minimum_size = Vector2(72, 8)
-layout_mode = 3
-anchors_preset = 0
-offset_left = -28.0
-offset_top = 15.0
-offset_right = 44.0
-offset_bottom = 23.0
-script = ExtResource("16_hpbar")
-Fill = Color(0.1, 0.72, 0.18, 1)
-PixelFont = ExtResource("12_font")
-PixelFontSize = 10
-
-[node name="Deck" parent="BigGuy" instance=ExtResource("7_y8rib")]
-offset_left = 37.0
-offset_top = -152.0
-offset_right = 85.0
-offset_bottom = -80.0
-
-[node name="Captain" type="Node2D" parent="."]
-position = Vector2(-690, 278)
-script = ExtResource("9_4eiu0")
+[node name="Captain" parent="." instance=ExtResource("8_player_unit")]
+position = Vector2(-778, 119)
 PopupAnchorOffset = Vector2(0, -100)
-SpritePath = NodePath("Sprite")
-HpPath = NodePath("HP")
 SpriteRootPath = "res://Assets/Sprites/pirate-placeholder-sprites/Sprites/5-Enemy-Captain"
-
-[node name="Sprite" type="Sprite2D" parent="Captain"]
-texture_filter = 1
-position = Vector2(118, -117)
-texture = ExtResource("5_k7x1t")
-
-[node name="HP" type="Control" parent="Captain"]
-custom_minimum_size = Vector2(70, 8)
-layout_mode = 3
-anchors_preset = 0
-offset_left = 84.0
-offset_top = -34.0
-offset_right = 154.0
-offset_bottom = -26.0
-script = ExtResource("16_hpbar")
-Fill = Color(0.1, 0.72, 0.18, 1)
-PixelFont = ExtResource("12_font")
-PixelFontSize = 10
-
-[node name="Deck" parent="Captain" instance=ExtResource("7_y8rib")]
-offset_left = 154.0
-offset_top = -185.0
-offset_right = 202.0
-offset_bottom = -113.0
 
 [node name="CombatTargeting" parent="." instance=ExtResource("5_tkjg1")]
 offset_left = -823.0
@@ -136,25 +50,28 @@ offset_right = 40.0
 offset_bottom = 40.0
 
 [node name="Mushroom" parent="Enemies" instance=ExtResource("6_y8d5v")]
-offset_left = -10.0
-offset_top = -395.0
-offset_right = 305.0
-offset_bottom = -245.0
+offset_left = 223.0
+offset_top = -238.0
+offset_right = 274.0
+offset_bottom = -186.0
 SpriteSheet = ExtResource("13_mushroom")
+FrameSize = Vector2i(51, 52)
 
 [node name="Skeleton" parent="Enemies" instance=ExtResource("6_y8d5v")]
-offset_left = -75.0
-offset_top = -213.0
-offset_right = 240.0
-offset_bottom = -63.0
+offset_left = 5.0
+offset_top = -98.0
+offset_right = 59.0
+offset_bottom = -44.0
 SpriteSheet = ExtResource("14_skeleton")
+FrameSize = Vector2i(54, 54)
 
 [node name="FlyingEye" parent="Enemies" instance=ExtResource("6_y8d5v")]
-offset_left = -26.0
-offset_top = 36.0
-offset_right = 289.0
-offset_bottom = 186.0
+offset_left = 253.0
+offset_top = 235.0
+offset_right = 288.0
+offset_bottom = 267.0
 SpriteSheet = ExtResource("15_eye")
+FrameSize = Vector2i(35, 32)
 
 [node name="CombatManager" type="Node" parent="."]
 script = ExtResource("6_y8rib")
