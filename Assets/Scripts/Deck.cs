@@ -1,6 +1,7 @@
 // Deck.cs
 using Godot;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 [Tool]
 public partial class Deck : Control
@@ -24,6 +25,9 @@ public partial class Deck : Control
 	// Auto place the top card next to the pile
 	[Export] public bool AutoPlaceTop { get; set; } = true;
 	[Export] public int TopGap { get; set; } = 4;                 // pixels between pile and top card
+	[Export] public float PlayMoveDurationSec { get; set; } = 0.16f;
+	[Export] public float PlayHoldDurationSec { get; set; } = 0.20f;
+	[Export] public float PlayFadeDurationSec { get; set; } = 0.18f;
 
 	private Control _pile, _top;
 	private Vector2 _origTopPos;
@@ -33,6 +37,11 @@ public partial class Deck : Control
 	private readonly RandomNumberGenerator _rng = new();
 	private readonly Color _previewCard = new(1f, 1f, 1f, 1f);
 	private readonly Color _previewInk = Colors.Black;
+	private readonly Color _discardCard = new(1f, 1f, 1f, 1f);
+
+	private Control _playedCard;
+	private CanvasLayer _presentationLayer;
+	private bool _playPresentationRunning;
 
 	[Signal] public delegate void TopChangedEventHandler(CardData newTop);
 	[Signal] public delegate void TopClickedEventHandler();
@@ -178,13 +187,79 @@ public partial class Deck : Control
 		return c;
 	}
 
+	public async Task BeginCardPlayPresentation(CardData card)
+	{
+		if (card == null || CardViewScene == null || _top == null || !IsInsideTree())
+			return;
+
+		_playPresentationRunning = true;
+		SetTopCardVisible(false);
+
+		_playedCard?.QueueFree();
+		_playedCard = CreateCardView(card);
+		if (_playedCard == null)
+			return;
+
+		var parent = GetPresentationLayer();
+		parent.AddChild(_playedCard);
+		_playedCard.ZAsRelative = false;
+		_playedCard.ZIndex = 1000;
+		_playedCard.MouseFilter = MouseFilterEnum.Ignore;
+		_playedCard.GlobalPosition = _top.GetGlobalTransformWithCanvas().Origin.Floor();
+
+		var viewportSize = GetViewportRect().Size;
+		var target = ((viewportSize - _playedCard.Size) * 0.5f).Floor();
+
+		var tween = CreateTween();
+		tween.SetTrans(Tween.TransitionType.Cubic);
+		tween.SetEase(Tween.EaseType.Out);
+		tween.TweenProperty(_playedCard, "global_position", target, Mathf.Max(0.01f, PlayMoveDurationSec));
+		await ToSignal(tween, "finished");
+	}
+
+	public async Task AdvanceTopToDiscardWithPresentation(CardData card = null)
+	{
+		card ??= Peek();
+		if (!_playPresentationRunning)
+			await BeginCardPlayPresentation(card);
+
+		if (PlayHoldDurationSec > 0f)
+			await ToSignal(GetTree().CreateTimer(PlayHoldDurationSec), "timeout");
+
+		await FadePlayedCard();
+
+		_playPresentationRunning = false;
+		AdvanceTopToDiscard();
+	}
+
+	public async Task FinishCardPlayPresentationWithoutDiscard()
+	{
+		if (PlayHoldDurationSec > 0f)
+			await ToSignal(GetTree().CreateTimer(PlayHoldDurationSec), "timeout");
+
+		await FadePlayedCard();
+		_playPresentationRunning = false;
+		SetTopCardVisible(true);
+	}
+
+	public void CancelCardPlayPresentation()
+	{
+		_playPresentationRunning = false;
+		_playedCard?.QueueFree();
+		_playedCard = null;
+		SetTopCardVisible(true);
+	}
+
 	// ---------- View ----------
 	private void RefreshView()
 	{
 		if (_pile == null || _top == null) return;
 
-		// backs
+		// discard placeholder and backs
 		foreach (var n in _pile.GetChildren()) n.QueueFree();
+		if (_discard.Count > 0)
+			_pile.AddChild(CreateDiscardMarker());
+
 		int backs = Mathf.Min(MaxBacksShown, Mathf.Max(0, _draw.Count - 1));
 		for (int i = 0; i < backs; i++)
 		{
@@ -232,6 +307,91 @@ public partial class Deck : Control
 			{
 				PlaceTopHolder(faceSize.X);
 			}
+		}
+	}
+
+	private Control CreateCardView(CardData card)
+	{
+		var node = CardViewScene.Instantiate<Control>();
+		if (node is BaseCardView view) view.SetData(card);
+		else GD.PushError("CardViewScene must inherit BaseCardView.");
+
+		Vector2 faceSize = node.CustomMinimumSize;
+		if (faceSize.X <= 1f || faceSize.Y <= 1f)
+			faceSize = new Vector2(Mathf.Max(node.Size.X, CardBack?.GetSize().X ?? 48f), Mathf.Max(node.Size.Y, CardBack?.GetSize().Y ?? 72f));
+		node.CustomMinimumSize = faceSize;
+		node.Size = faceSize;
+		return node;
+	}
+
+	private CanvasLayer GetPresentationLayer()
+	{
+		if (_presentationLayer != null && GodotObject.IsInstanceValid(_presentationLayer))
+			return _presentationLayer;
+
+		_presentationLayer = new CanvasLayer { Layer = 100 };
+		var parent = GetTree().CurrentScene as Node ?? GetTree().Root;
+		parent.AddChild(_presentationLayer);
+		return _presentationLayer;
+	}
+
+	private async Task FadePlayedCard()
+	{
+		if (_playedCard == null || !GodotObject.IsInstanceValid(_playedCard))
+			return;
+
+		var tween = CreateTween();
+		tween.SetTrans(Tween.TransitionType.Quad);
+		tween.SetEase(Tween.EaseType.In);
+		tween.TweenProperty(_playedCard, "modulate:a", 0f, Mathf.Max(0.01f, PlayFadeDurationSec));
+		await ToSignal(tween, "finished");
+		_playedCard.QueueFree();
+		_playedCard = null;
+	}
+
+	private Control CreateDiscardMarker()
+	{
+		Vector2 size = CardBack?.GetSize() ?? new Vector2(48, 72);
+		float gap = Mathf.Max(2, TopGap);
+		float x = Side == DeckSide.Player ? -size.X - gap : size.X + gap;
+
+		var marker = new Control
+		{
+			CustomMinimumSize = size,
+			Size = size,
+			Position = new Vector2(Mathf.Floor(x), 0),
+			MouseFilter = MouseFilterEnum.Ignore
+		};
+
+		var style = new StyleBoxFlat
+		{
+			BgColor = _discardCard,
+			BorderColor = Colors.Black,
+			BorderWidthLeft = 2,
+			BorderWidthTop = 2,
+			BorderWidthRight = 2,
+			BorderWidthBottom = 2,
+			AntiAliasing = false
+		};
+
+		var card = new Panel
+		{
+			CustomMinimumSize = size,
+			Size = size,
+			MouseFilter = MouseFilterEnum.Ignore
+		};
+		card.AddThemeStyleboxOverride("panel", style);
+		marker.AddChild(card);
+		return marker;
+	}
+
+	private void SetTopCardVisible(bool visible)
+	{
+		if (_top == null) return;
+		foreach (var child in _top.GetChildren())
+		{
+			if (child is CanvasItem item)
+				item.Visible = visible;
 		}
 	}
 

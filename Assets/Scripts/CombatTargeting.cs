@@ -46,7 +46,7 @@ public partial class CombatTargeting : Node
 		_decks = tmp.ToArray();
 	}
 
-	private void OnPlayRequested(Deck deck, CardData card)
+	private async void OnPlayRequested(Deck deck, CardData card)
 	{
 		GD.Print("OnPlayRequested");
 		if (_targeting || card == null) return;
@@ -54,7 +54,7 @@ public partial class CombatTargeting : Node
 		if (IsAllEnemiesAttack(card))
 		{
 			if (!TrySpendCardEnergy()) return;
-			if (_combat != null) _combat.PlayCardAuto(deck, card, Deck.DeckSide.Player, GetDeckOwner(deck));
+			if (_combat != null) await _combat.PlayCardAuto(deck, card, Deck.DeckSide.Player, GetDeckOwner(deck));
 			else GD.PushWarning("CombatManager missing; AoE skipped.");
 			return;
 		}
@@ -71,7 +71,7 @@ public partial class CombatTargeting : Node
 			if (TrySpendCardEnergy())
 			{
 				if (GetDeckOwner(deck) is PlayerUnit playerUnit) playerUnit.PlayCardAnimation();
-				deck.AdvanceTopToDiscard();  // non-attack or self/ally effects later
+				await deck.AdvanceTopToDiscardWithPresentation(card);  // non-attack or self/ally effects later
 			}
 		}
 	}
@@ -118,7 +118,7 @@ public partial class CombatTargeting : Node
 		_targeting = false;
 	}
 
-	private void OnEnemyClicked(Enemy who)
+	private async void OnEnemyClicked(Enemy who)
 	{
 		if (!_targeting || _pendingDeck == null || _pendingCard == null) return;
 
@@ -128,8 +128,8 @@ public partial class CombatTargeting : Node
 		var card = _pendingCard;
 		EndTargeting();            // hide rings / detach signals
 		if (!TrySpendCardEnergy()) return;
-		if (_combat != null) _combat.PlayCardOnTarget(deck, card, Deck.DeckSide.Player, who, GetDeckOwner(deck));
-		else deck.AdvanceTopToDiscard();
+		if (_combat != null) await _combat.PlayCardOnTarget(deck, card, Deck.DeckSide.Player, who, GetDeckOwner(deck));
+		else await deck.AdvanceTopToDiscardWithPresentation(card);
 	}
 
 	private void OnDeckShuffled(Deck deck, CardData newTop)

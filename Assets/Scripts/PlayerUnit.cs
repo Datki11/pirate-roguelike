@@ -8,6 +8,7 @@ public partial class PlayerUnit : Node2D, IDamageable
 	[Export] public int StartingMaxHP { get; set; } = 30;
 	[Export] public Vector2 PopupAnchorOffset { get; set; } = new(0, -96);
 	[Export] public NodePath SpritePath { get; set; }
+	[Export] public NodePath HpPath { get; set; }
 	[Export(PropertyHint.Dir)] public string SpriteRootPath { get; set; } = "";
 	[Export] public string IdleFolderName { get; set; } = "1-Idle";
 	[Export] public string ActionFolderName { get; set; } = "7-Attack";
@@ -17,6 +18,8 @@ public partial class PlayerUnit : Node2D, IDamageable
 
 	private CombatManager _combat;
 	private Sprite2D _sprite;
+	private HPBar _hpBar;
+	private Tween _hurtTween;
 	private List<Texture2D> _idleFrames = new();
 	private List<Texture2D> _actionFrames = new();
 	private List<Texture2D> _currentFrames = new();
@@ -37,6 +40,7 @@ public partial class PlayerUnit : Node2D, IDamageable
 		MaxHP = Mathf.Max(1, StartingMaxHP);
 		HP = MaxHP;
 		_sprite = GetNodeOrNull<Sprite2D>(SpritePath);
+		_hpBar = GetNodeOrNull<HPBar>(HpPath);
 		if (_sprite != null)
 		{
 			_sprite.TextureFilter = TextureFilterEnum.Nearest;
@@ -44,6 +48,7 @@ public partial class PlayerUnit : Node2D, IDamageable
 		}
 		LoadAnimations();
 		PlayIdle();
+		_hpBar?.Set(HP, MaxHP);
 		if (Engine.IsEditorHint())
 			return;
 
@@ -85,6 +90,8 @@ public partial class PlayerUnit : Node2D, IDamageable
 	{
 		if (amount <= 0 || !Alive) return;
 		HP = Mathf.Max(0, HP - amount);
+		_hpBar?.Set(HP, MaxHP);
+		PlayHurtAnimation();
 		EmitSignal(SignalName.Damaged, amount);
 		if (!Alive) EmitSignal(SignalName.Died);
 	}
@@ -93,6 +100,7 @@ public partial class PlayerUnit : Node2D, IDamageable
 	{
 		if (amount <= 0 || !Alive) return;
 		HP = Mathf.Min(MaxHP, HP + amount);
+		_hpBar?.Set(HP, MaxHP);
 		EmitSignal(SignalName.Healed, amount);
 	}
 
@@ -107,6 +115,15 @@ public partial class PlayerUnit : Node2D, IDamageable
 		_frameTime = 0;
 		_playingAction = true;
 		ApplyFrame();
+	}
+
+	private void PlayHurtAnimation()
+	{
+		if (_sprite == null) return;
+		_hurtTween?.Kill();
+		_sprite.Modulate = new Color(1f, 0.35f, 0.35f);
+		_hurtTween = CreateTween();
+		_hurtTween.TweenProperty(_sprite, "modulate", Colors.White, 0.18f);
 	}
 
 	private void LoadAnimations()

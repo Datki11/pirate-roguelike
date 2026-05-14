@@ -1,6 +1,7 @@
 using Godot;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 public partial class CombatManager : Node
 {
@@ -10,10 +11,14 @@ public partial class CombatManager : Node
 	// Optional convenience roots (static scenes)
 	[Export] public NodePath EnemiesRootPath { get; set; }
 	[Export] public NodePath PlayersRootPath { get; set; }
+	[Export] public NodePath EnergyPath { get; set; }
+	[Export] public float EnemyTurnStartDelaySec { get; set; } = 0.35f;
 
 	private Node _vfx;
 	private Node _enemiesRoot;
 	private Node _playersRoot;
+	private EnergyManager _energy;
+	private bool _enemyTurnRunning;
 
 	private readonly List<Enemy> _enemies = new();
 	private readonly List<IDamageable> _players = new();         // keep generic for future player units
@@ -32,7 +37,17 @@ public partial class CombatManager : Node
 		_playersRoot = GetNodeOrNull<Node>(PlayersRootPath);
 		if (_playersRoot != null) RefreshPlayers();
 
+		_energy = GetNodeOrNull<EnergyManager>(EnergyPath);
+		if (_energy != null)
+			_energy.PlayerTurnEnded += OnPlayerTurnEnded;
+
 		GD.Print($"CombatManager ready | VFX={_vfx?.GetType().Name ?? "null"} | PopupScene={(DamagePopupScene != null)} | Enemies={_enemies.Count} | Players={_players.Count}");
+	}
+
+	public override void _ExitTree()
+	{
+		if (_energy != null)
+			_energy.PlayerTurnEnded -= OnPlayerTurnEnded;
 	}
 
 	// -------------------------------------------------------------------------
@@ -81,22 +96,43 @@ public partial class CombatManager : Node
 	public IEnumerable<IDamageable> AlivePlayers() =>
 		_players.Where(p => p != null && (p as Node) != null && GodotObject.IsInstanceValid(p as Node) && p.Alive);
 
+	private async void OnPlayerTurnEnded()
+	{
+		if (_enemyTurnRunning) return;
+		_enemyTurnRunning = true;
+
+		await ToSignal(GetTree().CreateTimer(EnemyTurnStartDelaySec), "timeout");
+		foreach (var enemy in _enemies.ToList())
+		{
+			if (enemy == null || !GodotObject.IsInstanceValid(enemy) || !enemy.Alive)
+				continue;
+			if (!AlivePlayers().Any())
+				break;
+
+			await enemy.PlayTurnAsync();
+		}
+
+		_enemyTurnRunning = false;
+		_energy?.StartPlayerTurn();
+	}
+
 	// -------------------------------------------------------------------------
 	// Auto play entry point (used by enemies, or any auto-cards)
 	// -------------------------------------------------------------------------
-	public void PlayCardAuto(Deck deck, CardData card, Deck.DeckSide side)
+	public Task PlayCardAuto(Deck deck, CardData card, Deck.DeckSide side)
 		=> PlayCard(deck, card, side, null, null);
 
-	public void PlayCardAuto(Deck deck, CardData card, Deck.DeckSide side, IDamageable source)
+	public Task PlayCardAuto(Deck deck, CardData card, Deck.DeckSide side, IDamageable source)
 		=> PlayCard(deck, card, side, null, source);
 
-	public void PlayCardOnTarget(Deck deck, CardData card, Deck.DeckSide side, IDamageable target, IDamageable source = null)
+	public Task PlayCardOnTarget(Deck deck, CardData card, Deck.DeckSide side, IDamageable target, IDamageable source = null)
 		=> PlayCard(deck, card, side, target, source);
 
-	private void PlayCard(Deck deck, CardData card, Deck.DeckSide side, IDamageable chosenTarget, IDamageable source)
+	private async Task PlayCard(Deck deck, CardData card, Deck.DeckSide side, IDamageable chosenTarget, IDamageable source)
 	{
 		if (deck == null || card == null) return;
 		if (source is PlayerUnit playerUnit) playerUnit.PlayCardAnimation();
+		await deck.BeginCardPlayPresentation(card);
 
 		// Which group does this card act ON?
 		// Player deck typically targets enemies; Enemy deck typically targets players.
@@ -114,7 +150,7 @@ public partial class CombatManager : Node
 				if (group.Count == 0)
 				{
 					GD.Print("PlayCard | no targets for ALL.");
-					deck.AdvanceTopToDiscard();
+					await deck.AdvanceTopToDiscardWithPresentation(card);
 					return;
 				}
 				lethal = DealDamageMany(group, attack);
@@ -139,9 +175,14 @@ public partial class CombatManager : Node
 		}
 
 		if (lethal && card.ReturnToDrawOnLethal)
+		{
+			await deck.FinishCardPlayPresentationWithoutDiscard();
 			deck.EnsureTop();
+		}
 		else
-			deck.AdvanceTopToDiscard();
+		{
+			await deck.AdvanceTopToDiscardWithPresentation(card);
+		}
 	}
 
 	private T PickRandom<T>(IList<T> list) where T : class

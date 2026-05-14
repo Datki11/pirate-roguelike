@@ -1,5 +1,6 @@
 using Godot;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 [Tool]
 public partial class Enemy : Control, IDamageable
@@ -20,6 +21,9 @@ public partial class Enemy : Control, IDamageable
 	[Export] public int IdleFrameCount { get; set; } = 3;
 	[Export] public float IdleFrameSeconds { get; set; } = 0.12f;
 	[Export] public float ActionFrameSeconds { get; set; } = 0.07f;
+	[Export] public float TurnThinkDelaySec { get; set; } = 0.25f;
+	[Export] public float TurnImpactDelaySec { get; set; } = 0.35f;
+	[Export] public float TurnRecoveryDelaySec { get; set; } = 0.25f;
 	[Export] public bool FaceLeft { get; set; } = true;
 
 	private TextureRect _sprite;
@@ -144,28 +148,37 @@ public partial class Enemy : Control, IDamageable
 			EmitSignal(SignalName.Clicked, this);
 	}
 
-	private void OnDeckPlayRequested(Deck deck, CardData card)
+	private async void OnDeckPlayRequested(Deck deck, CardData card)
 	{
 		if (!Alive || _combat == null || card == null) return;
 		PlayCardAnimation();
-		_combat.PlayCardAuto(deck, card, Deck.DeckSide.Enemy, this);
+		await _combat.PlayCardAuto(deck, card, Deck.DeckSide.Enemy, this);
 	}
 
-	private void OnDeckShuffled(Deck deck, CardData newTop)
+	private async void OnDeckShuffled(Deck deck, CardData newTop)
 	{
 		if (!Alive || _combat == null || deck == null || newTop == null || !newTop.PlayTopCardOnShuffle)
 			return;
 
 		PlayCardAnimation();
-		_combat.PlayCardAuto(deck, newTop, Deck.DeckSide.Enemy, this);
+		await _combat.PlayCardAuto(deck, newTop, Deck.DeckSide.Enemy, this);
 	}
 
 	public async void PlayTurn()
+		=> await PlayTurnAsync();
+
+	public async Task PlayTurnAsync()
 	{
 		if (!Alive || _deck == null) return;
 		if (_deck.Peek() == null) _deck.EnsureTop();
-		await ToSignal(GetTree().CreateTimer(ThinkDelaySec), "timeout");
-		_deck.RequestPlay();
+		var card = _deck.Peek();
+		if (card == null || _combat == null) return;
+
+		await ToSignal(GetTree().CreateTimer(TurnThinkDelaySec), "timeout");
+		PlayCardAnimation();
+		await ToSignal(GetTree().CreateTimer(TurnImpactDelaySec), "timeout");
+		await _combat.PlayCardAuto(_deck, card, Deck.DeckSide.Enemy, this);
+		await ToSignal(GetTree().CreateTimer(TurnRecoveryDelaySec), "timeout");
 	}
 
 	public void TakeDamage(int amount)

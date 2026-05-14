@@ -6,6 +6,7 @@ public partial class EnergyManager : Node
 	[Export] public int CardEnergyCost { get; set; } = 1;
 
 	public int CurrentEnergy { get; private set; }
+	public bool IsPlayerTurn { get; private set; }
 
 	[Signal] public delegate void EnergyChangedEventHandler(int current, int max);
 	[Signal] public delegate void PlayerTurnStartedEventHandler();
@@ -17,7 +18,7 @@ public partial class EnergyManager : Node
 	}
 
 	public bool CanSpend(int amount)
-		=> amount <= 0 || CurrentEnergy >= amount;
+		=> IsPlayerTurn && (amount <= 0 || CurrentEnergy >= amount);
 
 	public bool TrySpend(int amount)
 	{
@@ -29,6 +30,7 @@ public partial class EnergyManager : Node
 
 	public void StartPlayerTurn()
 	{
+		IsPlayerTurn = true;
 		CurrentEnergy = Mathf.Max(0, MaxEnergy);
 		EmitSignal(SignalName.PlayerTurnStarted);
 		EmitSignal(SignalName.EnergyChanged, CurrentEnergy, MaxEnergy);
@@ -36,7 +38,8 @@ public partial class EnergyManager : Node
 
 	public void EndPlayerTurn()
 	{
+		if (!IsPlayerTurn) return;
+		IsPlayerTurn = false;
 		EmitSignal(SignalName.PlayerTurnEnded);
-		StartPlayerTurn();
 	}
 }
