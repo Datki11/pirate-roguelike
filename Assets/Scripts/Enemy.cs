@@ -15,8 +15,9 @@ public partial class Enemy : Control, IDamageable
 	[Export] public bool AutoLayoutAttachments { get; set; } = true;
 	[Export] public Vector2 HealthBarSize { get; set; } = new(60, 4);
 	[Export] public float HealthBarGap { get; set; } = -4f;
-	[Export] public Vector2 DeckGap { get; set; } = new(8, 8);
-	[Export] public Vector2 DefaultDeckSize { get; set; } = new(48, 72);
+	[Export] public Vector2 DeckGap { get; set; } = new(8, 4);
+	[Export] public Vector2 DefaultDeckSize { get; set; } = new(112, 105);
+	[Export] public float DeckCenterCorrection { get; set; } = 34f;
 	[Export] public Vector2 PopupAnchorGap { get; set; } = new(0, 16);
 	[Export] public float TargetRingWidthMultiplier { get; set; } = 1.8f;
 	[Export] public float TargetRingMinimumWidth { get; set; } = 42f;
@@ -312,9 +313,7 @@ public partial class Enemy : Control, IDamageable
 			Vector2 deckSize = GetDeckSize();
 			_deck.CustomMinimumSize = deckSize;
 			_deck.Size = deckSize;
-			float x = FaceLeft
-				? spriteRect.Position.X - deckSize.X - DeckGap.X
-				: spriteRect.End.X + DeckGap.X;
+			float x = spriteRect.Position.X + spriteRect.Size.X * 0.5f - DeckCenterCorrection;
 			float y = spriteRect.Position.Y - deckSize.Y - DeckGap.Y;
 			_deck.Position = new Vector2(Mathf.Round(x), Mathf.Round(y));
 		}

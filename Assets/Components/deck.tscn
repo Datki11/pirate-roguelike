@@ -6,21 +6,30 @@
 [ext_resource type="Texture2D" uid="uid://cv1nf1pbfmu6a" path="res://Assets/Sprites/Cards/card_back_blue_24x36.png" id="4_likt0"]
 
 [node name="Deck" type="Control"]
-custom_minimum_size = Vector2(48, 72)
+custom_minimum_size = Vector2(112, 105)
 layout_mode = 3
 anchors_preset = 0
+offset_right = 112.0
+offset_bottom = 105.0
 script = ExtResource("1_035bc")
 DeckList = ExtResource("2_p6el7")
 CardViewScene = ExtResource("3_4du54")
 CardBack = ExtResource("4_likt0")
 PilePath = NodePath("Draw Pile")
 TopHolderPath = NodePath("Top Card")
+BackOffset = Vector2i(2, -2)
 DiscardOnTopClick = false
+FaceUpRevealOffset = 6
+EnemyFaceUpRevealOffset = 18
+FaceUpLiftOffset = 4
+EnemyFaceUpLiftOffset = 12
 
 [node name="Draw Pile" type="Control" parent="."]
 anchors_preset = 0
-offset_right = 48.0
-offset_bottom = 72.0
+offset_left = 18.0
+offset_top = 16.0
+offset_right = 66.0
+offset_bottom = 88.0
 
 [node name="Editor Preview Back 1" type="TextureRect" parent="Draw Pile"]
 layout_mode = 0
@@ -32,6 +41,16 @@ stretch_mode = 3
 
 [node name="Editor Preview Back 2" type="TextureRect" parent="Draw Pile"]
 layout_mode = 0
+offset_left = 2.0
+offset_top = -2.0
+offset_right = 50.0
+offset_bottom = 70.0
+mouse_filter = 2
+texture = ExtResource("4_likt0")
+stretch_mode = 3
+
+[node name="Editor Preview Back 3" type="TextureRect" parent="Draw Pile"]
+layout_mode = 0
 offset_left = 4.0
 offset_top = -4.0
 offset_right = 52.0
@@ -40,27 +59,17 @@ mouse_filter = 2
 texture = ExtResource("4_likt0")
 stretch_mode = 3
 
-[node name="Editor Preview Back 3" type="TextureRect" parent="Draw Pile"]
-layout_mode = 0
-offset_left = 8.0
-offset_top = -8.0
-offset_right = 56.0
-offset_bottom = 64.0
-mouse_filter = 2
-texture = ExtResource("4_likt0")
-stretch_mode = 3
-
 [node name="Top Card" type="Control" parent="."]
 layout_mode = 1
 anchors_preset = 0
-offset_left = 52.0
-offset_top = -110.0
-offset_right = 144.0
-offset_bottom = 28.0
+offset_left = 26.0
+offset_top = -17.0
+offset_right = 96.0
+offset_bottom = 88.0
 
 [node name="Editor Preview Card" type="Panel" parent="Top Card"]
-custom_minimum_size = Vector2(112, 168)
+custom_minimum_size = Vector2(70, 105)
 layout_mode = 0
-offset_right = 112.0
-offset_bottom = 168.0
+offset_right = 70.0
+offset_bottom = 105.0
 mouse_filter = 2

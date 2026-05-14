@@ -14,6 +14,7 @@ anchors_preset = 0
 offset_right = 54.0
 offset_bottom = 54.0
 script = ExtResource("1_t6tus")
+DeckGap = Vector2(8, 8)
 CombatPath = NodePath("")
 
 [node name="Sprite" type="TextureRect" parent="."]
@@ -38,11 +39,12 @@ PixelFont = ExtResource("5_ylgap")
 [node name="Ring" type="Control" parent="."]
 visible = false
 z_index = -5
+custom_minimum_size = Vector2(97.2, 60.264)
 anchors_preset = 0
 offset_left = -22.0
-offset_top = 42.0
-offset_right = 76.0
-offset_bottom = 104.0
+offset_top = 22.0
+offset_right = 75.2
+offset_bottom = 82.264
 mouse_filter = 1
 script = ExtResource("5_dcwce")
 Thickness = 1
@@ -55,12 +57,15 @@ offset_right = 31.0
 offset_bottom = -8.0
 
 [node name="Deck" parent="." instance=ExtResource("7_qtvry")]
-offset_left = -56.0
-offset_top = -80.0
-offset_right = -8.0
+offset_left = -7.0
+offset_top = -113.0
+offset_right = 105.0
 offset_bottom = -8.0
 DeckList = ExtResource("8_nn7m1")
 CardBack = ExtResource("8_8sbev")
-BackOffset = Vector2i(-4, -4)
+BackOffset = Vector2i(-2, -2)
 Side = 1
 EnableInput = false
+EnemyFaceUpRevealOffset = 18
+FaceUpLiftOffset = 4
+EnemyFaceUpLiftOffset = 12

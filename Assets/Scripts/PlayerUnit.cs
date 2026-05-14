@@ -14,8 +14,8 @@ public partial class PlayerUnit : Node2D, IDamageable
 	[Export] public bool AutoLayoutAttachments { get; set; } = true;
 	[Export] public Vector2 HealthBarSize { get; set; } = new(70, 8);
 	[Export] public float HealthBarGap { get; set; } = 4f;
-	[Export] public Vector2 DeckGap { get; set; } = new(8, 8);
-	[Export] public Vector2 DefaultDeckSize { get; set; } = new(48, 72);
+	[Export] public Vector2 DeckGap { get; set; } = new(8, 4);
+	[Export] public Vector2 DefaultDeckSize { get; set; } = new(112, 105);
 	[Export] public Vector2 PopupAnchorGap { get; set; } = new(0, 16);
 	[ExportGroup("Animation")]
 	[Export(PropertyHint.Dir)] public string SpriteRootPath { get; set; } = "";
@@ -227,9 +227,7 @@ public partial class PlayerUnit : Node2D, IDamageable
 			Vector2 deckSize = GetDeckSize();
 			_deck.CustomMinimumSize = deckSize;
 			_deck.Size = deckSize;
-			float x = FaceRight
-				? spriteRect.End.X + DeckGap.X
-				: spriteRect.Position.X - deckSize.X - DeckGap.X;
+			float x = spriteRect.Position.X + spriteRect.Size.X * 0.5f;
 			float y = spriteRect.Position.Y - deckSize.Y - DeckGap.Y;
 			_deck.Position = new Vector2(Mathf.Round(x), Mathf.Round(y));
 		}

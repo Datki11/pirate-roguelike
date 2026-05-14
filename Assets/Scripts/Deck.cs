@@ -24,7 +24,13 @@ public partial class Deck : Control
 
 	// Auto place the top card next to the pile
 	[Export] public bool AutoPlaceTop { get; set; } = true;
-	[Export] public int TopGap { get; set; } = 4;                 // pixels between pile and top card
+	[Export] public int DrawForwardOffset { get; set; } = 18;
+	[Export] public int DiscardBehindOffset { get; set; } = 44;
+	[Export] public int PileVerticalOffset { get; set; } = 16;
+	[Export] public int FaceUpRevealOffset { get; set; } = 8;
+	[Export] public int EnemyFaceUpRevealOffset { get; set; } = 24;
+	[Export] public int FaceUpLiftOffset { get; set; } = 8;
+	[Export] public int EnemyFaceUpLiftOffset { get; set; } = 16;
 	[Export] public float PlayMoveDurationSec { get; set; } = 0.16f;
 	[Export] public float PlayHoldDurationSec { get; set; } = 0.20f;
 	[Export] public float PlayFadeDurationSec { get; set; } = 0.18f;
@@ -302,10 +308,9 @@ public partial class Deck : Control
 				node.MouseFilter = MouseFilterEnum.Ignore;
 			}
 
-			// Reposition top holder using the ACTUAL face-up width
 			if (AutoPlaceTop)
 			{
-				PlaceTopHolder(faceSize.X);
+				PlaceTopHolder();
 			}
 		}
 	}
@@ -352,8 +357,8 @@ public partial class Deck : Control
 	private Control CreateDiscardMarker()
 	{
 		Vector2 size = CardBack?.GetSize() ?? new Vector2(48, 72);
-		float gap = Mathf.Max(2, TopGap);
-		float x = Side == DeckSide.Player ? -size.X - gap : size.X + gap;
+		int facing = FacingSign();
+		float x = -facing * (Mathf.Max(0, DiscardBehindOffset) + Mathf.Max(0, DrawForwardOffset));
 
 		var marker = new Control
 		{
@@ -413,16 +418,8 @@ public partial class Deck : Control
 			}
 		}
 
-		Vector2 faceSize = new(112, 168);
-		Vector2 topPosition = _top.Position;
-		if (AutoPlaceTop)
-		{
-			float gap = Mathf.Max(0, TopGap);
-			float x = (Side == DeckSide.Enemy)
-				? _pile.Position.X - faceSize.X - gap
-				: _pile.Position.X + (CardBack?.GetSize().X ?? faceSize.X) + gap;
-			topPosition = new Vector2(Mathf.Floor(x), Mathf.Floor(_top.Position.Y));
-		}
+		Vector2 faceSize = new(70, 105);
+		Vector2 topPosition = AutoPlaceTop ? GetFaceUpPosition() : _top.Position;
 
 		var face = new Rect2(topPosition.Floor(), faceSize);
 		DrawRect(face, _previewCard, true);
@@ -464,29 +461,38 @@ public partial class Deck : Control
 		if (_pile == null || _top == null) return;
 
 		// Make the pile stack left for enemies, right for players
-		BackOffset = (Side == DeckSide.Enemy)
-			? new Vector2I(-Mathf.Abs(BackOffset.X), BackOffset.Y)
-			: new Vector2I( Mathf.Abs(BackOffset.X), BackOffset.Y);
+		int stepX = Mathf.Max(1, Mathf.Min(2, Mathf.Abs(BackOffset.X)));
+		int stepY = -Mathf.Max(1, Mathf.Min(2, Mathf.Abs(BackOffset.Y)));
+		BackOffset = new Vector2I(FacingSign() * stepX, stepY);
+		_pile.Position = new Vector2(FacingSign() * Mathf.Max(0, DrawForwardOffset), Mathf.Max(0, PileVerticalOffset)).Floor();
 
-		// Provisional positioning using back width; we'll refine after we know face width
 		if (AutoPlaceTop)
 		{
-			float w = CardBack?.GetSize().X ?? 48f;
-			PlaceTopHolder(w);
+			PlaceTopHolder();
 		}
 	}
 
-	private void PlaceTopHolder(float faceW)
+	private void PlaceTopHolder()
 	{
 		if (_pile == null || _top == null) return;
 
-		float gap = Mathf.Max(0, TopGap);
-		float y = _top.Position.Y;
-
-		float x = (Side == DeckSide.Enemy)
-			? _pile.Position.X - faceW - gap                      // LEFT of pile by face width
-			: _pile.Position.X + (CardBack?.GetSize().X ?? faceW) + gap; // RIGHT of pile
-
-		_top.Position = new Vector2(Mathf.Floor(x), Mathf.Floor(y));
+		_top.Position = GetFaceUpPosition();
 	}
+
+	private Vector2 GetFaceUpPosition()
+	{
+		Vector2 backSize = CardBack?.GetSize() ?? new Vector2(48, 72);
+		Vector2 faceSize = _top?.Size ?? new Vector2(70, 105);
+		int backs = Mathf.Min(MaxBacksShown, Mathf.Max(0, _draw.Count - 1));
+		var stackStep = new Vector2(BackOffset.X, BackOffset.Y);
+		Vector2 lastBackPosition = _pile.Position + stackStep * backs;
+		int reveal = Side == DeckSide.Enemy ? EnemyFaceUpRevealOffset : FaceUpRevealOffset;
+		int lift = Side == DeckSide.Enemy ? EnemyFaceUpLiftOffset : FaceUpLiftOffset;
+		float x = lastBackPosition.X + stackStep.X + FacingSign() * Mathf.Max(0, reveal);
+		float y = lastBackPosition.Y + backSize.Y - faceSize.Y - Mathf.Max(0, lift);
+		return new Vector2(x, y).Floor();
+	}
+
+	private int FacingSign()
+		=> Side == DeckSide.Enemy ? -1 : 1;
 }

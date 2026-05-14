@@ -4,6 +4,7 @@ using System.Collections.Generic;
 public partial class SmallCard : BaseCardView
 {
 	private static readonly Color TriggerColor = new(0.85f, 0.53f, 0.0f);
+	private static Texture2D _placeholderArt;
 
 	[Export] public NodePath TitlePath { get; set; }
 	[Export] public NodePath ArtPath { get; set; }
@@ -34,6 +35,7 @@ public partial class SmallCard : BaseCardView
 		_tooltipDisplay = GetNode<TooltipDisplay>(TooltipDisplayPath);
 
 		MouseFilter = MouseFilterEnum.Pass;
+		_art.TextureFilter = TextureFilterEnum.Nearest;
 		_tooltipDisplay.SetHoverSource(this);
 		ConfigurePixelFont(_title.GetThemeFont("font"));
 		SetupBody(_body);
@@ -65,7 +67,7 @@ public partial class SmallCard : BaseCardView
 	private void Apply()
 	{
 		_title.Text = Data.Title ?? "";
-		_art.Texture = Data.Art;
+		_art.Texture = GetPlaceholderArt();
 
 		// Target badge (if you used TargetDef)
 		if (Data.TargetDef is TargetDef t && t.BadgeIcon != null)
@@ -106,6 +108,42 @@ public partial class SmallCard : BaseCardView
 		if (Data.Trigger != CardTrigger.None && !string.IsNullOrWhiteSpace(Data.TriggerText))
 			parts.Add($"[color=#d98600]{Data.Trigger}:[/color] {Data.TriggerText}");
 		return string.Join("\n", parts);
+	}
+
+	private static Texture2D GetPlaceholderArt()
+	{
+		if (_placeholderArt != null)
+			return _placeholderArt;
+
+		var image = Image.Create(28, 22, false, Image.Format.Rgba8);
+		var paper = new Color(0.92f, 0.92f, 0.86f);
+		var shadow = new Color(0.62f, 0.62f, 0.56f);
+		var ink = Colors.Black;
+		var accent = new Color(0.2f, 0.35f, 0.72f);
+
+		image.Fill(paper);
+		FillRect(image, 0, 0, 28, 1, ink);
+		FillRect(image, 0, 21, 28, 1, ink);
+		FillRect(image, 0, 0, 1, 22, ink);
+		FillRect(image, 27, 0, 1, 22, ink);
+		FillRect(image, 2, 17, 24, 2, shadow);
+		FillRect(image, 7, 5, 14, 10, accent);
+		FillRect(image, 10, 3, 8, 2, ink);
+		FillRect(image, 12, 7, 4, 6, paper);
+
+		_placeholderArt = ImageTexture.CreateFromImage(image);
+		return _placeholderArt;
+	}
+
+	private static void FillRect(Image image, int x, int y, int width, int height, Color color)
+	{
+		for (int yy = y; yy < y + height; yy++)
+		{
+			for (int xx = x; xx < x + width; xx++)
+			{
+				image.SetPixel(xx, yy, color);
+			}
+		}
 	}
 
 	private List<TooltipEntry> BuildTooltipEntries()
