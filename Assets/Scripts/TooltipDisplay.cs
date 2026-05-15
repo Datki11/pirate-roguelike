@@ -3,6 +3,8 @@ using System.Collections.Generic;
 
 public partial class TooltipDisplay : Control
 {
+	public static Node ModalTooltipScope { get; set; }
+
 	[Export] public NodePath HoverSourcePath { get; set; }
 	[Export] public bool TrackHoverSource { get; set; } = true;
 	[Export] public FontFile PixelFont { get; set; }
@@ -77,7 +79,17 @@ public partial class TooltipDisplay : Control
 		if (source == null || !GodotObject.IsInstanceValid(source))
 			return false;
 
+		if (Deck.IsDrawPileModalOpen && !IsInModalScope(source))
+			return false;
+
 		return source.GetGlobalRect().HasPoint(GetGlobalMousePosition());
+	}
+
+	private static bool IsInModalScope(Node node)
+	{
+		return ModalTooltipScope != null
+			&& GodotObject.IsInstanceValid(ModalTooltipScope)
+			&& (node == ModalTooltipScope || ModalTooltipScope.IsAncestorOf(node));
 	}
 
 	private bool HasTitle(string title)

@@ -46,6 +46,16 @@ public partial class CombatHud : Control
 
 	public override void _Process(double delta)
 	{
+		if (Deck.IsDrawPileModalOpen)
+		{
+			if (_hoverEndTurn)
+			{
+				_hoverEndTurn = false;
+				QueueRedraw();
+			}
+			return;
+		}
+
 		var mouse = GetLocalMousePosition();
 		bool hover = GetEndTurnRect().HasPoint(mouse);
 		if (hover != _hoverEndTurn)
@@ -57,6 +67,12 @@ public partial class CombatHud : Control
 
 	public override void _GuiInput(InputEvent e)
 	{
+		if (Deck.IsDrawPileModalOpen)
+		{
+			AcceptEvent();
+			return;
+		}
+
 		if (e is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left && _endTurnRect.HasPoint(mb.Position))
 		{
 			_energyManager?.EndPlayerTurn();

@@ -47,7 +47,10 @@ public partial class Deck : Control
 
 	private Control _playedCard;
 	private CanvasLayer _presentationLayer;
+	private CanvasLayer _drawPileModalLayer;
 	private bool _playPresentationRunning;
+	private static int _openDrawPileModalCount;
+	public static bool IsDrawPileModalOpen => _openDrawPileModalCount > 0;
 
 	[Signal] public delegate void TopChangedEventHandler(CardData newTop);
 	[Signal] public delegate void TopClickedEventHandler();
@@ -67,6 +70,12 @@ public partial class Deck : Control
 		{
 			QueueRedraw();
 			return;
+		}
+
+		if (_pile != null)
+		{
+			_pile.MouseFilter = MouseFilterEnum.Stop;
+			_pile.GuiInput += OnPileGuiInput;
 		}
 
 		if (EnableInput && _top != null)
@@ -89,7 +98,7 @@ public partial class Deck : Control
 		if (Engine.IsEditorHint())
 			return;
 
-		if (!EnableInput || e is not InputEventMouseButton mb || !mb.Pressed || mb.ButtonIndex != MouseButton.Left)
+		if (_openDrawPileModalCount > 0 || !EnableInput || e is not InputEventMouseButton mb || !mb.Pressed || mb.ButtonIndex != MouseButton.Left)
 			return;
 
 		if (!GetPlayableCardRect().HasPoint(GetGlobalMousePosition()))
@@ -256,6 +265,11 @@ public partial class Deck : Control
 		SetTopCardVisible(true);
 	}
 
+	public override void _ExitTree()
+	{
+		CloseDrawPileModal();
+	}
+
 	// ---------- View ----------
 	private void RefreshView()
 	{
@@ -327,6 +341,214 @@ public partial class Deck : Control
 		node.CustomMinimumSize = faceSize;
 		node.Size = faceSize;
 		return node;
+	}
+
+	private void OnPileGuiInput(InputEvent e)
+	{
+		if (Engine.IsEditorHint() || e is not InputEventMouseButton mb || !mb.Pressed || mb.ButtonIndex != MouseButton.Left)
+			return;
+
+		OpenDrawPileModal();
+		AcceptEvent();
+	}
+
+	private void OpenDrawPileModal()
+	{
+		if (!IsInsideTree() || CardViewScene == null)
+			return;
+
+		CloseDrawPileModal();
+
+		var cards = GetRandomizedDrawPileSnapshot();
+		_drawPileModalLayer = new CanvasLayer { Layer = 200 };
+		_openDrawPileModalCount++;
+
+		var overlay = new Control
+		{
+			Name = "DrawPileModalOverlay",
+			MouseFilter = MouseFilterEnum.Stop,
+			Size = GetViewportRect().Size
+		};
+		overlay.SetAnchorsPreset(LayoutPreset.FullRect);
+		overlay.GuiInput += OnDrawPileOverlayGuiInput;
+
+		var shade = new ColorRect
+		{
+			Color = new Color(0f, 0f, 0f, 0.72f),
+			MouseFilter = MouseFilterEnum.Stop,
+			Size = GetViewportRect().Size
+		};
+		shade.SetAnchorsPreset(LayoutPreset.FullRect);
+		shade.GuiInput += EatModalInput;
+		overlay.AddChild(shade);
+
+		_drawPileModalLayer.AddChild(overlay);
+		(GetTree().CurrentScene as Node ?? GetTree().Root).AddChild(_drawPileModalLayer);
+		LayoutDrawPileModal(overlay, cards);
+		TooltipDisplay.ModalTooltipScope = overlay;
+	}
+
+	private void LayoutDrawPileModal(Control overlay, List<CardData> cards)
+	{
+		Vector2 viewport = GetViewportRect().Size;
+		const float cardGap = 12f;
+		const float modalGap = 16f;
+		Vector2 cardSize = GetCardViewSize();
+		float rowWidth = cards.Count * cardSize.X + Mathf.Max(0, cards.Count - 1) * cardGap;
+		float startX = Mathf.Round((viewport.X - rowWidth) * 0.5f);
+		float cardY = Mathf.Round((viewport.Y - cardSize.Y) * 0.5f - 24f);
+
+		for (int i = 0; i < cards.Count; i++)
+		{
+			var cardView = CreateCardView(cards[i]);
+			if (cardView == null)
+				continue;
+
+			cardView.MouseFilter = MouseFilterEnum.Pass;
+			cardView.Position = new Vector2(startX + i * (cardSize.X + cardGap), cardY).Floor();
+			overlay.AddChild(cardView);
+		}
+
+		var disclaimer = CreateModalLabel("Cards are not shown in any particular order", 20);
+		disclaimer.HorizontalAlignment = HorizontalAlignment.Center;
+		disclaimer.Size = new Vector2(viewport.X, 28);
+		disclaimer.Position = new Vector2(0, cardY + cardSize.Y + modalGap).Floor();
+		overlay.AddChild(disclaimer);
+
+		var close = CreateCloseButton();
+		close.Position = new Vector2(Mathf.Round((viewport.X - close.CustomMinimumSize.X) * 0.5f), disclaimer.Position.Y + disclaimer.Size.Y + 10f).Floor();
+		close.Size = close.CustomMinimumSize;
+		overlay.AddChild(close);
+	}
+
+	private Vector2 GetCardViewSize()
+	{
+		var probe = CardViewScene.Instantiate<Control>();
+		Vector2 size = probe.CustomMinimumSize;
+		if (size.X <= 1f || size.Y <= 1f)
+			size = new Vector2(Mathf.Max(probe.Size.X, CardBack?.GetSize().X ?? 48f), Mathf.Max(probe.Size.Y, CardBack?.GetSize().Y ?? 72f));
+		probe.Free();
+		return size;
+	}
+
+	private List<CardData> GetRandomizedDrawPileSnapshot()
+	{
+		var cards = new List<CardData>(_draw);
+		var displayRng = new RandomNumberGenerator();
+		displayRng.Randomize();
+
+		for (int i = cards.Count - 1; i > 0; i--)
+		{
+			int j = (int)displayRng.RandiRange(0, i);
+			(cards[i], cards[j]) = (cards[j], cards[i]);
+		}
+
+		return cards;
+	}
+
+	private Label CreateModalLabel(string text, int fontSize)
+	{
+		var label = new Label
+		{
+			Text = text,
+			MouseFilter = MouseFilterEnum.Ignore
+		};
+		label.AddThemeColorOverride("font_color", Colors.White);
+		label.AddThemeFontSizeOverride("font_size", fontSize);
+
+		var font = LoadPixelFont();
+		if (font != null)
+			label.AddThemeFontOverride("font", font);
+
+		ConfigurePixelFont(label.GetThemeFont("font"));
+		return label;
+	}
+
+	private Button CreateCloseButton()
+	{
+		var close = new Button
+		{
+			Text = "CLOSE",
+			CustomMinimumSize = new Vector2(112, 38),
+			MouseFilter = MouseFilterEnum.Stop
+		};
+		close.Pressed += CloseDrawPileModal;
+		close.AddThemeFontSizeOverride("font_size", 20);
+		close.AddThemeColorOverride("font_color", Colors.White);
+		close.AddThemeColorOverride("font_hover_color", Colors.White);
+		close.AddThemeColorOverride("font_pressed_color", Colors.White);
+
+		var font = LoadPixelFont();
+		if (font != null)
+			close.AddThemeFontOverride("font", font);
+
+		close.AddThemeStyleboxOverride("normal", CreateButtonStyle(new Color(0.82f, 0.12f, 0.10f)));
+		close.AddThemeStyleboxOverride("hover", CreateButtonStyle(new Color(0.95f, 0.18f, 0.14f)));
+		close.AddThemeStyleboxOverride("pressed", CreateButtonStyle(new Color(0.58f, 0.07f, 0.06f)));
+		close.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+		ConfigurePixelFont(close.GetThemeFont("font"));
+		return close;
+	}
+
+	private StyleBoxFlat CreateButtonStyle(Color color)
+	{
+		return new StyleBoxFlat
+		{
+			BgColor = color,
+			BorderColor = Colors.Black,
+			BorderWidthLeft = 2,
+			BorderWidthTop = 2,
+			BorderWidthRight = 2,
+			BorderWidthBottom = 2,
+			AntiAliasing = false
+		};
+	}
+
+	private FontFile LoadPixelFont()
+	{
+		return ResourceLoader.Load<FontFile>("res://Assets/Fonts/upheaval/upheavtt.ttf");
+	}
+
+	private void ConfigurePixelFont(Font font)
+	{
+		if (font is FontFile fontFile)
+		{
+			fontFile.Antialiasing = TextServer.FontAntialiasing.None;
+			fontFile.GenerateMipmaps = false;
+			fontFile.SubpixelPositioning = TextServer.SubpixelPositioning.Disabled;
+			fontFile.AllowSystemFallback = false;
+		}
+	}
+
+	private void OnDrawPileOverlayGuiInput(InputEvent e)
+	{
+		if (e is InputEventKey key && key.Pressed && key.Keycode == Key.Escape)
+		{
+			CloseDrawPileModal();
+			AcceptEvent();
+			return;
+		}
+
+		AcceptEvent();
+	}
+
+	private void EatModalInput(InputEvent e)
+	{
+		AcceptEvent();
+	}
+
+	private void CloseDrawPileModal()
+	{
+		if (_drawPileModalLayer == null)
+			return;
+
+		if (GodotObject.IsInstanceValid(_drawPileModalLayer))
+			_drawPileModalLayer.QueueFree();
+
+		_drawPileModalLayer = null;
+		_openDrawPileModalCount = Mathf.Max(0, _openDrawPileModalCount - 1);
+		if (_openDrawPileModalCount == 0)
+			TooltipDisplay.ModalTooltipScope = null;
 	}
 
 	private CanvasLayer GetPresentationLayer()

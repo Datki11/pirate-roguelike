@@ -156,6 +156,12 @@ public partial class Enemy : Control, IDamageable
 	// Emit Clicked so CombatTargeting keeps working
 	public override void _GuiInput(InputEvent e)
 	{
+		if (Deck.IsDrawPileModalOpen)
+		{
+			AcceptEvent();
+			return;
+		}
+
 		if (e is InputEventMouseButton mb && mb.ButtonIndex == MouseButton.Left && mb.Pressed)
 			EmitSignal(SignalName.Clicked, this);
 	}

@@ -151,6 +151,9 @@ public partial class CombatTargeting : Node
 
 	public override void _UnhandledInput(InputEvent e)
 	{
+		if (Deck.IsDrawPileModalOpen)
+			return;
+
 		if (_targeting && e.IsActionPressed("ui_cancel"))
 			EndTargeting(); // cancel: keep top card
 	}
