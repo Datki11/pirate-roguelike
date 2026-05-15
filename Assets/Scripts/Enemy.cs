@@ -13,7 +13,7 @@ public partial class Enemy : Control, IDamageable
 	[Export] public NodePath PopupAnchorPath { get; set; } = "Damage Popup Anchor";
 	[ExportGroup("Standard Layout")]
 	[Export] public bool AutoLayoutAttachments { get; set; } = true;
-	[Export] public Vector2 HealthBarSize { get; set; } = new(60, 4);
+	[Export] public Vector2 HealthBarSize { get; set; } = new(60, 18);
 	[Export] public float HealthBarGap { get; set; } = -4f;
 	[Export] public Vector2 DeckGap { get; set; } = new(8, 4);
 	[Export] public Vector2 DefaultDeckSize { get; set; } = new(112, 105);

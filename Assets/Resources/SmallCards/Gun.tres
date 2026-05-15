@@ -1,6 +1,6 @@
 [gd_resource type="Resource" script_class="CardData" load_steps=9 format=3 uid="uid://bette2m1dy13u"]
 
-[ext_resource type="Texture2D" uid="uid://byee6v4ec1v7t" path="res://Assets/Sprites/Icons/placeholder-icons/attack-icons/sprite_33.png" id="1_ca32n"]
+[ext_resource type="Texture2D" uid="uid://rjnwg410p73v" path="res://Assets/Sprites/Icons/placeholder-icons/icons/48x48/bow_03a.png" id="1_ca32n"]
 [ext_resource type="Script" uid="uid://d2ueo4m1lbc51" path="res://Assets/Scripts/EffectEntry.cs" id="2_1nv4u"]
 [ext_resource type="Resource" uid="uid://c1a0m3ei8u4oj" path="res://Assets/Resources/Effects/attack.tres" id="3_pjql7"]
 [ext_resource type="Resource" uid="uid://euroqap1x1mh" path="res://Assets/Resources/Effects/block.tres" id="4_uwnkp"]
@@ -21,12 +21,12 @@ Amount = 4
 script = ExtResource("6_06us6")
 Title = "Gun"
 Description = "Volley fire."
-RulesText = "Blast all enemies."
+RulesText = ""
 Art = ExtResource("1_ca32n")
 ManaCost = 0
 Rarity = 2
 TargetDef = ExtResource("5_ca32n")
-Effects = Array[ExtResource("2_1nv4u")]([SubResource("Resource_t7362"), SubResource("Resource_k7x1t")])
+Effects = [SubResource("Resource_t7362"), SubResource("Resource_k7x1t")]
 Trigger = 0
 TriggerText = ""
 LethalHealAmount = 0

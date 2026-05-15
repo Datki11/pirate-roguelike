@@ -11,7 +11,7 @@ public partial class HPBar : Control
 	[Export] public bool ShowText = true;
 	[Export] public Color TextColor = Colors.White;
 
-	// Drop your m3x6.ttf here; leave null to use theme default
+	// Exported font takes priority; leave null to use the theme default.
 	[Export] public FontFile PixelFont;
 	[Export] public int PixelFontSize = 16;
 

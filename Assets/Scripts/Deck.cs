@@ -28,9 +28,9 @@ public partial class Deck : Control
 	[Export] public int DiscardBehindOffset { get; set; } = 44;
 	[Export] public int PileVerticalOffset { get; set; } = 16;
 	[Export] public int FaceUpRevealOffset { get; set; } = 8;
-	[Export] public int EnemyFaceUpRevealOffset { get; set; } = 24;
-	[Export] public int FaceUpLiftOffset { get; set; } = 8;
-	[Export] public int EnemyFaceUpLiftOffset { get; set; } = 16;
+	[Export] public int EnemyFaceUpRevealOffset { get; set; } = 22;
+	[Export] public int FaceUpLiftOffset { get; set; } = 5;
+	[Export] public int EnemyFaceUpLiftOffset { get; set; } = 15;
 	[Export] public float PlayMoveDurationSec { get; set; } = 0.16f;
 	[Export] public float PlayHoldDurationSec { get; set; } = 0.20f;
 	[Export] public float PlayFadeDurationSec { get; set; } = 0.18f;
@@ -418,14 +418,14 @@ public partial class Deck : Control
 			}
 		}
 
-		Vector2 faceSize = new(70, 105);
+		Vector2 faceSize = new(88, 131);
 		Vector2 topPosition = AutoPlaceTop ? GetFaceUpPosition() : _top.Position;
 
 		var face = new Rect2(topPosition.Floor(), faceSize);
 		DrawRect(face, _previewCard, true);
 		DrawRect(face, _previewInk, false, 2);
-		DrawLine(face.Position + new Vector2(0, 18), face.Position + new Vector2(face.Size.X, 18), _previewInk, 2);
-		DrawLine(face.Position + new Vector2(0, 70), face.Position + new Vector2(face.Size.X, 70), _previewInk, 2);
+		DrawLine(face.Position + new Vector2(0, 23), face.Position + new Vector2(face.Size.X, 23), _previewInk, 2);
+		DrawLine(face.Position + new Vector2(0, 88), face.Position + new Vector2(face.Size.X, 88), _previewInk, 2);
 	}
 
 	private void OnTopGuiInput(InputEvent e)
@@ -482,7 +482,7 @@ public partial class Deck : Control
 	private Vector2 GetFaceUpPosition()
 	{
 		Vector2 backSize = CardBack?.GetSize() ?? new Vector2(48, 72);
-		Vector2 faceSize = _top?.Size ?? new Vector2(70, 105);
+		Vector2 faceSize = _top?.Size ?? new Vector2(88, 131);
 		int backs = Mathf.Min(MaxBacksShown, Mathf.Max(0, _draw.Count - 1));
 		var stackStep = new Vector2(BackOffset.X, BackOffset.Y);
 		Vector2 lastBackPosition = _pile.Position + stackStep * backs;

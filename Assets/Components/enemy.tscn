@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://dynv03gjgjc8x" path="res://Assets/Scripts/Enemy.cs" id="1_t6tus"]
 [ext_resource type="Script" uid="uid://dghg25xqhrcyh" path="res://Assets/Scripts/HPBar.cs" id="4_sdvpo"]
 [ext_resource type="Script" uid="uid://dliotwwlwl71h" path="res://Assets/Scripts/TargetRing.cs" id="5_dcwce"]
-[ext_resource type="FontFile" uid="uid://buo7n3j6h7yj7" path="res://Assets/Fonts/m5x7.ttf" id="5_ylgap"]
+[ext_resource type="FontFile" uid="uid://b6nooaoreg886" path="res://Assets/Fonts/Minecraft.ttf" id="5_ylgap"]
 [ext_resource type="PackedScene" uid="uid://bcc2tig505c7l" path="res://Assets/Components/deck.tscn" id="7_qtvry"]
 [ext_resource type="Texture2D" uid="uid://ba3slgxp2y02k" path="res://Assets/Sprites/Cards/card_back_red_24x36.png" id="8_8sbev"]
 [ext_resource type="Resource" uid="uid://ewl7fgxohm3l" path="res://Assets/Resources/DeckLists/BatDeckList.tres" id="8_nn7m1"]
@@ -23,13 +23,13 @@ offset_right = 54.0
 offset_bottom = 54.0
 
 [node name="HP" type="Control" parent="."]
-custom_minimum_size = Vector2(60, 4)
+custom_minimum_size = Vector2(60, 18)
 layout_mode = 1
 anchors_preset = 0
 offset_left = -3.0
 offset_top = 50.0
 offset_right = 57.0
-offset_bottom = 54.0
+offset_bottom = 68.0
 grow_horizontal = 2
 grow_vertical = 0
 script = ExtResource("4_sdvpo")
@@ -66,6 +66,3 @@ CardBack = ExtResource("8_8sbev")
 BackOffset = Vector2i(-2, -2)
 Side = 1
 EnableInput = false
-EnemyFaceUpRevealOffset = 18
-FaceUpLiftOffset = 4
-EnemyFaceUpLiftOffset = 12

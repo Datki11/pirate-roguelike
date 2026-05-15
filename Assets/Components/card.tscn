@@ -2,8 +2,8 @@
 
 [ext_resource type="Script" path="res://Assets/Scripts/Card.cs" id="1_8elti"]
 [ext_resource type="Texture2D" uid="uid://gxpjkped0we" path="res://Assets/Sprites/Cards/placeholder-sword.png" id="1_ax3cw"]
-[ext_resource type="FontFile" uid="uid://dtn7toydgbwse" path="res://Assets/Fonts/terminus-ttf-4.49.3/TerminusTTF-Bold-4.49.3.ttf" id="3_mwkhl"]
-[ext_resource type="FontFile" uid="uid://d2u7uyfachinb" path="res://Assets/Fonts/terminus-ttf-4.49.3/TerminusTTF-4.49.3.ttf" id="4_n3r1g"]
+[ext_resource type="FontFile" uid="uid://b6nooaoreg886" path="res://Assets/Fonts/Minecraft.ttf" id="3_mwkhl"]
+[ext_resource type="FontFile" uid="uid://b6nooaoreg886" path="res://Assets/Fonts/Minecraft.ttf" id="4_n3r1g"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8elti"]
 bg_color = Color(1, 1, 1, 1)

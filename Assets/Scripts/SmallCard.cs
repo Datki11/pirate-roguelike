@@ -4,6 +4,7 @@ using System.Collections.Generic;
 public partial class SmallCard : BaseCardView
 {
 	private static readonly Color TriggerColor = new(0.85f, 0.53f, 0.0f);
+	private const InlineAlignment EffectIconAlignment = InlineAlignment.BottomTo | InlineAlignment.ToBaseline;
 	private static Texture2D _placeholderArt;
 
 	[Export] public NodePath TitlePath { get; set; }
@@ -11,7 +12,7 @@ public partial class SmallCard : BaseCardView
 	[Export] public NodePath BodyPath { get; set; }
 	[Export] public NodePath BadgeIconPath { get; set; }
 	[Export] public NodePath TooltipDisplayPath { get; set; }
-	[Export] public int EffectIconSize { get; set; } = 12;
+	[Export] public int EffectIconSize { get; set; } = 16;
 
 	[Export] public CardData Data { get; set; }
 
@@ -49,6 +50,7 @@ public partial class SmallCard : BaseCardView
 			fontFile.Antialiasing = TextServer.FontAntialiasing.None;
 			fontFile.GenerateMipmaps = false;
 			fontFile.SubpixelPositioning = TextServer.SubpixelPositioning.Disabled;
+			fontFile.AllowSystemFallback = false;
 		}
 	}
 
@@ -67,47 +69,78 @@ public partial class SmallCard : BaseCardView
 	private void Apply()
 	{
 		_title.Text = Data.Title ?? "";
-		_art.Texture = GetPlaceholderArt();
+		_art.Texture = Data.Art ?? GetPlaceholderArt();
 
-		// Target badge (if you used TargetDef)
-		if (Data.TargetDef is TargetDef t && t.BadgeIcon != null)
-		{
-			_badgeIcon.Texture = t.BadgeIcon;
-			_badgeIcon.GetParent<CanvasItem>().Visible = true;
-		}
-		else
-		{
-			_badgeIcon.GetParent<CanvasItem>().Visible = false;
-		}
+		_badgeIcon.GetParent<CanvasItem>().Visible = false;
 
-		_body.Text = BuildBodyBBCode();
+		RenderBody();
 		_tooltipDisplay.SetEntries(BuildTooltipEntries());
 	}
 
-	private string BuildEffectBBCode(EffectEntry e)
+	private void RenderBody()
 	{
-		int iconPx = Mathf.Max(1, EffectIconSize);
+		_body.Clear();
 
-		string iconPath = e.Def.Icon?.ResourcePath ?? "";
-		// Use EffectDef.ShortFormat later if you want text, colors, etc.
-		return string.IsNullOrEmpty(iconPath)
-			? e.Amount.ToString()
-			: $"[center][img={iconPx}x{iconPx}]{iconPath}[/img] {e.Amount}[/center]";
-	}
-
-	private string BuildBodyBBCode()
-	{
-		var parts = new List<string>();
+		bool hasContent = false;
 		if (Data.Effects != null)
 		{
 			foreach (var effect in Data.Effects)
-				if (effect?.Def != null) parts.Add(BuildEffectBBCode(effect));
+			{
+				if (effect?.Def == null) continue;
+				if (hasContent) _body.Newline();
+				RenderEffectLine(effect);
+				hasContent = true;
+			}
 		}
+
 		if (!string.IsNullOrWhiteSpace(Data.RulesText))
-			parts.Add(Data.RulesText);
+		{
+			if (hasContent) _body.Newline();
+			_body.AppendText(Data.RulesText);
+			hasContent = true;
+		}
+
 		if (Data.Trigger != CardTrigger.None && !string.IsNullOrWhiteSpace(Data.TriggerText))
-			parts.Add($"[color=#d98600]{Data.Trigger}:[/color] {Data.TriggerText}");
-		return string.Join("\n", parts);
+		{
+			if (hasContent) _body.Newline();
+			_body.AppendText($"[color=#d98600]{Data.Trigger}:[/color] {Data.TriggerText}");
+		}
+	}
+
+	private void RenderEffectLine(EffectEntry e)
+	{
+		int iconPx = Mathf.Max(1, EffectIconSize);
+
+		string effectText = e.Def.Id switch
+		{
+			"attack" => "Deal",
+			"block" => "Gain",
+			_ => e.Def.DisplayName
+		};
+
+		_body.PushParagraph(HorizontalAlignment.Center);
+		_body.AddText($"{effectText} ");
+		if (e.Def.Icon != null)
+		{
+			_body.AddImage(e.Def.Icon, iconPx, iconPx, null, EffectIconAlignment, null);
+			_body.AddText(" ");
+		}
+		_body.AddText($"{e.Amount}{BuildTargetSuffix(e.Def)}");
+		_body.Pop();
+	}
+
+	private string BuildTargetSuffix(EffectDef effect)
+	{
+		string targetId = (Data.TargetDef as TargetDef)?.Id?.ToLowerInvariant() ?? "";
+		bool beneficial = effect.Id is "block";
+
+		return targetId switch
+		{
+			"all" or "multiple" or "all_enemies" => " to ALL",
+			"all_allies" => beneficial ? " to ALL" : "",
+			"random" or "random_enemy" or "random_enemies" => " RANDOMLY",
+			_ => ""
+		};
 	}
 
 	private static Texture2D GetPlaceholderArt()
@@ -115,21 +148,21 @@ public partial class SmallCard : BaseCardView
 		if (_placeholderArt != null)
 			return _placeholderArt;
 
-		var image = Image.Create(28, 22, false, Image.Format.Rgba8);
+		var image = Image.CreateEmpty(48, 48, false, Image.Format.Rgba8);
 		var paper = new Color(0.92f, 0.92f, 0.86f);
 		var shadow = new Color(0.62f, 0.62f, 0.56f);
 		var ink = Colors.Black;
 		var accent = new Color(0.2f, 0.35f, 0.72f);
 
 		image.Fill(paper);
-		FillRect(image, 0, 0, 28, 1, ink);
-		FillRect(image, 0, 21, 28, 1, ink);
-		FillRect(image, 0, 0, 1, 22, ink);
-		FillRect(image, 27, 0, 1, 22, ink);
-		FillRect(image, 2, 17, 24, 2, shadow);
-		FillRect(image, 7, 5, 14, 10, accent);
-		FillRect(image, 10, 3, 8, 2, ink);
-		FillRect(image, 12, 7, 4, 6, paper);
+		FillRect(image, 0, 0, 48, 2, ink);
+		FillRect(image, 0, 46, 48, 2, ink);
+		FillRect(image, 0, 0, 2, 48, ink);
+		FillRect(image, 46, 0, 2, 48, ink);
+		FillRect(image, 5, 36, 38, 4, shadow);
+		FillRect(image, 13, 12, 22, 20, accent);
+		FillRect(image, 17, 7, 14, 5, ink);
+		FillRect(image, 21, 17, 6, 11, paper);
 
 		_placeholderArt = ImageTexture.CreateFromImage(image);
 		return _placeholderArt;

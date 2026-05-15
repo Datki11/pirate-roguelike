@@ -2,7 +2,7 @@ using Godot;
 
 public partial class DamagePopup : Control
 {
-	[Export] public FontFile Font;       // assign m3x6.ttf (or rely on Theme)
+	[Export] public FontFile Font;
 	[Export] public int FontSize = 16;
 	[Export] public Color Color = new(1f, 0.3f, 0.3f);
 	[Export] public Color HealColor = new(0.3f, 1f, 0.3f);

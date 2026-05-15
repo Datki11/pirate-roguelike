@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="CardData" load_steps=7 format=3 uid="uid://w5pl53s3vlh8"]
 
 [ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_hvolb"]
-[ext_resource type="Texture2D" uid="uid://b6mye1aywgmc5" path="res://Assets/Sprites/Icons/placeholder-icons/attack-icons/claw_swipe_24.png" id="1_j481d"]
+[ext_resource type="Texture2D" uid="uid://if1rflm8tdfg" path="res://Assets/Sprites/Icons/placeholder-icons/icons/48x48/sword_03a.png" id="1_j481d"]
 [ext_resource type="Resource" uid="uid://c1a0m3ei8u4oj" path="res://Assets/Resources/Effects/attack.tres" id="2_mibji"]
 [ext_resource type="Script" uid="uid://d2ueo4m1lbc51" path="res://Assets/Scripts/EffectEntry.cs" id="3_g6xnc"]
 [ext_resource type="Resource" uid="uid://bcduw272yqold" path="res://Assets/Resources/Targets/multiple.tres" id="4_kxqjd"]
@@ -20,7 +20,7 @@ Art = ExtResource("1_j481d")
 ManaCost = 0
 Rarity = 0
 TargetDef = ExtResource("4_kxqjd")
-Effects = Array[ExtResource("3_g6xnc")]([SubResource("Resource_p80uk")])
+Effects = [SubResource("Resource_p80uk")]
 Trigger = 3
 TriggerText = "Play top card."
 LethalHealAmount = 0

@@ -12,7 +12,7 @@ public partial class PlayerUnit : Node2D, IDamageable
 	[Export] public NodePath DeckPath { get; set; } = "Deck";
 	[ExportGroup("Standard Layout")]
 	[Export] public bool AutoLayoutAttachments { get; set; } = true;
-	[Export] public Vector2 HealthBarSize { get; set; } = new(70, 8);
+	[Export] public Vector2 HealthBarSize { get; set; } = new(70, 18);
 	[Export] public float HealthBarGap { get; set; } = 4f;
 	[Export] public Vector2 DeckGap { get; set; } = new(8, 4);
 	[Export] public Vector2 DefaultDeckSize { get; set; } = new(112, 105);

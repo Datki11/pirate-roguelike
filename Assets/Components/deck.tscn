@@ -19,10 +19,6 @@ PilePath = NodePath("Draw Pile")
 TopHolderPath = NodePath("Top Card")
 BackOffset = Vector2i(2, -2)
 DiscardOnTopClick = false
-FaceUpRevealOffset = 6
-EnemyFaceUpRevealOffset = 18
-FaceUpLiftOffset = 4
-EnemyFaceUpLiftOffset = 12
 
 [node name="Draw Pile" type="Control" parent="."]
 anchors_preset = 0
@@ -62,14 +58,14 @@ stretch_mode = 3
 [node name="Top Card" type="Control" parent="."]
 layout_mode = 1
 anchors_preset = 0
-offset_left = 26.0
-offset_top = -17.0
-offset_right = 96.0
-offset_bottom = 88.0
+offset_left = 28.0
+offset_top = -48.0
+offset_right = 116.0
+offset_bottom = 83.0
 
 [node name="Editor Preview Card" type="Panel" parent="Top Card"]
-custom_minimum_size = Vector2(70, 105)
+custom_minimum_size = Vector2(88, 131)
 layout_mode = 0
-offset_right = 70.0
-offset_bottom = 105.0
+offset_right = 88.0
+offset_bottom = 131.0
 mouse_filter = 2
