@@ -146,7 +146,7 @@ theme_override_colors/default_color = Color(0, 0, 0, 1)
 theme_override_fonts/normal_font = ExtResource("3_j0vee")
 theme_override_font_sizes/normal_font_size = 16
 bbcode_enabled = true
-text = "[center]Deal [img=16x16]res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/sword_01a.png[/img] 99[/center]"
+text = "[center]Deal [img width=16 height=18 align=center,center]res://Assets/Sprites/Icons/placeholder-icons/1-bit_Pixel_Icons/Sprites_Cropped/RPG_Skill_Strike_Attack_Sword_Slash_Cleave.png[/img] 99[/center]"
 scroll_active = false
 
 [node name="Overlay" type="Control" parent="."]

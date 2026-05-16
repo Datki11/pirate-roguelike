@@ -19,6 +19,9 @@ public partial class TooltipDisplay : Control
 	[Export] public int FontSize { get; set; } = 16;
 	[Export] public FontFile BoldPixelFont { get; set; }
 	[Export] public int BoldFontSize { get; set; } = 20;
+	[Export] public int IconWidth { get; set; } = RichTextInlineIcon.DefaultWidth;
+	[Export] public int IconHeight { get; set; } = RichTextInlineIcon.DefaultHeight;
+	[Export] public string IconAlign { get; set; } = RichTextInlineIcon.DefaultAlign;
 	[Export] public Vector2 PanelSize { get; set; } = new(220, 48);
 	[Export] public int Padding { get; set; } = 8;
 	[Export] public int Gap { get; set; } = 4;
@@ -329,8 +332,12 @@ public partial class TooltipDisplay : Control
 	private string BuildTooltipText(TooltipEntry entry)
 	{
 		string icon = "";
-		if (entry.Icon != null && !string.IsNullOrWhiteSpace(entry.Icon.ResourcePath))
-			icon = $"[img=16x16]{entry.Icon.ResourcePath}[/img] ";
+		if (entry.Icon != null)
+		{
+			string iconBbcode = RichTextInlineIcon.Build(entry.Icon, IconWidth, IconHeight, IconAlign);
+			if (!string.IsNullOrEmpty(iconBbcode))
+				icon = $"{iconBbcode} ";
+		}
 
 		Color titleColor = entry.TitleColor ?? TextColor;
 		return $"{icon}[color=#{titleColor.ToHtml(false)}][b]{entry.Title}[/b][/color]\n{entry.Text}";

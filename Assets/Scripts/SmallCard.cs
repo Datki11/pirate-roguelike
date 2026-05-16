@@ -4,7 +4,6 @@ using System.Collections.Generic;
 public partial class SmallCard : BaseCardView
 {
 	private static readonly Color TriggerColor = new(0.85f, 0.53f, 0.0f);
-	private const InlineAlignment EffectIconAlignment = InlineAlignment.BottomTo | InlineAlignment.ToBaseline;
 	private static Texture2D _placeholderArt;
 
 	[Export] public NodePath TitlePath { get; set; }
@@ -12,7 +11,9 @@ public partial class SmallCard : BaseCardView
 	[Export] public NodePath BodyPath { get; set; }
 	[Export] public NodePath BadgeIconPath { get; set; }
 	[Export] public NodePath TooltipDisplayPath { get; set; }
-	[Export] public int EffectIconSize { get; set; } = 16;
+	[Export] public int EffectIconWidth { get; set; } = RichTextInlineIcon.DefaultWidth;
+	[Export] public int EffectIconHeight { get; set; } = RichTextInlineIcon.DefaultHeight;
+	[Export] public string EffectIconAlign { get; set; } = RichTextInlineIcon.DefaultAlign;
 
 	[Export] public CardData Data { get; set; }
 
@@ -109,7 +110,8 @@ public partial class SmallCard : BaseCardView
 
 	private void RenderEffectLine(EffectEntry e)
 	{
-		int iconPx = Mathf.Max(1, EffectIconSize);
+		int iconWidth = Mathf.Max(1, EffectIconWidth);
+		int iconHeight = Mathf.Max(1, EffectIconHeight);
 
 		string effectText = e.Def.Id switch
 		{
@@ -122,7 +124,7 @@ public partial class SmallCard : BaseCardView
 		_body.AddText($"{effectText} ");
 		if (e.Def.Icon != null)
 		{
-			_body.AddImage(e.Def.Icon, iconPx, iconPx, null, EffectIconAlignment, null);
+			_body.AppendText(RichTextInlineIcon.Build(e.Def.Icon, iconWidth, iconHeight, EffectIconAlign));
 			_body.AddText(" ");
 		}
 		_body.AddText($"{e.Amount}{BuildTargetSuffix(e.Def)}");

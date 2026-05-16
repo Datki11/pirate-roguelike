@@ -1,6 +1,6 @@
 [gd_resource type="Resource" script_class="EffectDef" load_steps=3 format=3 uid="uid://euroqap1x1mh"]
 
-[ext_resource type="Texture2D" uid="uid://dadvar2unlpw8" path="res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/shield_01a.png" id="1_rlsak"]
+[ext_resource type="Texture2D" uid="uid://byf1n6tqjv6u3" path="res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/shield_padded.png" id="1_rlsak"]
 [ext_resource type="Script" uid="uid://bfxd4hm28vlf0" path="res://Assets/Scripts/EffectDef.cs" id="1_rn8g2"]
 
 [resource]

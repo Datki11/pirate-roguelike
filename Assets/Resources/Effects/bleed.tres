@@ -1,12 +1,12 @@
-[gd_resource type="Resource" load_steps=3 format=3 uid="uid://dftmisupkolto"]
+[gd_resource type="Resource" script_class="EffectDef" load_steps=3 format=3 uid="uid://dftmisupkolto"]
 
+[ext_resource type="Texture2D" uid="uid://djo5vp1ca2xg4" path="res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/bleed_padded.png" id="1_ciyk5"]
 [ext_resource type="Script" uid="uid://bfxd4hm28vlf0" path="res://Assets/Scripts/EffectDef.cs" id="1_fs76t"]
-[ext_resource type="Texture2D" uid="uid://dq2501mik5f7y" path="res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/skull_01a.png" id="2_ryx3i"]
 
 [resource]
 script = ExtResource("1_fs76t")
 Id = "bleed"
 DisplayName = "Bleed"
-Icon = ExtResource("2_ryx3i")
+Icon = ExtResource("1_ciyk5")
 ShortFormat = "{ICON} {AMOUNT}"
 LongFormat = "Inflict {AMOUNT} bleed."
