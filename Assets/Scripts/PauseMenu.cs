@@ -2,7 +2,7 @@ using Godot;
 
 public partial class PauseMenu : CanvasLayer
 {
-	private readonly float[] _speedOptions = { 0.33f, 0.5f, 1f, 1.5f, 2f, 2.5f, 3f };
+	private readonly float[] _speedOptions = { 0.33f, 0.5f, 0.75f, 1f, 1.5f, 2f, 2.5f, 3f };
 
 	[Export] public FontFile BodyFont { get; set; }
 	[Export] public FontFile BoldFont { get; set; }
@@ -272,7 +272,7 @@ public partial class PauseMenu : CanvasLayer
 				return i;
 		}
 
-		return 2;
+		return 3;
 	}
 
 	private string FormatSpeed(float speed)

@@ -50,6 +50,7 @@ public partial class PlayerUnit : Node2D, IDamageable
 	private bool _playingAction;
 	private bool _layoutSpriteRectValid;
 	private Rect2 _layoutSpriteRect;
+	private bool _groupTargetingHighlight;
 	private readonly Dictionary<string, int> _statuses = new();
 
 	public int MaxHP { get; private set; }
@@ -261,8 +262,26 @@ public partial class PlayerUnit : Node2D, IDamageable
 		if (_targetRing == null)
 			return;
 
+		_groupTargetingHighlight = false;
+		ApplyFriendlyTargetRingStyle(groupHighlight: false);
 		_targetRing.Visible = on;
 		_targetRing.SetHover(on);
+	}
+
+	public void SetGroupFriendlyTargetable(bool on)
+	{
+		EnsureFriendlyTargetRing();
+		if (_targetRing == null)
+			return;
+
+		if (_groupTargetingHighlight == on && _targetRing.Visible == on)
+			return;
+
+		_groupTargetingHighlight = on;
+		ApplyFriendlyTargetRingStyle(groupHighlight: on);
+		_targetRing.Visible = on;
+		_targetRing.SetHover(false);
+		_targetRing.QueueRedraw();
 	}
 
 	public Rect2 GetTargetingCanvasRect()
@@ -558,14 +577,37 @@ public partial class PlayerUnit : Node2D, IDamageable
 			Visible = false,
 			MouseFilter = Control.MouseFilterEnum.Ignore,
 			ZIndex = -5,
-			BaseColor = new Color(0.22f, 0.68f, 1f, 1f),
-			FillColor = new Color(0.22f, 0.68f, 1f, 0.25f),
-			ShadowColor = new Color(0f, 0.05f, 0.14f, 0.9f),
 			Thickness = 2
 		};
 		AddChild(_targetRing);
+		ApplyFriendlyTargetRingStyle(groupHighlight: false);
 		if (TryGetSpriteRect(out Rect2 spriteRect))
 			ApplyFriendlyTargetRingLayout(spriteRect);
+	}
+
+	private void ApplyFriendlyTargetRingStyle(bool groupHighlight)
+	{
+		if (_targetRing == null)
+			return;
+
+		if (groupHighlight)
+		{
+			_targetRing.BaseColor = new Color(0.22f, 0.68f, 1f, 0.34f);
+			_targetRing.FillColor = new Color(0.22f, 0.68f, 1f, 0.04f);
+			_targetRing.ShadowColor = new Color(0f, 0.05f, 0.14f, 0.16f);
+			_targetRing.Thickness = 1;
+			_targetRing.Pulse = false;
+			_targetRing.HoverFill = false;
+			return;
+		}
+
+		_targetRing.BaseColor = new Color(0.22f, 0.68f, 1f, 1f);
+		_targetRing.FillColor = new Color(0.22f, 0.68f, 1f, 0.25f);
+		_targetRing.ShadowColor = new Color(0f, 0.05f, 0.14f, 0.9f);
+		_targetRing.Thickness = 2;
+		_targetRing.Pulse = true;
+		_targetRing.HoverFill = true;
+		_targetRing.QueueRedraw();
 	}
 
 	private void ApplyFriendlyTargetRingLayout(Rect2 spriteRect)

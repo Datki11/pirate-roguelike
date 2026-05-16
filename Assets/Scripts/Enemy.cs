@@ -82,6 +82,7 @@ public partial class Enemy : Control, IDamageable
 	private Rect2 _layoutSpriteRect;
 	private bool _deathPresentationRunning;
 	private bool _unitHovering;
+	private bool _groupTargetingHighlight;
 	private readonly Dictionary<string, int> _statuses = new();
 
 	// --- Signals (ADD THIS BACK) ---
@@ -357,8 +358,50 @@ public partial class Enemy : Control, IDamageable
 
 	public void SetTargetable(bool on)
 	{
+		_groupTargetingHighlight = false;
+		ApplyTargetRingStyle(groupHighlight: false);
 		if (_ring != null) _ring.Visible = on;
 		if (!on && _ring is TargetRing tr) tr.SetHover(false);
+	}
+
+	public void SetGroupTargetable(bool on)
+	{
+		if (_ring == null)
+			return;
+
+		if (_groupTargetingHighlight == on && _ring.Visible == on)
+			return;
+
+		_groupTargetingHighlight = on;
+		ApplyTargetRingStyle(groupHighlight: on);
+		_ring.Visible = on;
+		_ringTR?.SetHover(false);
+		_ring.QueueRedraw();
+	}
+
+	private void ApplyTargetRingStyle(bool groupHighlight)
+	{
+		if (_ringTR == null)
+			return;
+
+		if (groupHighlight)
+		{
+			_ringTR.BaseColor = new Color(1f, 0.18f, 0.12f, 0.34f);
+			_ringTR.ShadowColor = new Color(0.18f, 0f, 0f, 0.16f);
+			_ringTR.FillColor = new Color(1f, 0.18f, 0.12f, 0.04f);
+			_ringTR.Thickness = 1;
+			_ringTR.Pulse = false;
+			_ringTR.HoverFill = false;
+			return;
+		}
+
+		_ringTR.BaseColor = new Color(0.9f, 0.2f, 0.2f, 1f);
+		_ringTR.ShadowColor = new Color(0.15f, 0.05f, 0.05f, 0.9f);
+		_ringTR.FillColor = new Color(0.9f, 0.2f, 0.2f, 0.25f);
+		_ringTR.Thickness = 1;
+		_ringTR.Pulse = true;
+		_ringTR.HoverFill = true;
+		_ringTR.QueueRedraw();
 	}
 
 	public void SetDeckTargetingDimmed(bool dimmed)

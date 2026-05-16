@@ -105,9 +105,11 @@ public partial class CombatHud : Control
 		Vector2 size = Size;
 		_endTurnRect = GetEndTurnRect();
 
+		if (!CanEndTurn())
+			return;
+
 		DrawEnergyPanel(size);
-		if (CanEndTurn())
-			DrawEndTurnButton();
+		DrawEndTurnButton();
 	}
 
 	private void DrawEnergyPanel(Vector2 size)

@@ -33,6 +33,8 @@ public partial class CombatTargeting : Node
 	private Enemy _lockedTarget;
 	private PlayerUnit _lockedPlayerTarget;
 	private TargetingMode _targetingMode;
+	private bool _allEnemiesGroupTargetingActive;
+	private bool _allPlayersGroupTargetingActive;
 
 	public override void _Ready()
 	{
@@ -157,6 +159,8 @@ public partial class CombatTargeting : Node
 		_targetingMode = mode;
 		_lockedTarget = null;
 		_lockedPlayerTarget = null;
+		SetAllEnemiesGroupTargeting(false);
+		SetAllPlayersGroupTargeting(false);
 		foreach (var e in _enemies)
 		{
 			if (e == null || !IsInstanceValid(e) || !e.Alive) continue;
@@ -187,6 +191,7 @@ public partial class CombatTargeting : Node
 		{
 			if (e == null || !IsInstanceValid(e)) continue;
 			e.SetTargetable(false);
+			e.SetGroupTargetable(false);
 			e.Clicked -= OnEnemyClicked;
 		}
 		foreach (var player in _players)
@@ -195,6 +200,7 @@ public partial class CombatTargeting : Node
 				continue;
 
 			player.SetFriendlyTargetable(false);
+			player.SetGroupFriendlyTargetable(false);
 		}
 		_pendingCard = null;
 		_pendingDeck = null;
@@ -279,24 +285,28 @@ public partial class CombatTargeting : Node
 		if (_targetingMode == TargetingMode.AllEnemies)
 		{
 			Vector2 allMouse = GetViewport().GetMousePosition();
-			bool locked = IsInAllEnemiesTargetZone(allMouse);
-			Vector2 allEndPoint = locked ? GetAllEnemiesTargetAnchor() : allMouse;
-			arrow.SetAllEnemiesZone(GetAllEnemiesZoneStartX(), locked);
-			arrow.SetArrow(_pendingDeck.GetTopCardCanvasRect(), allEndPoint, locked);
+			bool active = IsActiveAllEnemiesTargetZone(allMouse);
+			SetAllEnemiesGroupTargeting(active);
+			Vector2 allEndPoint = active ? GetAllEnemiesTargetAnchor() : allMouse;
+			arrow.SetAllEnemiesZone(GetAllEnemiesZoneStartX(), active);
+			arrow.SetArrow(_pendingDeck.GetTopCardCanvasRect(), allEndPoint, active);
 			return;
 		}
 
 		if (_targetingMode == TargetingMode.AllPlayers)
 		{
 			Vector2 allMouse = GetViewport().GetMousePosition();
-			bool locked = IsInAllPlayersTargetZone(allMouse);
-			Vector2 allEndPoint = locked ? GetAllPlayersTargetAnchor() : allMouse;
-			arrow.SetAllAlliesZone(GetAllPlayersZoneStartX(), locked);
-			arrow.SetArrow(_pendingDeck.GetTopCardCanvasRect(), allEndPoint, locked, friendly: true);
+			bool active = IsActiveAllPlayersTargetZone(allMouse);
+			SetAllPlayersGroupTargeting(active);
+			Vector2 allEndPoint = active ? GetAllPlayersTargetAnchor() : allMouse;
+			arrow.SetAllAlliesZone(GetAllPlayersZoneStartX(), active);
+			arrow.SetArrow(_pendingDeck.GetTopCardCanvasRect(), allEndPoint, active, friendly: true);
 			return;
 		}
 
 		arrow.ClearAllEnemiesZone();
+		SetAllEnemiesGroupTargeting(false);
+		SetAllPlayersGroupTargeting(false);
 		Vector2 mouse = GetViewport().GetMousePosition();
 		if (_targetingMode == TargetingMode.SelfPlayer)
 		{
@@ -362,6 +372,58 @@ public partial class CombatTargeting : Node
 	private bool IsInAllPlayersTargetZone(Vector2 mouse)
 	{
 		return mouse.X <= GetAllPlayersZoneStartX();
+	}
+
+	private bool IsActiveAllEnemiesTargetZone(Vector2 mouse)
+	{
+		return IsInAllEnemiesTargetZone(mouse) && HasAliveEnemyTargets();
+	}
+
+	private bool IsActiveAllPlayersTargetZone(Vector2 mouse)
+	{
+		return IsInAllPlayersTargetZone(mouse) && HasAlivePlayerTargets();
+	}
+
+	private bool HasAliveEnemyTargets()
+		=> _enemies != null && _enemies.Any(enemy => enemy != null && IsInstanceValid(enemy) && enemy.Alive);
+
+	private bool HasAlivePlayerTargets()
+		=> _players != null && _players.Any(player => player != null && IsInstanceValid(player) && player.Alive);
+
+	private void SetAllEnemiesGroupTargeting(bool active)
+	{
+		if (_allEnemiesGroupTargetingActive == active)
+			return;
+
+		_allEnemiesGroupTargetingActive = active;
+		if (_enemies == null)
+			return;
+
+		foreach (var enemy in _enemies)
+		{
+			if (enemy == null || !IsInstanceValid(enemy))
+				continue;
+
+			enemy.SetGroupTargetable(active && enemy.Alive);
+		}
+	}
+
+	private void SetAllPlayersGroupTargeting(bool active)
+	{
+		if (_allPlayersGroupTargetingActive == active)
+			return;
+
+		_allPlayersGroupTargetingActive = active;
+		if (_players == null)
+			return;
+
+		foreach (var player in _players)
+		{
+			if (player == null || !IsInstanceValid(player))
+				continue;
+
+			player.SetGroupFriendlyTargetable(active && player.Alive);
+		}
 	}
 
 	private float GetAllEnemiesZoneStartX()
@@ -445,14 +507,14 @@ public partial class CombatTargeting : Node
 		if (mb.ButtonIndex != MouseButton.Left)
 			return;
 
-		if (_targetingMode == TargetingMode.AllEnemies && IsInAllEnemiesTargetZone(mb.Position))
+		if (_targetingMode == TargetingMode.AllEnemies && IsActiveAllEnemiesTargetZone(mb.Position))
 		{
 			ConfirmAllEnemiesTarget();
 			GetViewport().SetInputAsHandled();
 			return;
 		}
 
-		if (_targetingMode == TargetingMode.AllPlayers && IsInAllPlayersTargetZone(mb.Position))
+		if (_targetingMode == TargetingMode.AllPlayers && IsActiveAllPlayersTargetZone(mb.Position))
 		{
 			ConfirmAllPlayersTarget();
 			GetViewport().SetInputAsHandled();
