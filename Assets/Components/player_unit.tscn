@@ -7,15 +7,16 @@
 [ext_resource type="Texture2D" uid="uid://xadv7ohuvyqj" path="res://Assets/Sprites/pirate-placeholder-sprites/Sprites/2-Enemy-Bald Pirate/1-Idle/1.png" id="5_preview"]
 
 [node name="PlayerUnit" type="Node2D"]
+z_as_relative = false
 script = ExtResource("1_player")
-HealthBarSize = Vector2(70, 18)
+HealthBarSize = Vector2(84, 20)
 
 [node name="Sprite" type="Sprite2D" parent="."]
 texture_filter = 1
 texture = ExtResource("5_preview")
 
 [node name="HP" type="Control" parent="."]
-custom_minimum_size = Vector2(70, 18)
+custom_minimum_size = Vector2(84, 20)
 layout_mode = 3
 anchors_preset = 0
 script = ExtResource("2_hpbar")
@@ -23,6 +24,7 @@ Fill = Color(0.1, 0.72, 0.18, 1)
 PixelFont = ExtResource("3_font")
 
 [node name="Deck" parent="." instance=ExtResource("4_deck")]
+z_as_relative = false
 offset_left = -3.0
 offset_top = -118.0
 offset_right = 109.0

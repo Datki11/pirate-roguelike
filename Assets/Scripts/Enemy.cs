@@ -15,7 +15,7 @@ public partial class Enemy : Control, IDamageable
 	[Export] public NodePath PopupAnchorPath { get; set; } = "Damage Popup Anchor";
 	[ExportGroup("Standard Layout")]
 	[Export] public bool AutoLayoutAttachments { get; set; } = true;
-	[Export] public Vector2 HealthBarSize { get; set; } = new(82, 18);
+	[Export] public Vector2 HealthBarSize { get; set; } = new(88, 20);
 	[Export] public float HealthBarGap { get; set; } = 4f;
 	[Export] public Vector2 StatusBarSize { get; set; } = new(96, 18);
 	[Export] public float StatusBarGap { get; set; } = 1f;
@@ -557,8 +557,11 @@ public partial class Enemy : Control, IDamageable
 			_statusBar.Size = StatusBarSize;
 			float hpX = _hp?.Position.X ?? Mathf.Round(spriteRect.Position.X + (spriteRect.Size.X - StatusBarSize.X) * 0.5f);
 			float hpY = _hp?.Position.Y ?? Mathf.Round(spriteRect.End.Y + HealthBarGap);
+			float inlineWidth = GetHpInlineWidth();
+			float groupWidth = Mathf.Max(inlineWidth, StatusBarSize.X);
+			float groupX = hpX + (inlineWidth - groupWidth) * 0.5f;
 			_statusBar.Position = new Vector2(
-				Mathf.Round(hpX),
+				Mathf.Round(groupX + (groupWidth - StatusBarSize.X) * 0.5f),
 				Mathf.Round(hpY + HealthBarSize.Y + StatusBarGap)
 			);
 		}
@@ -567,9 +570,11 @@ public partial class Enemy : Control, IDamageable
 		{
 			float hpX = _hp?.Position.X ?? Mathf.Round(spriteRect.Position.X + (spriteRect.Size.X - HealthBarSize.X) * 0.5f);
 			float hpY = _hp?.Position.Y ?? Mathf.Round(spriteRect.End.Y + HealthBarGap);
-			float width = Mathf.Max(HealthBarSize.X, StatusBarSize.X);
+			float inlineWidth = GetHpInlineWidth();
+			float width = Mathf.Max(inlineWidth, StatusBarSize.X);
+			float groupX = hpX + (inlineWidth - width) * 0.5f;
 			float height = HealthBarSize.Y + StatusBarGap + StatusBarSize.Y;
-			_hudTooltipArea.Position = new Vector2(Mathf.Round(hpX), Mathf.Round(hpY));
+			_hudTooltipArea.Position = new Vector2(Mathf.Round(groupX), Mathf.Round(hpY));
 			_hudTooltipArea.CustomMinimumSize = new Vector2(width, height);
 			_hudTooltipArea.Size = _hudTooltipArea.CustomMinimumSize;
 			if (_hudTooltip != null)
@@ -671,6 +676,14 @@ public partial class Enemy : Control, IDamageable
 		return size;
 	}
 
+	private float GetHpInlineWidth()
+	{
+		if (_hp != null)
+			return Mathf.Max(HealthBarSize.X, _hp.GetInlineContentWidth());
+
+		return HealthBarSize.X;
+	}
+
 	private Rect2 MergeVisibleControlCanvasRect(Rect2 rect, Control control)
 	{
 		if (control == null || !control.Visible)
@@ -702,6 +715,7 @@ public partial class Enemy : Control, IDamageable
 		_hp?.SetBlock(Block);
 		_statusBar?.SetStatuses(_statuses, Block);
 		_hudTooltip?.SetEntries(UnitStatusTooltips.Build(_statuses, Block));
+		ApplyStandardLayout();
 	}
 
 	private void EnsureHudTooltip()

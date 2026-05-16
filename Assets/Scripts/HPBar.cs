@@ -22,6 +22,7 @@ public partial class HPBar : Control
 	private const int IconHeight = 18;
 	private const int IconGap = 2;
 	private const int BlockRightPadding = 2;
+	private const int BlockGap = 4;
 
 	public override void _Ready()
 	{
@@ -52,7 +53,7 @@ public partial class HPBar : Control
 		DrawRect(rect, Back, true);
 		float t = (float)Value / Mathf.Max(1, Max);
 		int w = (int)Mathf.Round(size.X * t);
-		DrawRect(new Rect2(Vector2.Zero, new Vector2(w, size.Y)), Block > 0 ? BlockFill : Fill, true);
+		DrawRect(new Rect2(Vector2.Zero, new Vector2(w, size.Y)), Fill, true);
 		DrawRect(rect, Colors.Black, false, 1);
 
 		if (!ShowText) return;
@@ -65,10 +66,8 @@ public partial class HPBar : Control
 
 		string healthText = $"{Value}/{Max}";
 		float baseline = Mathf.Round((size.Y - font.GetHeight(fs)) * 0.5f + font.GetAscent(fs));
-		float blockWidth = GetBlockWidth(font, fs);
 		float healthWidth = font.GetStringSize(healthText, HorizontalAlignment.Left, -1, fs).X;
-		float healthAreaWidth = Mathf.Max(1f, size.X - blockWidth);
-		float healthX = Mathf.Round((healthAreaWidth - healthWidth) * 0.5f);
+		float healthX = Mathf.Round((size.X - healthWidth) * 0.5f);
 		var healthPos = new Vector2(healthX, baseline);
 
 		DrawStringOutline(font, healthPos, healthText, HorizontalAlignment.Left, healthWidth, fs, 1, Colors.Black);
@@ -79,7 +78,7 @@ public partial class HPBar : Control
 
 		string blockText = Block.ToString();
 		float blockTextWidth = font.GetStringSize(blockText, HorizontalAlignment.Left, -1, fs).X;
-		float blockX = Mathf.Round(size.X - blockWidth + BlockRightPadding);
+		float blockX = Mathf.Round(size.X + BlockGap + BlockRightPadding);
 		if (BlockIcon != null)
 		{
 			DrawTextureRect(BlockIcon, new Rect2(new Vector2(blockX, 0), new Vector2(IconSize, IconHeight)), false);
@@ -91,13 +90,22 @@ public partial class HPBar : Control
 		DrawString(font, blockPos, blockText, HorizontalAlignment.Left, blockTextWidth, fs, TextColor);
 	}
 
+	public float GetInlineContentWidth()
+	{
+		Font font = PixelFont ?? GetThemeFont("font") ?? GetThemeFont("normal_font");
+		int fs = PixelFont != null ? PixelFontSize
+				 : (GetThemeFontSize("font_size") > 0 ? GetThemeFontSize("font_size") : 16);
+		float width = Size.X > 0f ? Size.X : CustomMinimumSize.X;
+		return width + GetBlockWidth(font, fs);
+	}
+
 	private float GetBlockWidth(Font font, int fs)
 	{
-		if (Block <= 0)
+		if (Block <= 0 || font == null)
 			return 0f;
 
 		float textWidth = font.GetStringSize(Block.ToString(), HorizontalAlignment.Left, -1, fs).X;
-		return BlockRightPadding + (BlockIcon != null ? IconSize + IconGap : 0) + textWidth + BlockRightPadding;
+		return BlockGap + BlockRightPadding + (BlockIcon != null ? IconSize + IconGap : 0) + textWidth + BlockRightPadding;
 	}
 
 	private void ConfigurePixelFont(Font font)

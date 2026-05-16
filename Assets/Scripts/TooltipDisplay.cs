@@ -25,6 +25,7 @@ public partial class TooltipDisplay : Control
 	[Export] public Vector2 PanelSize { get; set; } = new(220, 48);
 	[Export] public int Padding { get; set; } = 8;
 	[Export] public int Gap { get; set; } = 4;
+	[Export] public int ScreenMargin { get; set; } = 4;
 	[Export] public Color PanelColor { get; set; } = new(0.94f, 0.94f, 0.94f, 0.88f);
 	[Export] public Color TextColor { get; set; } = Colors.Black;
 	[Export] public Color BorderColor { get; set; } = Colors.Black;
@@ -259,7 +260,19 @@ public partial class TooltipDisplay : Control
 	}
 
 	private Vector2 GetTooltipScreenPosition()
-		=> GetGlobalTransformWithCanvas().Origin;
+	{
+		Vector2 position = GetGlobalTransformWithCanvas().Origin;
+		Vector2 viewportSize = GetViewportRect().Size;
+		float margin = Mathf.Max(0, ScreenMargin);
+
+		if (viewportSize.X > 0f && Size.X > 0f)
+			position.X = Mathf.Clamp(position.X, margin, Mathf.Max(margin, viewportSize.X - Size.X - margin));
+
+		if (viewportSize.Y > 0f && Size.Y > 0f)
+			position.Y = Mathf.Clamp(position.Y, margin, Mathf.Max(margin, viewportSize.Y - Size.Y - margin));
+
+		return position;
+	}
 
 	private Control EnsurePopupRoot()
 	{

@@ -112,14 +112,10 @@ public partial class Deck : Control
 			_pile.MouseExited += OnPileMouseExited;
 		}
 
-		if (EnableInput && _top != null)
+		if (_top != null)
 		{
 			_top.MouseFilter = MouseFilterEnum.Stop;
 			_top.GuiInput += OnTopGuiInput;
-		}
-		else if (_top != null)
-		{
-			_top.MouseFilter = MouseFilterEnum.Stop;
 		}
 
 		Shuffle(_draw);
@@ -446,15 +442,8 @@ public partial class Deck : Control
 			_top.AddChild(node);
 			node.MouseEntered += OnTopCardMouseEntered;
 			node.MouseExited += OnTopCardMouseExited;
-			if (EnableInput)
-			{
-				node.MouseFilter = MouseFilterEnum.Stop;
-				node.GuiInput += OnTopGuiInput;
-			}
-			else
-			{
-				node.MouseFilter = MouseFilterEnum.Stop;
-			}
+			node.MouseFilter = MouseFilterEnum.Stop;
+			node.GuiInput += OnTopGuiInput;
 
 			if (AutoPlaceTop)
 			{
@@ -801,6 +790,10 @@ public partial class Deck : Control
 
 		if (!CanPlayTopCard())
 		{
+			if (!EnableInput && CanOpenDrawPile())
+			{
+				OpenDrawPileModal();
+			}
 			AcceptEvent();
 			return;
 		}
@@ -882,7 +875,7 @@ public partial class Deck : Control
 	}
 
 	private bool CanOpenDrawPile()
-		=> EnableInput && !_targetingDimmed && !_turnDimmed && !Deck.IsDrawPileModalOpen;
+		=> !_targetingDimmed && !Deck.IsDrawPileModalOpen;
 
 	private bool CanPlayTopCard()
 		=> EnableInput && !_targetingDimmed && !_turnDimmed && !Deck.IsDrawPileModalOpen;
