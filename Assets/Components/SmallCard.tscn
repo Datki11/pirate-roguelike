@@ -1,7 +1,7 @@
 [gd_scene load_steps=10 format=3 uid="uid://dalw1nj8vun0c"]
 
 [ext_resource type="Script" uid="uid://bpyombue3awvk" path="res://Assets/Scripts/SmallCard.cs" id="1_gnlkw"]
-[ext_resource type="Texture2D" uid="uid://dqfrqeocl5nr1" path="res://Assets/Sprites/Icons/placeholder-icons/icons/48x48/sword_01a.png" id="2_j0vee"]
+[ext_resource type="Texture2D" uid="uid://0b1v85wpr3kf" path="res://Assets/Sprites/Cards/attack-art/64x64/Swordtember2025 by tjtrewin.itch.io - Week 1/03-automaton__tjtrewin-itch-io.png" id="2_j0vee"]
 [ext_resource type="FontFile" uid="uid://b6nooaoreg886" path="res://Assets/Fonts/Minecraft.ttf" id="3_j0vee"]
 [ext_resource type="Texture2D" uid="uid://bkw3tyd3a8ju8" path="res://Assets/Sprites/Icons/16x16-circle.png" id="4_30pow"]
 [ext_resource type="Texture2D" uid="uid://c75wfghfvo23j" path="res://Assets/Sprites/Icons/Target Icons/multiple-enemies-target-icon.png" id="5_gnlkw"]
@@ -35,11 +35,11 @@ border_color = Color(0, 0, 0, 1)
 anti_aliasing = false
 
 [node name="Card2" type="Control"]
-custom_minimum_size = Vector2(116, 174)
+custom_minimum_size = Vector2(140, 210)
 layout_mode = 3
 anchors_preset = 0
-offset_right = 116.0
-offset_bottom = 174.0
+offset_right = 140.0
+offset_bottom = 210.0
 mouse_filter = 1
 script = ExtResource("1_gnlkw")
 TitlePath = NodePath("Frame/Pad/VBoxContainer/TitleBox/Title")
@@ -77,7 +77,7 @@ mouse_filter = 2
 theme_override_constants/separation = 0
 
 [node name="TitleBox" type="Panel" parent="Frame/Pad/VBoxContainer"]
-custom_minimum_size = Vector2(0, 34)
+custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_section")
@@ -88,21 +88,21 @@ anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 8.0
-offset_top = 8.0
+offset_top = 6.0
 offset_right = -8.0
-offset_bottom = -8.0
+offset_bottom = -6.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_colors/font_color = Color(0, 0, 0, 1)
-theme_override_fonts/font = ExtResource("3_j0vee")
-theme_override_font_sizes/font_size = 16
+theme_override_fonts/font = ExtResource("7_upheaval")
+theme_override_font_sizes/font_size = 20
 text = "Card"
 horizontal_alignment = 1
 vertical_alignment = 1
 clip_text = true
 
 [node name="ArtBox" type="Panel" parent="Frame/Pad/VBoxContainer"]
-custom_minimum_size = Vector2(0, 54)
+custom_minimum_size = Vector2(0, 70)
 layout_mode = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_section")

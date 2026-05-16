@@ -4,6 +4,7 @@ using System.Collections.Generic;
 public partial class SmallCard : BaseCardView
 {
 	private static readonly Color TriggerColor = new(0.85f, 0.53f, 0.0f);
+	private const int PlaceholderArtSize = 64;
 	private static Texture2D _placeholderArt;
 
 	[Export] public NodePath TitlePath { get; set; }
@@ -62,7 +63,7 @@ public partial class SmallCard : BaseCardView
 		r.AutowrapMode = TextServer.AutowrapMode.WordSmart;
 		r.ScrollActive = false;
 		r.HorizontalAlignment = HorizontalAlignment.Center;
-		r.VerticalAlignment = VerticalAlignment.Top;
+		r.VerticalAlignment = VerticalAlignment.Center;
 		r.AddThemeConstantOverride("line_separation", 0);
 		ConfigurePixelFont(r.GetThemeFont("normal_font"));
 	}
@@ -150,21 +151,21 @@ public partial class SmallCard : BaseCardView
 		if (_placeholderArt != null)
 			return _placeholderArt;
 
-		var image = Image.CreateEmpty(48, 48, false, Image.Format.Rgba8);
+		var image = Image.CreateEmpty(PlaceholderArtSize, PlaceholderArtSize, false, Image.Format.Rgba8);
 		var paper = new Color(0.92f, 0.92f, 0.86f);
 		var shadow = new Color(0.62f, 0.62f, 0.56f);
 		var ink = Colors.Black;
 		var accent = new Color(0.2f, 0.35f, 0.72f);
 
 		image.Fill(paper);
-		FillRect(image, 0, 0, 48, 2, ink);
-		FillRect(image, 0, 46, 48, 2, ink);
-		FillRect(image, 0, 0, 2, 48, ink);
-		FillRect(image, 46, 0, 2, 48, ink);
-		FillRect(image, 5, 36, 38, 4, shadow);
-		FillRect(image, 13, 12, 22, 20, accent);
-		FillRect(image, 17, 7, 14, 5, ink);
-		FillRect(image, 21, 17, 6, 11, paper);
+		FillRect(image, 0, 0, PlaceholderArtSize, 2, ink);
+		FillRect(image, 0, PlaceholderArtSize - 2, PlaceholderArtSize, 2, ink);
+		FillRect(image, 0, 0, 2, PlaceholderArtSize, ink);
+		FillRect(image, PlaceholderArtSize - 2, 0, 2, PlaceholderArtSize, ink);
+		FillRect(image, 7, 48, 50, 5, shadow);
+		FillRect(image, 17, 16, 30, 27, accent);
+		FillRect(image, 23, 9, 18, 7, ink);
+		FillRect(image, 28, 23, 8, 15, paper);
 
 		_placeholderArt = ImageTexture.CreateFromImage(image);
 		return _placeholderArt;

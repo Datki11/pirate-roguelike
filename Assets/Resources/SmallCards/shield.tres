@@ -1,7 +1,7 @@
 [gd_resource type="Resource" load_steps=7 format=3 uid="uid://3812dgq6sqp4"]
 
 [ext_resource type="Script" uid="uid://d2ueo4m1lbc51" path="res://Assets/Scripts/EffectEntry.cs" id="1_fs06e"]
-[ext_resource type="Texture2D" uid="uid://cx3e6j3g4jrcq" path="res://Assets/Sprites/Icons/placeholder-icons/icons/48x48/shield_01a.png" id="1_h7jgp"]
+[ext_resource type="Texture2D" uid="uid://h46yhmc7sfuc" path="res://Assets/Sprites/Cards/attack-art/64x64/rpg-items-all/seashell.png" id="1_h7jgp"]
 [ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="2_etllv"]
 [ext_resource type="Resource" uid="uid://euroqap1x1mh" path="res://Assets/Resources/Effects/block.tres" id="3_wgtgj"]
 [ext_resource type="Resource" uid="uid://dc0aw28r20f5m" path="res://Assets/Resources/Targets/self.tres" id="4_okgb3"]
