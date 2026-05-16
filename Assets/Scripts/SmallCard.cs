@@ -83,6 +83,11 @@ public partial class SmallCard : BaseCardView
 		SetProcess(focused);
 	}
 
+	public override void SetTooltipSuppressed(bool suppressed)
+	{
+		_tooltipDisplay?.SetSuppressed(suppressed);
+	}
+
 	private void CaptureFrameStyles()
 	{
 		if (_frame == null)

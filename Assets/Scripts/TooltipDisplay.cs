@@ -34,6 +34,7 @@ public partial class TooltipDisplay : Control
 	private Control _popupRoot;
 	private bool _needsRebuild;
 	private bool _rebuildDeferred;
+	private bool _suppressed;
 
 	public override void _Ready()
 	{
@@ -62,7 +63,7 @@ public partial class TooltipDisplay : Control
 			RebuildIfNeeded();
 
 		if (!TrackHoverSource) return;
-		bool shouldShow = _entries.Count > 0 && IsHoveringSource();
+		bool shouldShow = !_suppressed && _entries.Count > 0 && IsHoveringSource();
 		if (shouldShow)
 		{
 			RefreshLayout();
@@ -101,6 +102,16 @@ public partial class TooltipDisplay : Control
 	{
 		TrackHoverSource = false;
 		SetTipsVisible(false);
+	}
+
+	public void SetSuppressed(bool suppressed)
+	{
+		if (_suppressed == suppressed)
+			return;
+
+		_suppressed = suppressed;
+		if (_suppressed)
+			SetTipsVisible(false);
 	}
 
 	private bool IsHoveringSource()

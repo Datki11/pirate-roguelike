@@ -244,6 +244,11 @@ public partial class Enemy : Control, IDamageable
 		_deck?.SetTargetingDimmed(dimmed);
 	}
 
+	public void SetDeckTooltipSuppressed(bool suppressed)
+	{
+		_deck?.SetTopCardTooltipSuppressed(suppressed);
+	}
+
 	public Rect2 GetTargetingCanvasRect()
 	{
 		Rect2 rect = GetControlCanvasRect(this);

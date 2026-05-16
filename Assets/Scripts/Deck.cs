@@ -50,6 +50,7 @@ public partial class Deck : Control
 	private CanvasLayer _drawPileModalLayer;
 	private bool _playPresentationRunning;
 	private bool _targetingDimmed;
+	private bool _topCardTooltipSuppressed;
 	private Color _normalModulate = Colors.White;
 	private static int _openDrawPileModalCount;
 	public static bool IsDrawPileModalOpen => _openDrawPileModalCount > 0;
@@ -283,6 +284,13 @@ public partial class Deck : Control
 		Modulate = dimmed ? new Color(0.58f, 0.58f, 0.58f, 0.92f) : _normalModulate;
 	}
 
+	public void SetTopCardTooltipSuppressed(bool suppressed)
+	{
+		_topCardTooltipSuppressed = suppressed;
+		foreach (var card in GetTopCardViews())
+			card.SetTooltipSuppressed(suppressed);
+	}
+
 	public Rect2 GetTopCardCanvasRect()
 	{
 		if (_top == null)
@@ -336,6 +344,8 @@ public partial class Deck : Control
 			var node = CardViewScene.Instantiate<Control>();
 			if (node is BaseCardView view) view.SetData(top);
 			else GD.PushError("CardViewScene must inherit BaseCardView.");
+			if (node is BaseCardView topCardView)
+				topCardView.SetTooltipSuppressed(_topCardTooltipSuppressed);
 
 			Vector2 faceSize = node.CustomMinimumSize;
 			if (faceSize.X <= 1f || faceSize.Y <= 1f)

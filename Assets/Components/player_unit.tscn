@@ -8,9 +8,6 @@
 
 [node name="PlayerUnit" type="Node2D"]
 script = ExtResource("1_player")
-SpritePath = NodePath("Sprite")
-HpPath = NodePath("HP")
-DeckPath = NodePath("Deck")
 
 [node name="Sprite" type="Sprite2D" parent="."]
 texture_filter = 1
@@ -23,6 +20,7 @@ anchors_preset = 0
 script = ExtResource("2_hpbar")
 Fill = Color(0.1, 0.72, 0.18, 1)
 PixelFont = ExtResource("3_font")
-PixelFontSize = 16
 
 [node name="Deck" parent="." instance=ExtResource("4_deck")]
+offset_top = -142.0
+offset_bottom = -37.0

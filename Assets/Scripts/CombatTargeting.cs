@@ -191,6 +191,7 @@ public partial class CombatTargeting : Node
 
 				deck.SetTargetingDimmed(enabled && deck != _pendingDeck);
 				deck.SetTopCardTargetingFocus(enabled && deck == _pendingDeck);
+				deck.SetTopCardTooltipSuppressed(enabled && deck != _pendingDeck);
 			}
 		}
 
@@ -202,6 +203,7 @@ public partial class CombatTargeting : Node
 					continue;
 
 				enemy.SetDeckTargetingDimmed(enabled);
+				enemy.SetDeckTooltipSuppressed(enabled);
 			}
 		}
 
