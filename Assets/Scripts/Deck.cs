@@ -27,10 +27,6 @@ public partial class Deck : Control
 	[Export] public int DrawForwardOffset { get; set; } = 18;
 	[Export] public int DiscardBehindOffset { get; set; } = 44;
 	[Export] public int PileVerticalOffset { get; set; } = 16;
-	[Export] public int FaceUpRevealOffset { get; set; } = 8;
-	[Export] public int EnemyFaceUpRevealOffset { get; set; } = 22;
-	[Export] public int FaceUpLiftOffset { get; set; } = 5;
-	[Export] public int EnemyFaceUpLiftOffset { get; set; } = 15;
 	[Export] public float PlayMoveDurationSec { get; set; } = 0.16f;
 	[Export] public float PlayHoldDurationSec { get; set; } = 0.20f;
 	[Export] public float PlayFadeDurationSec { get; set; } = 0.18f;
@@ -72,6 +68,7 @@ public partial class Deck : Control
 
 		if (Engine.IsEditorHint())
 		{
+			SetEditorPreviewChildrenVisible(false);
 			QueueRedraw();
 			return;
 		}
@@ -306,6 +303,24 @@ public partial class Deck : Control
 		return rect;
 	}
 
+	public Rect2 GetLocalContentRect()
+	{
+		bool hasRect = false;
+		Rect2 rect = default;
+		Transform2D toLocal = GetGlobalTransformWithCanvas().AffineInverse();
+
+		MergeControlAndChildrenLocalRect(_pile, toLocal, ref rect, ref hasRect);
+		MergeControlAndChildrenLocalRect(_top, toLocal, ref rect, ref hasRect);
+
+		if (hasRect)
+			return rect;
+
+		Vector2 fallbackSize = Size;
+		if (fallbackSize.X <= 0f || fallbackSize.Y <= 0f)
+			fallbackSize = CustomMinimumSize;
+		return new Rect2(Vector2.Zero, fallbackSize);
+	}
+
 	public override void _ExitTree()
 	{
 		CloseDrawPileModal();
@@ -347,9 +362,7 @@ public partial class Deck : Control
 			if (node is BaseCardView topCardView)
 				topCardView.SetTooltipSuppressed(_topCardTooltipSuppressed);
 
-			Vector2 faceSize = node.CustomMinimumSize;
-			if (faceSize.X <= 1f || faceSize.Y <= 1f)
-				faceSize = new Vector2(Mathf.Max(node.Size.X, CardBack?.GetSize().X ?? 48f), Mathf.Max(node.Size.Y, CardBack?.GetSize().Y ?? 72f));
+			Vector2 faceSize = GetControlSize(node);
 			node.Size = faceSize;
 			_top.CustomMinimumSize = faceSize;
 			_top.Size = faceSize;
@@ -367,7 +380,7 @@ public partial class Deck : Control
 
 			if (AutoPlaceTop)
 			{
-				PlaceTopHolder();
+				PlaceTopHolder(faceSize);
 			}
 		}
 	}
@@ -378,9 +391,7 @@ public partial class Deck : Control
 		if (node is BaseCardView view) view.SetData(card);
 		else GD.PushError("CardViewScene must inherit BaseCardView.");
 
-		Vector2 faceSize = node.CustomMinimumSize;
-		if (faceSize.X <= 1f || faceSize.Y <= 1f)
-			faceSize = new Vector2(Mathf.Max(node.Size.X, CardBack?.GetSize().X ?? 48f), Mathf.Max(node.Size.Y, CardBack?.GetSize().Y ?? 72f));
+		Vector2 faceSize = GetControlSize(node);
 		node.CustomMinimumSize = faceSize;
 		node.Size = faceSize;
 		return node;
@@ -669,7 +680,7 @@ public partial class Deck : Control
 	{
 		if (_pile == null || _top == null) return;
 
-		int backs = Mathf.Max(1, Mathf.Min(MaxBacksShown, _draw.Count));
+		int backs = Mathf.Max(1, Mathf.Min(MaxBacksShown, Mathf.Max(0, _draw.Count - 1)));
 		Vector2 backSize = CardBack?.GetSize() ?? new Vector2(48, 72);
 		for (int i = 0; i < backs; i++)
 		{
@@ -683,14 +694,16 @@ public partial class Deck : Control
 			}
 		}
 
-		Vector2 faceSize = new(91, 136);
-		Vector2 topPosition = AutoPlaceTop ? GetFaceUpPosition() : _top.Position;
+		Vector2 faceSize = GetFaceUpCardSize();
+		Vector2 topPosition = AutoPlaceTop ? GetFaceUpPosition(faceSize) : _top.Position;
 
 		var face = new Rect2(topPosition.Floor(), faceSize);
 		DrawRect(face, _previewCard, true);
 		DrawRect(face, _previewInk, false, 2);
-		DrawLine(face.Position + new Vector2(0, 24), face.Position + new Vector2(face.Size.X, 24), _previewInk, 2);
-		DrawLine(face.Position + new Vector2(0, 91), face.Position + new Vector2(face.Size.X, 91), _previewInk, 2);
+		float titleBottom = Mathf.Round(face.Size.Y * (36f / 210f));
+		float artBottom = Mathf.Round(face.Size.Y * (106f / 210f));
+		DrawLine(face.Position + new Vector2(0, titleBottom), face.Position + new Vector2(face.Size.X, titleBottom), _previewInk, 2);
+		DrawLine(face.Position + new Vector2(0, artBottom), face.Position + new Vector2(face.Size.X, artBottom), _previewInk, 2);
 	}
 
 	private void OnTopGuiInput(InputEvent e)
@@ -744,6 +757,49 @@ public partial class Deck : Control
 		return new Rect2(control.GetGlobalTransformWithCanvas().Origin, size);
 	}
 
+	private void MergeControlAndChildrenLocalRect(Control control, Transform2D toLocal, ref Rect2 rect, ref bool hasRect)
+	{
+		if (control == null)
+			return;
+
+		MergeLocalRect(ToLocalRect(GetControlCanvasRect(control), toLocal), ref rect, ref hasRect);
+		foreach (Node child in control.GetChildren())
+		{
+			if (child is Control childControl)
+				MergeControlAndChildrenLocalRect(childControl, toLocal, ref rect, ref hasRect);
+		}
+	}
+
+	private void MergeLocalRect(Rect2 next, ref Rect2 rect, ref bool hasRect)
+	{
+		if (next.Size.X <= 0f || next.Size.Y <= 0f)
+			return;
+
+		if (!hasRect)
+		{
+			rect = next;
+			hasRect = true;
+			return;
+		}
+
+		rect = rect.Merge(next);
+	}
+
+	private Rect2 ToLocalRect(Rect2 canvasRect, Transform2D toLocal)
+	{
+		Vector2 topLeft = toLocal * canvasRect.Position;
+		Vector2 topRight = toLocal * new Vector2(canvasRect.End.X, canvasRect.Position.Y);
+		Vector2 bottomRight = toLocal * canvasRect.End;
+		Vector2 bottomLeft = toLocal * new Vector2(canvasRect.Position.X, canvasRect.End.Y);
+
+		float minX = Mathf.Min(Mathf.Min(topLeft.X, topRight.X), Mathf.Min(bottomRight.X, bottomLeft.X));
+		float minY = Mathf.Min(Mathf.Min(topLeft.Y, topRight.Y), Mathf.Min(bottomRight.Y, bottomLeft.Y));
+		float maxX = Mathf.Max(Mathf.Max(topLeft.X, topRight.X), Mathf.Max(bottomRight.X, bottomLeft.X));
+		float maxY = Mathf.Max(Mathf.Max(topLeft.Y, topRight.Y), Mathf.Max(bottomRight.Y, bottomLeft.Y));
+
+		return new Rect2(new Vector2(minX, minY), new Vector2(maxX - minX, maxY - minY));
+	}
+
 	// ---------- Layout helpers ----------
 	private void ApplySideLayout()
 	{
@@ -761,25 +817,75 @@ public partial class Deck : Control
 		}
 	}
 
-	private void PlaceTopHolder()
+	private void PlaceTopHolder(Vector2? faceSizeOverride = null)
 	{
 		if (_pile == null || _top == null) return;
 
-		_top.Position = GetFaceUpPosition();
+		Vector2 faceSize = NormalizeFaceUpSize(faceSizeOverride ?? GetFaceUpCardSize());
+		_top.CustomMinimumSize = faceSize;
+		_top.Size = faceSize;
+		_top.Position = GetFaceUpPosition(faceSize);
 	}
 
-	private Vector2 GetFaceUpPosition()
+	private Vector2 GetFaceUpPosition(Vector2 faceSize)
 	{
 		Vector2 backSize = CardBack?.GetSize() ?? new Vector2(48, 72);
-		Vector2 faceSize = _top?.Size ?? new Vector2(88, 131);
+		faceSize = NormalizeFaceUpSize(faceSize);
 		int backs = Mathf.Min(MaxBacksShown, Mathf.Max(0, _draw.Count - 1));
 		var stackStep = new Vector2(BackOffset.X, BackOffset.Y);
-		Vector2 lastBackPosition = _pile.Position + stackStep * backs;
-		int reveal = Side == DeckSide.Enemy ? EnemyFaceUpRevealOffset : FaceUpRevealOffset;
-		int lift = Side == DeckSide.Enemy ? EnemyFaceUpLiftOffset : FaceUpLiftOffset;
-		float x = lastBackPosition.X + stackStep.X + FacingSign() * Mathf.Max(0, reveal);
-		float y = lastBackPosition.Y + backSize.Y - faceSize.Y - Mathf.Max(0, lift);
-		return new Vector2(x, y).Floor();
+		int topBackIndex = Mathf.Max(backs - 1, 0);
+		Vector2 topBackCenter = _pile.Position + stackStep * topBackIndex + backSize * 0.5f;
+		Vector2 faceCornerOffset = Side == DeckSide.Enemy
+			? new Vector2(faceSize.X, faceSize.Y)
+			: new Vector2(0, faceSize.Y);
+
+		return (topBackCenter - faceCornerOffset).Floor();
+	}
+
+	private Vector2 GetFaceUpCardSize()
+	{
+		if (CardViewScene != null)
+			return NormalizeFaceUpSize(GetCardViewSize());
+
+		return NormalizeFaceUpSize(_top?.Size ?? Vector2.Zero);
+	}
+
+	private Vector2 NormalizeFaceUpSize(Vector2 size)
+	{
+		if (size.X > 1f && size.Y > 1f)
+			return size;
+
+		Vector2 topSize = _top?.Size ?? Vector2.Zero;
+		if (topSize.X > 1f && topSize.Y > 1f)
+			return topSize;
+
+		return new Vector2(88, 131);
+	}
+
+	private Vector2 GetControlSize(Control control)
+	{
+		Vector2 size = control.CustomMinimumSize;
+		if (size.X <= 1f || size.Y <= 1f)
+			size = new Vector2(Mathf.Max(control.Size.X, CardBack?.GetSize().X ?? 48f), Mathf.Max(control.Size.Y, CardBack?.GetSize().Y ?? 72f));
+		return NormalizeFaceUpSize(size);
+	}
+
+	private void SetEditorPreviewChildrenVisible(bool visible)
+	{
+		SetNamedPreviewChildrenVisible(_pile, visible);
+		SetNamedPreviewChildrenVisible(_top, visible);
+	}
+
+	private void SetNamedPreviewChildrenVisible(Node parent, bool visible)
+	{
+		if (parent == null)
+			return;
+
+		foreach (Node child in parent.GetChildren())
+		{
+			if (child is CanvasItem item && child.Name.ToString().StartsWith("Editor Preview"))
+				item.Visible = visible;
+		}
 	}
 
 	private int FacingSign()

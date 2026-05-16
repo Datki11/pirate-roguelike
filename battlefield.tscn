@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3 uid="uid://blyun0sui4axj"]
+[gd_scene load_steps=18 format=3 uid="uid://blyun0sui4axj"]
 
 [ext_resource type="PackedScene" uid="uid://c341vh8po86n6" path="res://Assets/Components/CombatTargeting.tscn" id="5_tkjg1"]
 [ext_resource type="PackedScene" uid="uid://nu0fyjda0sg6" path="res://Assets/Components/enemy.tscn" id="6_y8d5v"]
@@ -8,24 +8,30 @@
 [ext_resource type="Script" uid="uid://c0d1xenergy01" path="res://Assets/Scripts/EnergyManager.cs" id="10_energy"]
 [ext_resource type="Script" uid="uid://l816cj8pyhn0" path="res://Assets/Scripts/CombatHud.cs" id="11_hud"]
 [ext_resource type="FontFile" uid="uid://b6nooaoreg886" path="res://Assets/Fonts/Minecraft.ttf" id="12_font"]
-[ext_resource type="Texture2D" uid="uid://bvb5tyfh1r7t" path="res://Assets/Sprites/monster-placeholder-sprites/Mushroom/Attack3.png" id="13_mushroom"]
-[ext_resource type="Texture2D" uid="uid://qm1s03e5nq2u" path="res://Assets/Sprites/monster-placeholder-sprites/Skeleton/Attack3.png" id="14_skeleton"]
-[ext_resource type="Texture2D" uid="uid://bk42io7an2ljx" path="res://Assets/Sprites/monster-placeholder-sprites/Flying eye/Attack3.png" id="15_eye"]
+[ext_resource type="Texture2D" uid="uid://xon806a2samu" path="res://Assets/Sprites/Enemies/Gollux/gollux_idle.png" id="13_gollux_idle"]
+[ext_resource type="Texture2D" uid="uid://dd3n2opsjgcyo" path="res://Assets/Sprites/Enemies/Gollux/gollux_attack_A.png" id="14_gollux_attack"]
+[ext_resource type="Texture2D" uid="uid://bup12yptvtvvn" path="res://Assets/Sprites/Enemies/Gollux/gollux_hit.png" id="15_gollux_hit"]
+[ext_resource type="Texture2D" uid="uid://4a52782soxuh" path="res://Assets/Sprites/Enemies/Frogger/frogger_idle.png" id="16_frogger_idle"]
+[ext_resource type="Texture2D" uid="uid://cqcopxqovlokv" path="res://Assets/Sprites/Enemies/Frogger/frogger_spit.png" id="17_frogger_attack"]
+[ext_resource type="Texture2D" uid="uid://cw501sylaufpu" path="res://Assets/Sprites/Enemies/Frogger/frogger_hurt.png" id="18_frogger_hit"]
+[ext_resource type="Texture2D" uid="uid://d2va1r7sn6dy6" path="res://Assets/Sprites/Enemies/Fire Worm/Sprites/Worm/Idle.png" id="19_worm_idle"]
+[ext_resource type="Texture2D" uid="uid://shunmu3agjv4" path="res://Assets/Sprites/Enemies/Fire Worm/Sprites/Worm/Attack.png" id="20_worm_attack"]
+[ext_resource type="Texture2D" uid="uid://cr6o048d1fbdg" path="res://Assets/Sprites/Enemies/Fire Worm/Sprites/Worm/Get Hit.png" id="21_worm_hit"]
 
 [node name="Battlefield" type="Node2D"]
 
 [node name="Camera2D" type="Camera2D" parent="."]
-position = Vector2(-194, -85)
+position = Vector2(-194, -100)
 
 [node name="BaldPirate" parent="." instance=ExtResource("8_player_unit")]
-position = Vector2(-725, -147)
+position = Vector2(-789, 7)
 PopupAnchorOffset = Vector2(0, -95)
 DeckGap = Vector2(8, 8)
 DefaultDeckSize = Vector2(48, 72)
 SpriteRootPath = "res://Assets/Sprites/pirate-placeholder-sprites/Sprites/2-Enemy-Bald Pirate"
 
 [node name="BigGuy" parent="." instance=ExtResource("8_player_unit")]
-position = Vector2(-379, -17)
+position = Vector2(-367, 51)
 PopupAnchorOffset = Vector2(0, -105)
 DeckGap = Vector2(8, 8)
 DefaultDeckSize = Vector2(48, 72)
@@ -33,7 +39,7 @@ SpriteRootPath = "res://Assets/Sprites/pirate-placeholder-sprites/Sprites/4-Enem
 ActionFolderName = "11-Throw (Bomb)"
 
 [node name="Captain" parent="." instance=ExtResource("8_player_unit")]
-position = Vector2(-667, 148)
+position = Vector2(-566, -51)
 PopupAnchorOffset = Vector2(0, -100)
 DeckGap = Vector2(8, 8)
 DefaultDeckSize = Vector2(48, 72)
@@ -56,31 +62,49 @@ offset_right = 40.0
 offset_bottom = 40.0
 
 [node name="Mushroom" parent="Enemies" instance=ExtResource("6_y8d5v")]
-offset_left = 335.0
-offset_top = -89.0
-offset_right = 386.0
-offset_bottom = -37.0
+offset_left = 163.0
+offset_top = -165.0
+offset_right = 291.0
+offset_bottom = -36.0
+HealthBarGap = -4.0
 DefaultDeckSize = Vector2(48, 72)
-SpriteSheet = ExtResource("13_mushroom")
-FrameSize = Vector2i(51, 52)
+IdleSpriteSheet = ExtResource("13_gollux_idle")
+IdleFrameSize = Vector2i(128, 128)
+AttackSpriteSheet = ExtResource("14_gollux_attack")
+AttackFrameSize = Vector2i(128, 128)
+HitSpriteSheet = ExtResource("15_gollux_hit")
+HitFrameSize = Vector2i(128, 128)
+ActionFrameSeconds = 0.025
 
 [node name="Skeleton" parent="Enemies" instance=ExtResource("6_y8d5v")]
-offset_left = 33.0
-offset_top = -28.0
-offset_right = 87.0
-offset_bottom = 26.0
+offset_left = 6.0
+offset_top = -19.0
+offset_right = 134.0
+offset_bottom = 109.0
+HealthBarGap = -4.0
 DefaultDeckSize = Vector2(48, 72)
-SpriteSheet = ExtResource("14_skeleton")
-FrameSize = Vector2i(54, 54)
+IdleSpriteSheet = ExtResource("16_frogger_idle")
+IdleFrameSize = Vector2i(128, 128)
+AttackSpriteSheet = ExtResource("17_frogger_attack")
+AttackFrameSize = Vector2i(128, 128)
+HitSpriteSheet = ExtResource("18_frogger_hit")
+HitFrameSize = Vector2i(128, 128)
+ActionFrameSeconds = 0.025
 
 [node name="FlyingEye" parent="Enemies" instance=ExtResource("6_y8d5v")]
-offset_left = 264.0
-offset_top = 139.0
-offset_right = 299.0
-offset_bottom = 171.0
+offset_left = 359.0
+offset_top = -109.0
+offset_right = 449.0
+offset_bottom = -19.0
+HealthBarGap = -4.0
 DefaultDeckSize = Vector2(48, 72)
-SpriteSheet = ExtResource("15_eye")
-FrameSize = Vector2i(35, 32)
+IdleSpriteSheet = ExtResource("19_worm_idle")
+IdleFrameSize = Vector2i(90, 90)
+AttackSpriteSheet = ExtResource("20_worm_attack")
+AttackFrameSize = Vector2i(90, 90)
+HitSpriteSheet = ExtResource("21_worm_hit")
+HitFrameSize = Vector2i(90, 90)
+ActionFrameSeconds = 0.04
 
 [node name="CombatManager" type="Node" parent="."]
 script = ExtResource("6_y8rib")

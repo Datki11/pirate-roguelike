@@ -14,10 +14,9 @@ public partial class Enemy : Control, IDamageable
 	[ExportGroup("Standard Layout")]
 	[Export] public bool AutoLayoutAttachments { get; set; } = true;
 	[Export] public Vector2 HealthBarSize { get; set; } = new(60, 18);
-	[Export] public float HealthBarGap { get; set; } = -4f;
+	[Export] public float HealthBarGap { get; set; } = 4f;
 	[Export] public Vector2 DeckGap { get; set; } = new(8, 4);
 	[Export] public Vector2 DefaultDeckSize { get; set; } = new(112, 105);
-	[Export] public float DeckCenterCorrection { get; set; } = 34f;
 	[Export] public Vector2 PopupAnchorGap { get; set; } = new(0, 16);
 	[Export] public float TargetRingWidthMultiplier { get; set; } = 1.8f;
 	[Export] public float TargetRingMinimumWidth { get; set; } = 42f;
@@ -27,9 +26,23 @@ public partial class Enemy : Control, IDamageable
 	[Export] public NodePath DeckPath { get; set; } = "Deck";
 	[Export] public NodePath CombatPath { get; set; }
 	[Export] public float ThinkDelaySec { get; set; } = 0.6f;
+
+	[ExportGroup("Legacy Sprite Sheet")]
 	[Export] public Texture2D SpriteSheet { get; set; }
 	[Export] public Vector2I FrameSize { get; set; } = new(150, 150);
 	[Export] public int IdleFrameCount { get; set; } = 3;
+
+	[ExportGroup("Animation Sheets")]
+	[Export] public Texture2D IdleSpriteSheet { get; set; }
+	[Export] public Vector2I IdleFrameSize { get; set; } = new(150, 150);
+	[Export] public int IdleSpriteFrameCount { get; set; }
+	[Export] public Texture2D AttackSpriteSheet { get; set; }
+	[Export] public Vector2I AttackFrameSize { get; set; } = new(150, 150);
+	[Export] public int AttackFrameCount { get; set; }
+	[Export] public Texture2D HitSpriteSheet { get; set; }
+	[Export] public Vector2I HitFrameSize { get; set; } = new(150, 150);
+	[Export] public int HitFrameCount { get; set; }
+
 	[Export] public float IdleFrameSeconds { get; set; } = 0.12f;
 	[Export] public float ActionFrameSeconds { get; set; } = 0.07f;
 	[Export] public float TurnThinkDelaySec { get; set; } = 0.25f;
@@ -45,10 +58,17 @@ public partial class Enemy : Control, IDamageable
 
 	private Deck _deck;
 	private CombatManager _combat;
-	private readonly List<AtlasTexture> _sheetFrames = new();
+	private enum EnemyAnimation { Idle, Attack, Hit }
+	private readonly List<AtlasTexture> _idleFrames = new();
+	private readonly List<AtlasTexture> _attackFrames = new();
+	private readonly List<AtlasTexture> _hitFrames = new();
+	private readonly List<AtlasTexture> _legacyFrames = new();
+	private List<AtlasTexture> _currentFrames;
 	private float _frameTime;
 	private int _frameIndex;
-	private bool _playingAction;
+	private EnemyAnimation _activeAnimation = EnemyAnimation.Idle;
+	private bool _layoutSpriteRectValid;
+	private Rect2 _layoutSpriteRect;
 
 	// --- Signals (ADD THIS BACK) ---
 	[Signal] public delegate void ClickedEventHandler(Enemy who);
@@ -70,7 +90,7 @@ public partial class Enemy : Control, IDamageable
 		_ringTR      = _ring as TargetRing;           // <— keep a typed ref
 		_popupAnchor = GetNodeOrNull<Control>(PopupAnchorPath);
 		_deck        = GetNodeOrNull<Deck>(DeckPath);
-		BuildSheetFrames();
+		BuildAnimationFrames();
 
 		// We want clicks on the whole enemy rect
 		MouseFilter = MouseFilterEnum.Stop;
@@ -87,7 +107,7 @@ public partial class Enemy : Control, IDamageable
 		{
 			MaxHP = Mathf.Max(1, enemyDef.MaxHP);           // << use MaxHP (capital HP)
 			HP    = MaxHP;
-			if (_sheetFrames.Count == 0 && enemyDef.Art != null && _sprite != null) _sprite.Texture = enemyDef.Art;
+			if (!HasAnimationFrames() && enemyDef.Art != null && _sprite != null) _sprite.Texture = enemyDef.Art;
 		}
 		ApplyFrame();
 		ApplyStandardLayout();
@@ -116,23 +136,20 @@ public partial class Enemy : Control, IDamageable
 		if (Engine.IsEditorHint())
 			return;
 
-		if (_sheetFrames.Count == 0 || _sprite == null) return;
+		if (_currentFrames == null || _currentFrames.Count == 0 || _sprite == null) return;
 
-		float frameSeconds = _playingAction ? ActionFrameSeconds : IdleFrameSeconds;
+		float frameSeconds = _activeAnimation == EnemyAnimation.Idle ? IdleFrameSeconds : ActionFrameSeconds;
 		_frameTime += (float)delta;
 		while (_frameTime >= frameSeconds)
 		{
 			_frameTime -= frameSeconds;
 			_frameIndex++;
-			if (_playingAction)
+			if (_activeAnimation != EnemyAnimation.Idle)
 			{
-				if (_frameIndex >= _sheetFrames.Count)
-				{
-					_playingAction = false;
-					_frameIndex = 0;
-				}
+				if (_frameIndex >= _currentFrames.Count)
+					PlayAnimation(EnemyAnimation.Idle);
 			}
-			else if (_frameIndex >= Mathf.Min(IdleFrameCount, _sheetFrames.Count))
+			else if (_frameIndex >= _currentFrames.Count)
 			{
 				_frameIndex = 0;
 			}
@@ -205,6 +222,7 @@ public partial class Enemy : Control, IDamageable
 		HP = Mathf.Max(0, HP - amount);
 		_hp?.Set(HP, MaxHP);
 		EmitSignal(SignalName.Damaged, amount);
+		PlayHitAnimation();
 		if (!Alive)
 		{
 			SetTargetable(false);
@@ -279,39 +297,101 @@ public partial class Enemy : Control, IDamageable
 
 	public void PlayCardAnimation()
 	{
-		if (_sheetFrames.Count == 0) return;
-		_playingAction = true;
+		PlayAnimation(EnemyAnimation.Attack);
+	}
+
+	public void PlayHitAnimation()
+	{
+		PlayAnimation(EnemyAnimation.Hit);
+	}
+
+	private void BuildAnimationFrames()
+	{
+		_idleFrames.Clear();
+		_attackFrames.Clear();
+		_hitFrames.Clear();
+		_legacyFrames.Clear();
+
+		_idleFrames.AddRange(BuildHorizontalFrames(IdleSpriteSheet, IdleFrameSize, IdleSpriteFrameCount));
+		_attackFrames.AddRange(BuildHorizontalFrames(AttackSpriteSheet, AttackFrameSize, AttackFrameCount));
+		_hitFrames.AddRange(BuildHorizontalFrames(HitSpriteSheet, HitFrameSize, HitFrameCount));
+
+		_legacyFrames.AddRange(BuildHorizontalFrames(SpriteSheet, FrameSize, 0));
+		if (_idleFrames.Count == 0 && _legacyFrames.Count > 0)
+		{
+			int idleCount = Mathf.Clamp(IdleFrameCount, 1, _legacyFrames.Count);
+			for (int i = 0; i < idleCount; i++)
+				_idleFrames.Add(_legacyFrames[i]);
+		}
+		if (_attackFrames.Count == 0 && _legacyFrames.Count > 0)
+			_attackFrames.AddRange(_legacyFrames);
+
+		PlayAnimation(EnemyAnimation.Idle);
+	}
+
+	private List<AtlasTexture> BuildHorizontalFrames(Texture2D sheet, Vector2I frameSize, int explicitFrameCount)
+	{
+		var frames = new List<AtlasTexture>();
+		if (sheet == null || frameSize.X <= 0 || frameSize.Y <= 0) return frames;
+
+		int availableFrames = Mathf.Max(1, sheet.GetWidth() / frameSize.X);
+		int frameCount = explicitFrameCount > 0 ? Mathf.Min(explicitFrameCount, availableFrames) : availableFrames;
+		for (int i = 0; i < frameCount; i++)
+		{
+			var atlas = new AtlasTexture
+			{
+				Atlas = sheet,
+				Region = new Rect2(i * frameSize.X, 0, frameSize.X, frameSize.Y)
+			};
+			frames.Add(atlas);
+		}
+
+		return frames;
+	}
+
+	private bool HasAnimationFrames()
+	{
+		return _idleFrames.Count > 0 || _attackFrames.Count > 0 || _hitFrames.Count > 0 || _legacyFrames.Count > 0;
+	}
+
+	private void PlayAnimation(EnemyAnimation animation)
+	{
+		var frames = GetFrames(animation);
+		if (frames.Count == 0 && animation != EnemyAnimation.Idle)
+		{
+			animation = EnemyAnimation.Idle;
+			frames = GetFrames(animation);
+		}
+		if (frames.Count == 0)
+			return;
+
+		_activeAnimation = animation;
+		_currentFrames = frames;
 		_frameIndex = 0;
 		_frameTime = 0;
 		ApplyFrame();
 	}
 
-	private void BuildSheetFrames()
+	private List<AtlasTexture> GetFrames(EnemyAnimation animation)
 	{
-		_sheetFrames.Clear();
-		if (SpriteSheet == null || FrameSize.X <= 0 || FrameSize.Y <= 0) return;
-
-		int frameCount = Mathf.Max(1, SpriteSheet.GetWidth() / FrameSize.X);
-		for (int i = 0; i < frameCount; i++)
+		return animation switch
 		{
-			var atlas = new AtlasTexture
-			{
-				Atlas = SpriteSheet,
-				Region = new Rect2(i * FrameSize.X, 0, FrameSize.X, FrameSize.Y)
-			};
-			_sheetFrames.Add(atlas);
-		}
+			EnemyAnimation.Attack => _attackFrames,
+			EnemyAnimation.Hit => _hitFrames,
+			_ => _idleFrames
+		};
 	}
 
 	private void ApplyFrame()
 	{
-		if (_sprite == null || _sheetFrames.Count == 0) return;
-		_frameIndex = Mathf.Clamp(_frameIndex, 0, _sheetFrames.Count - 1);
-		_sprite.Texture = _sheetFrames[_frameIndex];
+		if (_sprite == null || _currentFrames == null || _currentFrames.Count == 0) return;
+		_frameIndex = Mathf.Clamp(_frameIndex, 0, _currentFrames.Count - 1);
+		_sprite.Texture = _currentFrames[_frameIndex];
 		_sprite.FlipH = !FaceLeft;
-		Vector2 frameSize = _sprite.Texture?.GetSize() ?? FrameSize;
+		Vector2 frameSize = _sprite.Texture?.GetSize() ?? IdleFrameSize;
 		_sprite.CustomMinimumSize = frameSize;
 		_sprite.Size = frameSize;
+		ApplyStandardLayout();
 	}
 
 	private void ApplyStandardLayout()
@@ -346,8 +426,11 @@ public partial class Enemy : Control, IDamageable
 			Vector2 deckSize = GetDeckSize();
 			_deck.CustomMinimumSize = deckSize;
 			_deck.Size = deckSize;
-			float x = spriteRect.Position.X + spriteRect.Size.X * 0.5f - DeckCenterCorrection;
-			float y = spriteRect.Position.Y - deckSize.Y - DeckGap.Y;
+			Rect2 deckRect = _deck.GetLocalContentRect();
+			float spriteCenterX = spriteRect.Position.X + spriteRect.Size.X * 0.5f;
+			float deckCenterX = deckRect.Position.X + deckRect.Size.X * 0.5f;
+			float x = spriteCenterX - deckCenterX;
+			float y = spriteRect.Position.Y - DeckGap.Y - deckRect.End.Y;
 			_deck.Position = new Vector2(Mathf.Round(x), Mathf.Round(y));
 		}
 	}
@@ -358,14 +441,54 @@ public partial class Enemy : Control, IDamageable
 		if (_sprite == null)
 			return false;
 
-		Vector2 size = _sprite.Size;
-		if ((size.X <= 0 || size.Y <= 0) && _sprite.Texture != null)
-			size = _sprite.Texture.GetSize();
-		if (size.X <= 0 || size.Y <= 0)
-			return false;
+		if (_layoutSpriteRectValid)
+		{
+			rect = _layoutSpriteRect;
+			return true;
+		}
 
-		rect = new Rect2(_sprite.Position, size);
-		return true;
+		if (TryBuildStableSpriteRect(out rect))
+		{
+			_layoutSpriteRect = rect;
+			_layoutSpriteRectValid = true;
+			return true;
+		}
+
+		return SpriteBounds.TryGetTextureRect(_sprite, out rect);
+	}
+
+	private bool TryBuildStableSpriteRect(out Rect2 rect)
+	{
+		rect = default;
+		bool hasRect = false;
+
+		IEnumerable<AtlasTexture> layoutFrames = _idleFrames.Count > 0 ? _idleFrames : _legacyFrames;
+		foreach (AtlasTexture frame in layoutFrames)
+		{
+			if (frame == null)
+				continue;
+
+			Vector2 frameSize = frame.GetSize();
+			if (SpriteBounds.TryGetTextureRect(frame, _sprite.Position, frameSize, _sprite.FlipH, out Rect2 frameRect))
+				MergeSpriteRect(frameRect, ref rect, ref hasRect);
+		}
+
+		if (hasRect)
+			return true;
+
+		return _sprite.Texture != null && SpriteBounds.TryGetTextureRect(_sprite, out rect);
+	}
+
+	private void MergeSpriteRect(Rect2 next, ref Rect2 rect, ref bool hasRect)
+	{
+		if (!hasRect)
+		{
+			rect = next;
+			hasRect = true;
+			return;
+		}
+
+		rect = rect.Merge(next);
 	}
 
 	private Vector2 GetDeckSize()

@@ -36,6 +36,8 @@ public partial class PlayerUnit : Node2D, IDamageable
 	private float _frameTime;
 	private int _frameIndex;
 	private bool _playingAction;
+	private bool _layoutSpriteRectValid;
+	private Rect2 _layoutSpriteRect;
 
 	public int MaxHP { get; private set; }
 	public int HP { get; private set; }
@@ -227,8 +229,10 @@ public partial class PlayerUnit : Node2D, IDamageable
 			Vector2 deckSize = GetDeckSize();
 			_deck.CustomMinimumSize = deckSize;
 			_deck.Size = deckSize;
-			float x = spriteRect.Position.X + spriteRect.Size.X * 0.5f;
-			float y = spriteRect.Position.Y - deckSize.Y - DeckGap.Y;
+			Rect2 deckRect = _deck.GetLocalContentRect();
+			float spriteCenterX = spriteRect.Position.X + spriteRect.Size.X * 0.5f;
+			float x = spriteCenterX;
+			float y = spriteRect.Position.Y - DeckGap.Y - deckRect.End.Y;
 			_deck.Position = new Vector2(Mathf.Round(x), Mathf.Round(y));
 		}
 	}
@@ -236,12 +240,52 @@ public partial class PlayerUnit : Node2D, IDamageable
 	private bool TryGetSpriteRect(out Rect2 rect)
 	{
 		rect = default;
-		if (_sprite?.Texture == null)
+		if (_sprite == null)
 			return false;
 
-		Vector2 size = _sprite.Texture.GetSize() * _sprite.Scale.Abs();
-		rect = new Rect2(_sprite.Position - size * 0.5f, size);
-		return true;
+		if (_layoutSpriteRectValid)
+		{
+			rect = _layoutSpriteRect;
+			return true;
+		}
+
+		if (TryBuildStableSpriteRect(out rect))
+		{
+			_layoutSpriteRect = rect;
+			_layoutSpriteRectValid = true;
+			return true;
+		}
+
+		return SpriteBounds.TryGetSprite2DRect(_sprite, out rect);
+	}
+
+	private bool TryBuildStableSpriteRect(out Rect2 rect)
+	{
+		rect = default;
+		bool hasRect = false;
+		List<Texture2D> layoutFrames = _idleFrames.Count > 0 ? _idleFrames : _currentFrames;
+		foreach (Texture2D frame in layoutFrames)
+		{
+			if (SpriteBounds.TryGetSprite2DRect(frame, _sprite.Position, _sprite.Offset, _sprite.Scale, _sprite.Centered, _sprite.FlipH, out Rect2 frameRect))
+				MergeSpriteRect(frameRect, ref rect, ref hasRect);
+		}
+
+		if (hasRect)
+			return true;
+
+		return _sprite.Texture != null && SpriteBounds.TryGetSprite2DRect(_sprite, out rect);
+	}
+
+	private void MergeSpriteRect(Rect2 next, ref Rect2 rect, ref bool hasRect)
+	{
+		if (!hasRect)
+		{
+			rect = next;
+			hasRect = true;
+			return;
+		}
+
+		rect = rect.Merge(next);
 	}
 
 	private Vector2 GetDeckSize()
