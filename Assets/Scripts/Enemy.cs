@@ -238,6 +238,28 @@ public partial class Enemy : Control, IDamageable
 		if (_ring != null) _ring.Visible = on;
 		if (!on && _ring is TargetRing tr) tr.SetHover(false);
 	}
+
+	public void SetDeckTargetingDimmed(bool dimmed)
+	{
+		_deck?.SetTargetingDimmed(dimmed);
+	}
+
+	public Rect2 GetTargetingCanvasRect()
+	{
+		Rect2 rect = GetControlCanvasRect(this);
+		rect = MergeVisibleControlCanvasRect(rect, _sprite);
+		rect = MergeVisibleControlCanvasRect(rect, _hp);
+		if (_ring != null && _ring.Visible)
+			rect = rect.Merge(GetControlCanvasRect(_ring));
+
+		return rect.Grow(6f);
+	}
+
+	public Vector2 GetTargetingAnchorCanvas()
+	{
+		var rect = GetTargetingCanvasRect();
+		return rect.Position + rect.Size * 0.5f;
+	}
 	
 	private void OnMouseEntered()
 	{
@@ -352,6 +374,23 @@ public partial class Enemy : Control, IDamageable
 		if (size.X <= 0 || size.Y <= 0)
 			size = DefaultDeckSize;
 		return size;
+	}
+
+	private Rect2 MergeVisibleControlCanvasRect(Rect2 rect, Control control)
+	{
+		if (control == null || !control.Visible)
+			return rect;
+
+		return rect.Merge(GetControlCanvasRect(control));
+	}
+
+	private Rect2 GetControlCanvasRect(Control control)
+	{
+		Vector2 size = control.Size;
+		if (size.X <= 0f || size.Y <= 0f)
+			size = control.CustomMinimumSize;
+
+		return new Rect2(control.GetGlobalTransformWithCanvas().Origin, size);
 	}
 
 }

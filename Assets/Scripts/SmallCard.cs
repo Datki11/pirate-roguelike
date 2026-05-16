@@ -22,6 +22,11 @@ public partial class SmallCard : BaseCardView
 	private Label _title;
 	private RichTextLabel _body;
 	private TooltipDisplay _tooltipDisplay;
+	private Panel _frame;
+	private StyleBoxFlat _normalFrameStyle;
+	private StyleBoxFlat _focusFrameStyle;
+	private bool _targetingFocus;
+	private float _targetingFocusTime;
 	
 	public override void SetData(CardData data)
 	{
@@ -36,6 +41,8 @@ public partial class SmallCard : BaseCardView
 		_badgeIcon = GetNode<TextureRect>(BadgeIconPath);
 		_body = GetNode<RichTextLabel>(BodyPath);
 		_tooltipDisplay = GetNode<TooltipDisplay>(TooltipDisplayPath);
+		_frame = GetNodeOrNull<Panel>("Frame");
+		CaptureFrameStyles();
 
 		MouseFilter = MouseFilterEnum.Pass;
 		_art.TextureFilter = TextureFilterEnum.Nearest;
@@ -43,6 +50,56 @@ public partial class SmallCard : BaseCardView
 		ConfigurePixelFont(_title.GetThemeFont("font"));
 		SetupBody(_body);
 		if (Data != null) Apply();
+	}
+
+	public override void _Process(double delta)
+	{
+		if (!_targetingFocus || _focusFrameStyle == null)
+			return;
+
+		_targetingFocusTime += (float)delta;
+		float pulse = (Mathf.Sin(_targetingFocusTime * 8.5f) + 1f) * 0.5f;
+		float flash = Mathf.Pow(pulse, 2.25f);
+		var gold = new Color(0.93f, 0.66f, 0.12f, 1f);
+		var white = new Color(1f, 0.96f, 0.68f, 1f);
+		_focusFrameStyle.BorderColor = Colors.Black.Lerp(gold, 0.62f + pulse * 0.38f).Lerp(white, flash * 0.32f);
+	}
+
+	public override void SetTargetingFocus(bool focused)
+	{
+		if (_targetingFocus == focused)
+			return;
+
+		_targetingFocus = focused;
+		_targetingFocusTime = 0f;
+
+		if (_frame == null)
+			return;
+
+		if (_normalFrameStyle == null || _focusFrameStyle == null)
+			return;
+
+		_frame.AddThemeStyleboxOverride("panel", focused ? _focusFrameStyle : _normalFrameStyle);
+		SetProcess(focused);
+	}
+
+	private void CaptureFrameStyles()
+	{
+		if (_frame == null)
+			return;
+
+		_normalFrameStyle = (_frame.GetThemeStylebox("panel") as StyleBoxFlat)?.Duplicate() as StyleBoxFlat;
+		_focusFrameStyle = _normalFrameStyle?.Duplicate() as StyleBoxFlat;
+		if (_normalFrameStyle == null || _focusFrameStyle == null)
+			return;
+
+		_focusFrameStyle.BorderWidthLeft = 4;
+		_focusFrameStyle.BorderWidthTop = 4;
+		_focusFrameStyle.BorderWidthRight = 4;
+		_focusFrameStyle.BorderWidthBottom = 4;
+		_focusFrameStyle.BorderColor = new Color(0.93f, 0.66f, 0.12f, 1f);
+		_frame.AddThemeStyleboxOverride("panel", _normalFrameStyle);
+		SetProcess(false);
 	}
 
 	private void ConfigurePixelFont(Font font)

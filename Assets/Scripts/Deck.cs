@@ -49,6 +49,8 @@ public partial class Deck : Control
 	private CanvasLayer _presentationLayer;
 	private CanvasLayer _drawPileModalLayer;
 	private bool _playPresentationRunning;
+	private bool _targetingDimmed;
+	private Color _normalModulate = Colors.White;
 	private static int _openDrawPileModalCount;
 	public static bool IsDrawPileModalOpen => _openDrawPileModalCount > 0;
 
@@ -62,6 +64,7 @@ public partial class Deck : Control
 		_pile = GetNodeOrNull<Control>(PilePath);
 		_top  = GetNodeOrNull<Control>(TopHolderPath);
 		_origTopPos = _top?.Position ?? Vector2.Zero;
+		_normalModulate = Modulate;
 
 		ApplySideLayout(); // set stack direction and provisional top position
 		BuildDeck();
@@ -263,6 +266,36 @@ public partial class Deck : Control
 		_playedCard?.QueueFree();
 		_playedCard = null;
 		SetTopCardVisible(true);
+	}
+
+	public void SetTopCardTargetingFocus(bool focused)
+	{
+		foreach (var card in GetTopCardViews())
+			card.SetTargetingFocus(focused);
+	}
+
+	public void SetTargetingDimmed(bool dimmed)
+	{
+		if (_targetingDimmed == dimmed)
+			return;
+
+		_targetingDimmed = dimmed;
+		Modulate = dimmed ? new Color(0.58f, 0.58f, 0.58f, 0.92f) : _normalModulate;
+	}
+
+	public Rect2 GetTopCardCanvasRect()
+	{
+		if (_top == null)
+			return new Rect2();
+
+		Rect2 rect = GetControlCanvasRect(_top);
+		foreach (var child in _top.GetChildren())
+		{
+			if (child is Control control)
+				rect = rect.Merge(GetControlCanvasRect(control));
+		}
+
+		return rect;
 	}
 
 	public override void _ExitTree()
@@ -675,6 +708,30 @@ public partial class Deck : Control
 				rect = rect.Merge(c.GetGlobalRect());
 		}
 		return rect;
+	}
+
+	private IEnumerable<BaseCardView> GetTopCardViews()
+	{
+		if (_top == null)
+			yield break;
+
+		foreach (var child in _top.GetChildren())
+		{
+			if (child is BaseCardView card)
+				yield return card;
+		}
+	}
+
+	private Rect2 GetControlCanvasRect(Control control)
+	{
+		if (control == null)
+			return new Rect2();
+
+		Vector2 size = control.Size;
+		if (size.X <= 0f || size.Y <= 0f)
+			size = control.CustomMinimumSize;
+
+		return new Rect2(control.GetGlobalTransformWithCanvas().Origin, size);
 	}
 
 	// ---------- Layout helpers ----------
