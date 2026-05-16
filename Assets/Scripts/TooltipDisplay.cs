@@ -3,7 +3,15 @@ using System.Collections.Generic;
 
 public partial class TooltipDisplay : Control
 {
+	private const int TooltipCanvasLayer = 1000;
+	private const int TooltipZIndex = 4096;
+	private const string TooltipLayerName = "GlobalTooltipLayer";
+	private const string TooltipRootName = "GlobalTooltipRoot";
+
 	public static Node ModalTooltipScope { get; set; }
+
+	private static CanvasLayer _tooltipLayer;
+	private static Control _tooltipRoot;
 
 	[Export] public NodePath HoverSourcePath { get; set; }
 	[Export] public bool TrackHoverSource { get; set; } = true;
@@ -20,6 +28,9 @@ public partial class TooltipDisplay : Control
 
 	private readonly List<TooltipEntry> _entries = new();
 	private Control _hoverSource;
+	private Control _popupRoot;
+	private bool _needsRebuild;
+	private bool _rebuildDeferred;
 
 	public override void _Ready()
 	{
@@ -27,18 +38,33 @@ public partial class TooltipDisplay : Control
 		ConfigurePixelFont(PixelFont);
 		ConfigurePixelFont(BoldPixelFont);
 		_hoverSource = GetNodeOrNull<Control>(HoverSourcePath);
-		Visible = false;
+		SetTipsVisible(false);
+		if (_entries.Count > 0)
+			QueueRebuild();
+	}
+
+	public override void _ExitTree()
+	{
+		SetTipsVisible(false);
+		_needsRebuild = false;
+		_rebuildDeferred = false;
+		if (_popupRoot != null && GodotObject.IsInstanceValid(_popupRoot))
+			_popupRoot.QueueFree();
+		_popupRoot = null;
 	}
 
 	public override void _Process(double delta)
 	{
+		if (_needsRebuild && !_rebuildDeferred)
+			RebuildIfNeeded();
+
 		if (!TrackHoverSource) return;
 		bool shouldShow = _entries.Count > 0 && IsHoveringSource();
 		if (shouldShow)
 		{
 			RefreshLayout();
 		}
-		if (Visible != shouldShow) Visible = shouldShow;
+		SetTipsVisible(shouldShow);
 	}
 
 	public void SetHoverSource(Control source)
@@ -57,20 +83,21 @@ public partial class TooltipDisplay : Control
 				continue;
 			_entries.Add(entry);
 		}
-		Rebuild();
+		QueueRebuild();
 	}
 
 	public void ShowTips()
 	{
 		TrackHoverSource = false;
+		RebuildIfNeeded();
 		RefreshLayout();
-		Visible = _entries.Count > 0;
+		SetTipsVisible(_entries.Count > 0);
 	}
 
 	public void HideTips()
 	{
 		TrackHoverSource = false;
-		Visible = false;
+		SetTipsVisible(false);
 	}
 
 	private bool IsHoveringSource()
@@ -101,16 +128,46 @@ public partial class TooltipDisplay : Control
 
 	private void Rebuild()
 	{
-		foreach (var child in GetChildren())
+		var popupRoot = EnsurePopupRoot();
+		if (popupRoot == null)
+		{
+			_needsRebuild = true;
+			return;
+		}
+
+		foreach (var child in popupRoot.GetChildren())
+		{
+			popupRoot.RemoveChild(child);
 			child.QueueFree();
+		}
 
 		foreach (var entry in _entries)
 		{
 			var panel = CreatePanel(entry);
-			AddChild(panel);
+			popupRoot.AddChild(panel);
 		}
 
 		RefreshLayout();
+	}
+
+	private void QueueRebuild()
+	{
+		_needsRebuild = true;
+		if (!IsInsideTree() || _rebuildDeferred)
+			return;
+
+		_rebuildDeferred = true;
+		CallDeferred(nameof(RebuildIfNeeded));
+	}
+
+	private void RebuildIfNeeded()
+	{
+		_rebuildDeferred = false;
+		if (!_needsRebuild)
+			return;
+
+		_needsRebuild = false;
+		Rebuild();
 	}
 
 	private Control CreatePanel(TooltipEntry entry)
@@ -151,9 +208,13 @@ public partial class TooltipDisplay : Control
 
 	private void RefreshLayout()
 	{
+		var popupRoot = EnsurePopupRoot();
+		if (popupRoot == null)
+			return;
+
 		float y = 0;
 		float contentWidth = Mathf.Max(1, PanelSize.X - Padding * 2);
-		foreach (var child in GetChildren())
+		foreach (var child in popupRoot.GetChildren())
 		{
 			if (child is not Panel panel)
 				continue;
@@ -178,6 +239,91 @@ public partial class TooltipDisplay : Control
 		float totalHeight = Mathf.Max(0, y - Gap);
 		CustomMinimumSize = new Vector2(PanelSize.X, totalHeight);
 		Size = CustomMinimumSize;
+		popupRoot.CustomMinimumSize = CustomMinimumSize;
+		popupRoot.Size = Size;
+		popupRoot.GlobalPosition = GetTooltipScreenPosition().Floor();
+	}
+
+	private Vector2 GetTooltipScreenPosition()
+		=> GetGlobalTransformWithCanvas().Origin;
+
+	private Control EnsurePopupRoot()
+	{
+		if (_popupRoot != null && GodotObject.IsInstanceValid(_popupRoot))
+			return _popupRoot;
+
+		var tooltipRoot = EnsureTooltipRoot();
+		if (tooltipRoot == null)
+			return null;
+
+		_popupRoot = new Control
+		{
+			Name = $"{Name}Popup",
+			MouseFilter = MouseFilterEnum.Ignore,
+			Visible = false,
+			ZAsRelative = false,
+			ZIndex = TooltipZIndex
+		};
+		tooltipRoot.AddChild(_popupRoot);
+		return _popupRoot;
+	}
+
+	private Control EnsureTooltipRoot()
+	{
+		if (_tooltipRoot != null && GodotObject.IsInstanceValid(_tooltipRoot))
+		{
+			if (_tooltipLayer != null && GodotObject.IsInstanceValid(_tooltipLayer))
+				_tooltipLayer.Layer = TooltipCanvasLayer;
+			_tooltipRoot.ZIndex = TooltipZIndex;
+			return _tooltipRoot;
+		}
+
+		var tree = GetTree();
+		if (tree == null)
+			return null;
+
+		var root = tree.Root;
+		_tooltipLayer = root.GetNodeOrNull<CanvasLayer>(TooltipLayerName);
+		if (_tooltipLayer == null || !GodotObject.IsInstanceValid(_tooltipLayer))
+		{
+			_tooltipLayer = new CanvasLayer
+			{
+				Name = TooltipLayerName,
+				Layer = TooltipCanvasLayer
+			};
+			root.AddChild(_tooltipLayer);
+		}
+		else
+		{
+			_tooltipLayer.Layer = TooltipCanvasLayer;
+		}
+
+		_tooltipRoot = _tooltipLayer.GetNodeOrNull<Control>(TooltipRootName);
+		if (_tooltipRoot == null || !GodotObject.IsInstanceValid(_tooltipRoot))
+		{
+			_tooltipRoot = new Control
+			{
+				Name = TooltipRootName,
+				MouseFilter = MouseFilterEnum.Ignore,
+				ZAsRelative = false,
+				ZIndex = TooltipZIndex
+			};
+			_tooltipLayer.AddChild(_tooltipRoot);
+		}
+
+		return _tooltipRoot;
+	}
+
+	private void SetTipsVisible(bool visible)
+	{
+		Visible = visible;
+
+		if (_popupRoot == null || !GodotObject.IsInstanceValid(_popupRoot))
+			return;
+
+		_popupRoot.Visible = visible && _entries.Count > 0;
+		if (_popupRoot.Visible && _popupRoot.GetParent() is Node parent)
+			parent.MoveChild(_popupRoot, parent.GetChildCount() - 1);
 	}
 
 	private string BuildTooltipText(TooltipEntry entry)
