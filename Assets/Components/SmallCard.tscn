@@ -35,11 +35,11 @@ border_color = Color(0, 0, 0, 1)
 anti_aliasing = false
 
 [node name="Card2" type="Control"]
-custom_minimum_size = Vector2(112, 168)
+custom_minimum_size = Vector2(116, 174)
 layout_mode = 3
 anchors_preset = 0
-offset_right = 112.0
-offset_bottom = 168.0
+offset_right = 116.0
+offset_bottom = 174.0
 mouse_filter = 1
 script = ExtResource("1_gnlkw")
 TitlePath = NodePath("Frame/Pad/VBoxContainer/TitleBox/Title")

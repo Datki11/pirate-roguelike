@@ -640,14 +640,14 @@ public partial class Deck : Control
 			}
 		}
 
-		Vector2 faceSize = new(88, 131);
+		Vector2 faceSize = new(91, 136);
 		Vector2 topPosition = AutoPlaceTop ? GetFaceUpPosition() : _top.Position;
 
 		var face = new Rect2(topPosition.Floor(), faceSize);
 		DrawRect(face, _previewCard, true);
 		DrawRect(face, _previewInk, false, 2);
-		DrawLine(face.Position + new Vector2(0, 23), face.Position + new Vector2(face.Size.X, 23), _previewInk, 2);
-		DrawLine(face.Position + new Vector2(0, 88), face.Position + new Vector2(face.Size.X, 88), _previewInk, 2);
+		DrawLine(face.Position + new Vector2(0, 24), face.Position + new Vector2(face.Size.X, 24), _previewInk, 2);
+		DrawLine(face.Position + new Vector2(0, 91), face.Position + new Vector2(face.Size.X, 91), _previewInk, 2);
 	}
 
 	private void OnTopGuiInput(InputEvent e)
