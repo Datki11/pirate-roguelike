@@ -19,6 +19,7 @@ public partial class CombatManager : Node
 	private Node _playersRoot;
 	private EnergyManager _energy;
 	private bool _enemyTurnRunning;
+	private readonly HashSet<Enemy> _enemiesPlayedThisTurn = new();
 
 	private readonly List<Enemy> _enemies = new();
 	private readonly List<IDamageable> _players = new();         // keep generic for future player units
@@ -39,7 +40,13 @@ public partial class CombatManager : Node
 
 		_energy = GetNodeOrNull<EnergyManager>(EnergyPath);
 		if (_energy != null)
+		{
+			_energy.PlayerTurnStarted += OnPlayerTurnStarted;
 			_energy.PlayerTurnEnded += OnPlayerTurnEnded;
+		}
+
+		ApplyDeckStacking();
+		ApplyTurnDeckStates();
 
 		GD.Print($"CombatManager ready | VFX={_vfx?.GetType().Name ?? "null"} | PopupScene={(DamagePopupScene != null)} | Enemies={_enemies.Count} | Players={_players.Count}");
 	}
@@ -47,7 +54,10 @@ public partial class CombatManager : Node
 	public override void _ExitTree()
 	{
 		if (_energy != null)
+		{
+			_energy.PlayerTurnStarted -= OnPlayerTurnStarted;
 			_energy.PlayerTurnEnded -= OnPlayerTurnEnded;
+		}
 	}
 
 	// -------------------------------------------------------------------------
@@ -59,16 +69,22 @@ public partial class CombatManager : Node
 		if (_enemiesRoot == null) return;
 		foreach (var n in _enemiesRoot.GetChildren())
 			if (n is Enemy e) _enemies.Add(e);
+		ApplyDeckStacking();
+		ApplyTurnDeckStates();
 	}
 
 	public void RegisterEnemy(Enemy e)
 	{
 		if (e != null && !_enemies.Contains(e)) _enemies.Add(e);
+		ApplyDeckStacking();
+		ApplyTurnDeckStates();
 	}
 
 	public void UnregisterEnemy(Enemy e)
 	{
 		if (e != null) _enemies.Remove(e);
+		ApplyDeckStacking();
+		ApplyTurnDeckStates();
 	}
 
 	public IEnumerable<IDamageable> AliveEnemies() =>
@@ -81,25 +97,40 @@ public partial class CombatManager : Node
 		if (_playersRoot == null) return;
 		foreach (var n in _playersRoot.GetChildren())
 			if (n is IDamageable d && (n as Node) != null) _players.Add(d);
+		ApplyDeckStacking();
+		ApplyTurnDeckStates();
 	}
 
 	public void RegisterPlayer(IDamageable d)
 	{
 		if (d != null && !_players.Contains(d)) _players.Add(d);
+		ApplyDeckStacking();
+		ApplyTurnDeckStates();
 	}
 
 	public void UnregisterPlayer(IDamageable d)
 	{
 		if (d != null) _players.Remove(d);
+		ApplyDeckStacking();
+		ApplyTurnDeckStates();
 	}
 
 	public IEnumerable<IDamageable> AlivePlayers() =>
 		_players.Where(p => p != null && (p as Node) != null && GodotObject.IsInstanceValid(p as Node) && p.Alive);
 
+	private void OnPlayerTurnStarted()
+	{
+		_enemiesPlayedThisTurn.Clear();
+		ApplyDeckStacking();
+		ApplyTurnDeckStates();
+	}
+
 	private async void OnPlayerTurnEnded()
 	{
 		if (_enemyTurnRunning) return;
 		_enemyTurnRunning = true;
+		_enemiesPlayedThisTurn.Clear();
+		ApplyTurnDeckStates();
 
 		await ToSignal(GetTree().CreateTimer(EnemyTurnStartDelaySec), "timeout");
 		foreach (var enemy in _enemies.ToList())
@@ -110,10 +141,52 @@ public partial class CombatManager : Node
 				break;
 
 			await enemy.PlayTurnAsync();
+			_enemiesPlayedThisTurn.Add(enemy);
+			ApplyTurnDeckStates();
 		}
 
 		_enemyTurnRunning = false;
 		_energy?.StartPlayerTurn();
+	}
+
+	private void ApplyTurnDeckStates()
+	{
+		bool playerTurn = _energy == null || _energy.IsPlayerTurn;
+
+		foreach (var enemy in _enemies)
+		{
+			if (enemy == null || !GodotObject.IsInstanceValid(enemy))
+				continue;
+
+			bool enemyWillActThisTurn = !playerTurn && enemy.Alive && !_enemiesPlayedThisTurn.Contains(enemy);
+			enemy.SetDeckTurnDimmed(!enemyWillActThisTurn);
+		}
+
+		foreach (var player in _players)
+		{
+			if (player is PlayerUnit playerUnit && GodotObject.IsInstanceValid(playerUnit))
+				playerUnit.SetDeckTurnDimmed(!playerTurn);
+		}
+	}
+
+	private void ApplyDeckStacking()
+	{
+		var sortedEnemies = _enemies
+			.Where(e => e != null && GodotObject.IsInstanceValid(e))
+			.OrderBy(e => e.GetDeckStackAnchorGlobal().X)
+			.ToList();
+
+		for (int i = 0; i < sortedEnemies.Count; i++)
+			sortedEnemies[i].SetDeckBaseDrawPriority(2000 + (sortedEnemies.Count - i) * 10);
+
+		var sortedPlayers = _players
+			.OfType<PlayerUnit>()
+			.Where(p => GodotObject.IsInstanceValid(p))
+			.OrderBy(p => p.GetDeckStackAnchorGlobal().X)
+			.ToList();
+
+		for (int i = 0; i < sortedPlayers.Count; i++)
+			sortedPlayers[i].SetDeckBaseDrawPriority(1000 + (sortedPlayers.Count - i) * 10);
 	}
 
 	// -------------------------------------------------------------------------

@@ -145,6 +145,27 @@ public partial class PlayerUnit : Node2D, IDamageable
 		ApplyFrame();
 	}
 
+	public void SetDeckTurnDimmed(bool dimmed)
+	{
+		_deck?.SetTurnDimmed(dimmed);
+	}
+
+	public void SetDeckBaseDrawPriority(int priority)
+	{
+		_deck?.SetBaseDrawPriority(priority);
+	}
+
+	public Vector2 GetDeckStackAnchorGlobal()
+	{
+		if (_deck != null)
+		{
+			Rect2 deckRect = _deck.GetGlobalRect();
+			return deckRect.Position + deckRect.Size * 0.5f;
+		}
+
+		return GlobalPosition;
+	}
+
 	private void PlayHurtAnimation()
 	{
 		if (_sprite == null) return;

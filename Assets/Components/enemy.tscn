@@ -57,10 +57,10 @@ offset_right = 31.0
 offset_bottom = -8.0
 
 [node name="Deck" parent="." instance=ExtResource("7_qtvry")]
-offset_left = -7.0
-offset_top = -113.0
-offset_right = 105.0
-offset_bottom = -8.0
+offset_left = 77.0
+offset_top = -96.0
+offset_right = 189.0
+offset_bottom = 9.0
 DeckList = ExtResource("8_nn7m1")
 CardBack = ExtResource("8_8sbev")
 BackOffset = Vector2i(-2, -2)

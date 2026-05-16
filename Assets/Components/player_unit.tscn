@@ -22,5 +22,7 @@ Fill = Color(0.1, 0.72, 0.18, 1)
 PixelFont = ExtResource("3_font")
 
 [node name="Deck" parent="." instance=ExtResource("4_deck")]
-offset_top = -142.0
-offset_bottom = -37.0
+offset_left = -3.0
+offset_top = -118.0
+offset_right = 109.0
+offset_bottom = -13.0

@@ -21,6 +21,9 @@ public partial class Deck : Control
 	[Export] public DeckSide Side { get; set; } = DeckSide.Player;
 	[Export] public bool EnableInput { get; set; } = true;        // player decks true, enemy decks false
 	[Export] public bool DiscardOnTopClick { get; set; } = true;  // usually true for player
+	[Export] public int BaseDrawPriority { get; set; }
+	[Export] public int HoverDrawPriority { get; set; } = 10000;
+	[Export] public Color DimmedModulate { get; set; } = new(0.46f, 0.46f, 0.46f, 0.86f);
 
 	// Auto place the top card next to the pile
 	[Export] public bool AutoPlaceTop { get; set; } = true;
@@ -33,6 +36,9 @@ public partial class Deck : Control
 
 	private Control _pile, _top;
 	private Vector2 _origTopPos;
+	private CanvasItem _drawPriorityRoot;
+	private int _rootNormalZIndex;
+	private bool _rootNormalZAsRelative;
 
 	private readonly List<CardData> _draw = new();
 	private readonly List<CardData> _discard = new();
@@ -44,11 +50,22 @@ public partial class Deck : Control
 	private Control _playedCard;
 	private CanvasLayer _presentationLayer;
 	private CanvasLayer _drawPileModalLayer;
+	private Control _hoverPreviewCard;
 	private bool _playPresentationRunning;
 	private bool _targetingDimmed;
+	private bool _turnDimmed;
+	private bool _isActiveHover;
+	private bool _hoveringTopCard;
+	private bool _hoveringPile;
 	private bool _topCardTooltipSuppressed;
+	private bool _effectiveTooltipSuppressed;
+	private int _hoverSerial;
 	private Color _normalModulate = Colors.White;
 	private static int _openDrawPileModalCount;
+	private static int _nextHoverSerial;
+	private static readonly List<Deck> _hoverDecks = new();
+	private static Deck _activeHoverDeck;
+	private static CanvasLayer _hoverCardLayer;
 	public static bool IsDrawPileModalOpen => _openDrawPileModalCount > 0;
 
 	[Signal] public delegate void TopChangedEventHandler(CardData newTop);
@@ -62,6 +79,16 @@ public partial class Deck : Control
 		_top  = GetNodeOrNull<Control>(TopHolderPath);
 		_origTopPos = _top?.Position ?? Vector2.Zero;
 		_normalModulate = Modulate;
+		_drawPriorityRoot = GetParent() as CanvasItem;
+		if (_drawPriorityRoot != null)
+		{
+			_rootNormalZIndex = _drawPriorityRoot.ZIndex;
+			_rootNormalZAsRelative = _drawPriorityRoot.ZAsRelative;
+		}
+		ZAsRelative = false;
+		if (BaseDrawPriority == 0)
+			BaseDrawPriority = ZIndex;
+		ApplyDrawPriority();
 
 		ApplySideLayout(); // set stack direction and provisional top position
 		BuildDeck();
@@ -73,10 +100,16 @@ public partial class Deck : Control
 			return;
 		}
 
+		if (!_hoverDecks.Contains(this))
+			_hoverDecks.Add(this);
+		MouseFilter = MouseFilterEnum.Stop;
+
 		if (_pile != null)
 		{
 			_pile.MouseFilter = MouseFilterEnum.Stop;
 			_pile.GuiInput += OnPileGuiInput;
+			_pile.MouseEntered += OnPileMouseEntered;
+			_pile.MouseExited += OnPileMouseExited;
 		}
 
 		if (EnableInput && _top != null)
@@ -86,12 +119,23 @@ public partial class Deck : Control
 		}
 		else if (_top != null)
 		{
-			_top.MouseFilter = MouseFilterEnum.Ignore;
+			_top.MouseFilter = MouseFilterEnum.Stop;
 		}
 
 		Shuffle(_draw);
 		RefreshView();
 		EmitSignal(SignalName.TopChanged, Peek());
+		SetProcess(true);
+	}
+
+	public override void _Process(double delta)
+	{
+		if (Engine.IsEditorHint())
+			return;
+
+		UpdateHoverStateFromMousePosition();
+		RefreshActiveHoverDeck();
+		ApplyEffectiveVisualState();
 	}
 
 	public override void _Input(InputEvent e)
@@ -99,7 +143,7 @@ public partial class Deck : Control
 		if (Engine.IsEditorHint())
 			return;
 
-		if (_openDrawPileModalCount > 0 || !EnableInput || e is not InputEventMouseButton mb || !mb.Pressed || mb.ButtonIndex != MouseButton.Left)
+		if (_openDrawPileModalCount > 0 || !CanPlayTopCard() || e is not InputEventMouseButton mb || !mb.Pressed || mb.ButtonIndex != MouseButton.Left)
 			return;
 
 		if (!GetPlayableCardRect().HasPoint(GetGlobalMousePosition()))
@@ -278,14 +322,32 @@ public partial class Deck : Control
 			return;
 
 		_targetingDimmed = dimmed;
-		Modulate = dimmed ? new Color(0.58f, 0.58f, 0.58f, 0.92f) : _normalModulate;
+		ApplyEffectiveVisualState();
+	}
+
+	public void SetTurnDimmed(bool dimmed)
+	{
+		if (_turnDimmed == dimmed)
+			return;
+
+		_turnDimmed = dimmed;
+		ApplyEffectiveVisualState();
+	}
+
+	public void SetBaseDrawPriority(int priority)
+	{
+		if (BaseDrawPriority == priority)
+			return;
+
+		BaseDrawPriority = priority;
+		ApplyDrawPriority();
+		RefreshOwnerStackOrder();
 	}
 
 	public void SetTopCardTooltipSuppressed(bool suppressed)
 	{
 		_topCardTooltipSuppressed = suppressed;
-		foreach (var card in GetTopCardViews())
-			card.SetTooltipSuppressed(suppressed);
+		ApplyEffectiveTooltipSuppression();
 	}
 
 	public Rect2 GetTopCardCanvasRect()
@@ -299,6 +361,8 @@ public partial class Deck : Control
 			if (child is Control control)
 				rect = rect.Merge(GetControlCanvasRect(control));
 		}
+		if (_hoverPreviewCard != null && GodotObject.IsInstanceValid(_hoverPreviewCard))
+			rect = rect.Merge(GetControlCanvasRect(_hoverPreviewCard));
 
 		return rect;
 	}
@@ -323,6 +387,15 @@ public partial class Deck : Control
 
 	public override void _ExitTree()
 	{
+		_hoverDecks.Remove(this);
+		if (_activeHoverDeck == this)
+			_activeHoverDeck = null;
+		if (_drawPriorityRoot != null && GodotObject.IsInstanceValid(_drawPriorityRoot))
+		{
+			_drawPriorityRoot.ZAsRelative = _rootNormalZAsRelative;
+			_drawPriorityRoot.ZIndex = _rootNormalZIndex;
+		}
+		ClearHoverPreviewCard();
 		CloseDrawPileModal();
 	}
 
@@ -352,6 +425,9 @@ public partial class Deck : Control
 		}
 
 		// top face-up
+		if (_hoveringTopCard)
+			SetHoveringTopCard(false);
+		ClearHoverPreviewCard();
 		foreach (var n in _top.GetChildren()) n.QueueFree();
 		var top = Peek();
 		if (top != null && CardViewScene != null)
@@ -368,6 +444,8 @@ public partial class Deck : Control
 			_top.Size = faceSize;
 
 			_top.AddChild(node);
+			node.MouseEntered += OnTopCardMouseEntered;
+			node.MouseExited += OnTopCardMouseExited;
 			if (EnableInput)
 			{
 				node.MouseFilter = MouseFilterEnum.Stop;
@@ -375,13 +453,15 @@ public partial class Deck : Control
 			}
 			else
 			{
-				node.MouseFilter = MouseFilterEnum.Ignore;
+				node.MouseFilter = MouseFilterEnum.Stop;
 			}
 
 			if (AutoPlaceTop)
 			{
 				PlaceTopHolder(faceSize);
 			}
+
+			ApplyEffectiveTooltipSuppression(force: true);
 		}
 	}
 
@@ -401,6 +481,12 @@ public partial class Deck : Control
 	{
 		if (Engine.IsEditorHint() || e is not InputEventMouseButton mb || !mb.Pressed || mb.ButtonIndex != MouseButton.Left)
 			return;
+
+		if (!CanOpenDrawPile())
+		{
+			AcceptEvent();
+			return;
+		}
 
 		OpenDrawPileModal();
 		AcceptEvent();
@@ -674,6 +760,8 @@ public partial class Deck : Control
 			if (child is CanvasItem item)
 				item.Visible = visible;
 		}
+		if (_hoverPreviewCard != null && GodotObject.IsInstanceValid(_hoverPreviewCard))
+			_hoverPreviewCard.Visible = visible;
 	}
 
 	private void DrawEditorPreview()
@@ -711,6 +799,12 @@ public partial class Deck : Control
 		if (e is not InputEventMouseButton mb || !mb.Pressed || mb.ButtonIndex != MouseButton.Left)
 			return;
 
+		if (!CanPlayTopCard())
+		{
+			AcceptEvent();
+			return;
+		}
+
 		RequestTopCardPlay();
 		AcceptEvent();
 	}
@@ -720,6 +814,78 @@ public partial class Deck : Control
 		EmitSignal(SignalName.PlayRequested, this, Peek());
 		if (DiscardOnTopClick) AdvanceTopToDiscard();
 	}
+
+	private void OnTopCardMouseEntered()
+	{
+		SetHoveringTopCard(true);
+	}
+
+	private void OnTopCardMouseExited()
+	{
+		CallDeferred(nameof(RefreshTopCardHoverAfterExit));
+	}
+
+	private void RefreshTopCardHoverAfterExit()
+	{
+		SetHoveringTopCard(IsMouseOverTopCard());
+	}
+
+	private void OnPileMouseEntered()
+	{
+		SetHoveringPile(true);
+	}
+
+	private void OnPileMouseExited()
+	{
+		SetHoveringPile(false);
+	}
+
+	private void SetHoveringTopCard(bool hovering)
+	{
+		if (_hoveringTopCard == hovering)
+			return;
+
+		_hoveringTopCard = hovering;
+		if (hovering)
+			_hoverSerial = ++_nextHoverSerial;
+		RefreshActiveHoverDeck();
+	}
+
+	private void SetHoveringPile(bool hovering)
+	{
+		if (_hoveringPile == hovering)
+			return;
+
+		_hoveringPile = hovering;
+		if (hovering)
+			_hoverSerial = ++_nextHoverSerial;
+		RefreshActiveHoverDeck();
+	}
+
+	private void UpdateHoverStateFromMousePosition()
+	{
+		if (!_hoveringTopCard && !_hoveringPile)
+			return;
+
+		if (Deck.IsDrawPileModalOpen || _targetingDimmed || _topCardTooltipSuppressed || !IsVisibleInTree())
+		{
+			SetHoveringTopCard(false);
+			SetHoveringPile(false);
+			return;
+		}
+
+		if (_hoveringTopCard && !IsMouseOverTopCard())
+			SetHoveringTopCard(false);
+
+		if (_hoveringPile && (_pile == null || !_pile.Visible || !_pile.GetGlobalRect().HasPoint(GetGlobalMousePosition())))
+			SetHoveringPile(false);
+	}
+
+	private bool CanOpenDrawPile()
+		=> EnableInput && !_targetingDimmed && !_turnDimmed && !Deck.IsDrawPileModalOpen;
+
+	private bool CanPlayTopCard()
+		=> EnableInput && !_targetingDimmed && !_turnDimmed && !Deck.IsDrawPileModalOpen;
 
 	private Rect2 GetPlayableCardRect()
 	{
@@ -731,6 +897,267 @@ public partial class Deck : Control
 				rect = rect.Merge(c.GetGlobalRect());
 		}
 		return rect;
+	}
+
+	private Rect2 GetTopHoverCanvasRect()
+	{
+		if (_top == null || !_top.Visible)
+			return new Rect2();
+
+		bool hasRect = false;
+		Rect2 rect = default;
+		MergeHoverRect(_top, ref rect, ref hasRect);
+		return hasRect ? rect : new Rect2();
+	}
+
+	private Rect2 GetDeckHoverCanvasRect()
+	{
+		Rect2 topRect = GetTopHoverCanvasRect();
+		if (topRect.Size.X > 0f && topRect.Size.Y > 0f)
+			return topRect;
+
+		bool hasRect = false;
+		Rect2 rect = default;
+		MergeHoverRect(_pile, ref rect, ref hasRect);
+		return hasRect ? rect : new Rect2();
+	}
+
+	private void MergeHoverRect(Control control, ref Rect2 rect, ref bool hasRect)
+	{
+		if (control == null || !control.Visible)
+			return;
+
+		MergeCanvasRect(GetControlCanvasRect(control), ref rect, ref hasRect);
+		foreach (Node child in control.GetChildren())
+		{
+			if (child is Control childControl && childControl.Visible)
+				MergeCanvasRect(GetControlCanvasRect(childControl), ref rect, ref hasRect);
+		}
+	}
+
+	private void MergeCanvasRect(Rect2 next, ref Rect2 rect, ref bool hasRect)
+	{
+		if (next.Size.X <= 0f || next.Size.Y <= 0f)
+			return;
+
+		if (!hasRect)
+		{
+			rect = next;
+			hasRect = true;
+			return;
+		}
+
+		rect = rect.Merge(next);
+	}
+
+	private bool IsHoverCandidate()
+	{
+		return IsInsideTree()
+			&& IsVisibleInTree()
+			&& !Deck.IsDrawPileModalOpen
+			&& !_targetingDimmed
+			&& !_topCardTooltipSuppressed
+			&& (_hoveringTopCard || _hoveringPile);
+	}
+
+	private static void RefreshActiveHoverDeck()
+	{
+		Deck next = null;
+		int bestSerial = int.MinValue;
+		int bestPriority = int.MinValue;
+
+		foreach (Deck deck in _hoverDecks.ToArray())
+		{
+			if (deck == null || !GodotObject.IsInstanceValid(deck))
+				continue;
+
+			if (!deck.IsHoverCandidate())
+				continue;
+
+			int priority = deck.GetEffectiveDrawPriority();
+			if (next == null
+				|| deck._hoverSerial > bestSerial
+				|| (deck._hoverSerial == bestSerial && priority > bestPriority))
+			{
+				next = deck;
+				bestSerial = deck._hoverSerial;
+				bestPriority = priority;
+			}
+		}
+
+		if (_activeHoverDeck == next)
+			return;
+
+		_activeHoverDeck = next;
+		foreach (Deck deck in _hoverDecks.ToArray())
+		{
+			if (deck == null || !GodotObject.IsInstanceValid(deck))
+				continue;
+
+			deck.SetActiveHover(deck == _activeHoverDeck);
+		}
+
+		RefreshOwnerStackOrder();
+	}
+
+	private void SetActiveHover(bool active)
+	{
+		if (_isActiveHover == active)
+			return;
+
+		_isActiveHover = active;
+		ApplyEffectiveVisualState();
+	}
+
+	private void ApplyEffectiveVisualState()
+	{
+		bool hoverRestoresTurnDim = _isActiveHover && _turnDimmed && !_targetingDimmed;
+		bool dimmed = (_targetingDimmed || _turnDimmed) && !hoverRestoresTurnDim;
+		Modulate = dimmed ? DimmedModulate : _normalModulate;
+		ApplyDrawPriority();
+		ApplyTopCardDrawPriority();
+		ApplyEffectiveTooltipSuppression();
+	}
+
+	private void ApplyDrawPriority()
+	{
+		ZAsRelative = false;
+		ZIndex = GetEffectiveDrawPriority();
+		if (_drawPriorityRoot == null || !GodotObject.IsInstanceValid(_drawPriorityRoot))
+			return;
+
+		_drawPriorityRoot.ZAsRelative = false;
+		_drawPriorityRoot.ZIndex = ZIndex;
+	}
+
+	private void ApplyTopCardDrawPriority()
+	{
+		if (_isActiveHover)
+		{
+			ShowHoverPreviewCard();
+			return;
+		}
+
+		ClearHoverPreviewCard();
+	}
+
+	private void ShowHoverPreviewCard()
+	{
+		var source = GetCurrentTopCardControl();
+		if (source == null || !GodotObject.IsInstanceValid(source) || Peek() == null || CardViewScene == null)
+			return;
+
+		if (_hoverPreviewCard == null || !GodotObject.IsInstanceValid(_hoverPreviewCard))
+		{
+			_hoverPreviewCard = CreateCardView(Peek());
+			_hoverPreviewCard.Name = "HoveredTopCardPreview";
+			_hoverPreviewCard.MouseFilter = MouseFilterEnum.Ignore;
+			_hoverPreviewCard.ZAsRelative = false;
+			_hoverPreviewCard.ZIndex = HoverDrawPriority;
+			if (_hoverPreviewCard is BaseCardView previewView)
+				previewView.SetTooltipSuppressed(true);
+			GetHoverCardLayer().AddChild(_hoverPreviewCard);
+		}
+
+		_hoverPreviewCard.Size = source.Size;
+		_hoverPreviewCard.Position = source.GetGlobalTransformWithCanvas().Origin.Floor();
+		_hoverPreviewCard.Modulate = _normalModulate;
+		_hoverPreviewCard.Visible = true;
+		if (_hoverPreviewCard.GetParent() is Node parent)
+			parent.MoveChild(_hoverPreviewCard, parent.GetChildCount() - 1);
+	}
+
+	private void ClearHoverPreviewCard()
+	{
+		if (_hoverPreviewCard == null)
+			return;
+
+		if (GodotObject.IsInstanceValid(_hoverPreviewCard))
+			_hoverPreviewCard.QueueFree();
+
+		_hoverPreviewCard = null;
+	}
+
+	private bool IsMouseOverTopCard()
+	{
+		Control card = GetCurrentTopCardControl();
+		return card != null && GodotObject.IsInstanceValid(card) && card.GetGlobalRect().HasPoint(GetGlobalMousePosition());
+	}
+
+	private Control GetCurrentTopCardControl()
+	{
+		if (_top == null)
+			return null;
+
+		foreach (Node child in _top.GetChildren())
+			if (child is Control control)
+				return control;
+
+		return null;
+	}
+
+	private CanvasLayer GetHoverCardLayer()
+	{
+		if (_hoverCardLayer != null && GodotObject.IsInstanceValid(_hoverCardLayer))
+			return _hoverCardLayer;
+
+		_hoverCardLayer = new CanvasLayer
+		{
+			Name = "HoveredCardLayer",
+			Layer = 900
+		};
+		(GetTree().CurrentScene as Node ?? GetTree().Root).AddChild(_hoverCardLayer);
+		return _hoverCardLayer;
+	}
+
+	private int GetEffectiveDrawPriority()
+		=> _isActiveHover ? HoverDrawPriority : BaseDrawPriority;
+
+	private static void RefreshOwnerStackOrder()
+	{
+		var parents = new List<Node>();
+		foreach (Deck deck in _hoverDecks.ToArray())
+		{
+			if (deck == null || !GodotObject.IsInstanceValid(deck))
+				continue;
+
+			deck.ApplyDrawPriority();
+			if (deck._drawPriorityRoot == null || !GodotObject.IsInstanceValid(deck._drawPriorityRoot))
+				continue;
+
+			Node parent = deck._drawPriorityRoot.GetParent();
+			if (parent != null && !parents.Contains(parent))
+				parents.Add(parent);
+		}
+
+		foreach (Node parent in parents)
+		{
+			var siblings = new List<Deck>();
+			foreach (Deck siblingDeck in _hoverDecks)
+			{
+				if (siblingDeck == null || !GodotObject.IsInstanceValid(siblingDeck) || siblingDeck._drawPriorityRoot == null || !GodotObject.IsInstanceValid(siblingDeck._drawPriorityRoot))
+					continue;
+				if (siblingDeck._drawPriorityRoot.GetParent() != parent)
+					continue;
+
+				siblings.Add(siblingDeck);
+			}
+
+			siblings.Sort((a, b) => a.GetEffectiveDrawPriority().CompareTo(b.GetEffectiveDrawPriority()));
+			foreach (Deck siblingDeck in siblings)
+				parent.CallDeferred(Node.MethodName.MoveChild, siblingDeck._drawPriorityRoot, parent.GetChildCount() - 1);
+		}
+	}
+
+	private void ApplyEffectiveTooltipSuppression(bool force = false)
+	{
+		bool suppressed = _topCardTooltipSuppressed || _activeHoverDeck != this;
+		if (!force && _effectiveTooltipSuppressed == suppressed)
+			return;
+
+		_effectiveTooltipSuppressed = suppressed;
+		foreach (var card in GetTopCardViews())
+			card.SetTooltipSuppressed(suppressed);
 	}
 
 	private IEnumerable<BaseCardView> GetTopCardViews()

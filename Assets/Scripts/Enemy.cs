@@ -48,6 +48,8 @@ public partial class Enemy : Control, IDamageable
 	[Export] public float TurnThinkDelaySec { get; set; } = 0.25f;
 	[Export] public float TurnImpactDelaySec { get; set; } = 0.35f;
 	[Export] public float TurnRecoveryDelaySec { get; set; } = 0.25f;
+	[Export] public float DeathFadeDelaySec { get; set; } = 0.35f;
+	[Export] public float DeathFadeDurationSec { get; set; } = 0.28f;
 	[Export] public bool FaceLeft { get; set; } = true;
 
 	private TextureRect _sprite;
@@ -69,6 +71,7 @@ public partial class Enemy : Control, IDamageable
 	private EnemyAnimation _activeAnimation = EnemyAnimation.Idle;
 	private bool _layoutSpriteRectValid;
 	private Rect2 _layoutSpriteRect;
+	private bool _deathPresentationRunning;
 
 	// --- Signals (ADD THIS BACK) ---
 	[Signal] public delegate void ClickedEventHandler(Enemy who);
@@ -226,6 +229,7 @@ public partial class Enemy : Control, IDamageable
 		if (!Alive)
 		{
 			SetTargetable(false);
+			BeginDeathPresentation();
 			EmitSignal(SignalName.Died);
 		}
 	}
@@ -262,9 +266,31 @@ public partial class Enemy : Control, IDamageable
 		_deck?.SetTargetingDimmed(dimmed);
 	}
 
+	public void SetDeckTurnDimmed(bool dimmed)
+	{
+		_deck?.SetTurnDimmed(dimmed);
+	}
+
+	public void SetDeckBaseDrawPriority(int priority)
+	{
+		_deck?.SetBaseDrawPriority(priority);
+	}
+
 	public void SetDeckTooltipSuppressed(bool suppressed)
 	{
 		_deck?.SetTopCardTooltipSuppressed(suppressed);
+	}
+
+	public Vector2 GetDeckStackAnchorGlobal()
+	{
+		if (_deck != null)
+		{
+			Rect2 deckRect = _deck.GetGlobalRect();
+			return deckRect.Position + deckRect.Size * 0.5f;
+		}
+
+		Rect2 rect = GetGlobalRect();
+		return rect.Position + rect.Size * 0.5f;
 	}
 
 	public Rect2 GetTargetingCanvasRect()
@@ -303,6 +329,31 @@ public partial class Enemy : Control, IDamageable
 	public void PlayHitAnimation()
 	{
 		PlayAnimation(EnemyAnimation.Hit);
+	}
+
+	private async void BeginDeathPresentation()
+	{
+		if (_deathPresentationRunning || !IsInsideTree())
+			return;
+
+		_deathPresentationRunning = true;
+		MouseFilter = MouseFilterEnum.Ignore;
+		if (_deck != null) _deck.Visible = false;
+		if (_hp != null) _hp.Visible = false;
+		if (_ring != null) _ring.Visible = false;
+
+		if (DeathFadeDelaySec > 0f)
+			await ToSignal(GetTree().CreateTimer(DeathFadeDelaySec), "timeout");
+
+		if (!GodotObject.IsInstanceValid(this))
+			return;
+
+		var tween = CreateTween();
+		tween.TweenProperty(this, "modulate:a", 0f, Mathf.Max(0.01f, DeathFadeDurationSec));
+		await ToSignal(tween, "finished");
+
+		if (GodotObject.IsInstanceValid(this))
+			Visible = false;
 	}
 
 	private void BuildAnimationFrames()
