@@ -210,6 +210,7 @@ public partial class TooltipDisplay : Control
 		label.AddThemeFontSizeOverride("normal_font_size", FontSize);
 		label.AddThemeFontSizeOverride("bold_font_size", BoldFontSize);
 		label.AddThemeColorOverride("default_color", TextColor);
+		label.AddThemeConstantOverride("line_separation", 2);
 		ConfigurePixelFont(label.GetThemeFont("normal_font"));
 		ConfigurePixelFont(label.GetThemeFont("bold_font"));
 

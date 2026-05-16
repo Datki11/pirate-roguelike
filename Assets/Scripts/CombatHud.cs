@@ -14,6 +14,7 @@ public partial class CombatHud : Control
 	private EnergyManager _energyManager;
 	private Rect2 _endTurnRect;
 	private bool _hoverEndTurn;
+	private bool _lastCanEndTurn;
 	private int _current;
 	private int _max;
 
@@ -30,22 +31,41 @@ public partial class CombatHud : Control
 			_current = _energyManager.CurrentEnergy;
 			_max = _energyManager.MaxEnergy;
 			_energyManager.EnergyChanged += OnEnergyChanged;
+			_energyManager.PlayerTurnStarted += OnTurnStateChanged;
+			_energyManager.PlayerTurnEnded += OnTurnStateChanged;
 		}
 		QueueRedraw();
 	}
 
 	public override bool _HasPoint(Vector2 point)
 	{
+		if (!CanEndTurn())
+			return false;
+
 		return GetEndTurnRect().HasPoint(point);
 	}
 
 	public override void _ExitTree()
 	{
-		if (_energyManager != null) _energyManager.EnergyChanged -= OnEnergyChanged;
+		if (_energyManager != null)
+		{
+			_energyManager.EnergyChanged -= OnEnergyChanged;
+			_energyManager.PlayerTurnStarted -= OnTurnStateChanged;
+			_energyManager.PlayerTurnEnded -= OnTurnStateChanged;
+		}
 	}
 
 	public override void _Process(double delta)
 	{
+		bool canEndTurn = CanEndTurn();
+		if (canEndTurn != _lastCanEndTurn)
+		{
+			_lastCanEndTurn = canEndTurn;
+			if (!canEndTurn)
+				_hoverEndTurn = false;
+			QueueRedraw();
+		}
+
 		if (Deck.IsDrawPileModalOpen)
 		{
 			if (_hoverEndTurn)
@@ -57,7 +77,7 @@ public partial class CombatHud : Control
 		}
 
 		var mouse = GetLocalMousePosition();
-		bool hover = GetEndTurnRect().HasPoint(mouse);
+		bool hover = canEndTurn && GetEndTurnRect().HasPoint(mouse);
 		if (hover != _hoverEndTurn)
 		{
 			_hoverEndTurn = hover;
@@ -73,7 +93,7 @@ public partial class CombatHud : Control
 			return;
 		}
 
-		if (e is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left && _endTurnRect.HasPoint(mb.Position))
+		if (e is InputEventMouseButton mb && mb.Pressed && mb.ButtonIndex == MouseButton.Left && CanEndTurn() && _endTurnRect.HasPoint(mb.Position))
 		{
 			_energyManager?.EndPlayerTurn();
 			AcceptEvent();
@@ -86,12 +106,13 @@ public partial class CombatHud : Control
 		_endTurnRect = GetEndTurnRect();
 
 		DrawEnergyPanel(size);
-		DrawEndTurnButton();
+		if (CanEndTurn())
+			DrawEndTurnButton();
 	}
 
 	private void DrawEnergyPanel(Vector2 size)
 	{
-		var rect = new Rect2(new Vector2(30, size.Y - 86).Floor(), new Vector2(132, 56));
+		var rect = GetEnergyRect(size);
 		DrawRect(rect, _panel, true);
 		DrawRect(rect, _ink, false, 2);
 
@@ -116,7 +137,25 @@ public partial class CombatHud : Control
 	private Rect2 GetEndTurnRect()
 	{
 		Vector2 size = Size;
-		return new Rect2(new Vector2(size.X - 190, size.Y - 70).Floor(), new Vector2(160, 42));
+		const float energyWidth = 132f;
+		const float gap = 24f;
+		const float buttonWidth = 160f;
+		var groupX = Mathf.Round((size.X - energyWidth - gap - buttonWidth) * 0.5f);
+		return new Rect2(new Vector2(groupX + energyWidth + gap, size.Y - 79).Floor(), new Vector2(buttonWidth, 42));
+	}
+
+	private Rect2 GetEnergyRect(Vector2 size)
+	{
+		const float energyWidth = 132f;
+		const float gap = 24f;
+		const float buttonWidth = 160f;
+		var groupX = Mathf.Round((size.X - energyWidth - gap - buttonWidth) * 0.5f);
+		return new Rect2(new Vector2(groupX, size.Y - 86).Floor(), new Vector2(energyWidth, 56));
+	}
+
+	private bool CanEndTurn()
+	{
+		return _energyManager != null && _energyManager.IsPlayerTurn && !Deck.IsDrawPileModalOpen;
 	}
 
 	private void DrawPixelText(string text, Vector2 baseline, int size, Color color)
@@ -129,6 +168,13 @@ public partial class CombatHud : Control
 	{
 		_current = current;
 		_max = max;
+		QueueRedraw();
+	}
+
+	private void OnTurnStateChanged()
+	{
+		if (!CanEndTurn())
+			_hoverEndTurn = false;
 		QueueRedraw();
 	}
 

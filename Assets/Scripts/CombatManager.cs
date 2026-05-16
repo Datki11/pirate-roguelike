@@ -5,6 +5,11 @@ using System.Threading.Tasks;
 
 public partial class CombatManager : Node
 {
+	private const int PopupCanvasLayer = 950;
+	private const int PopupZIndex = 4096;
+	private const ulong PopupBurstWindowMsec = 250;
+	private const string PopupLayerName = "CombatPopupLayer";
+
 	[Export] public NodePath VfxLayerPath { get; set; }          // optional CanvasLayer/Control for VFX
 	[Export] public PackedScene DamagePopupScene { get; set; }
 
@@ -13,8 +18,10 @@ public partial class CombatManager : Node
 	[Export] public NodePath PlayersRootPath { get; set; }
 	[Export] public NodePath EnergyPath { get; set; }
 	[Export] public float EnemyTurnStartDelaySec { get; set; } = 0.35f;
+	[Export] public float EndOfTurnStatusEffectDelaySec { get; set; } = 0.9f;
 
 	private Node _vfx;
+	private CanvasLayer _popupLayer;
 	private Node _enemiesRoot;
 	private Node _playersRoot;
 	private EnergyManager _energy;
@@ -23,8 +30,25 @@ public partial class CombatManager : Node
 
 	private readonly List<Enemy> _enemies = new();
 	private readonly List<IDamageable> _players = new();         // keep generic for future player units
+	private readonly Dictionary<Node, PopupBurstState> _popupBursts = new();
 
 	private readonly RandomNumberGenerator _rng = new();
+	private readonly Dictionary<string, Texture2D> _popupIcons = new();
+	private static readonly Color PopupBuffColor = new(0f, 1f, 1f);
+	private static readonly Color PopupCurseColor = new(1f, 0f, 1f);
+	private static readonly Dictionary<string, string> PopupIconPaths = new()
+	{
+		["block"] = "res://Assets/Sprites/Icons/Generated/block_32x36.png",
+		["bleed"] = "res://Assets/Sprites/Icons/Generated/bleed_32x36.png",
+		["weak"] = "res://Assets/Sprites/Icons/Generated/weak_32x36.png",
+		["regen"] = "res://Assets/Sprites/Icons/Generated/regen_32x36.png"
+	};
+
+	private sealed class PopupBurstState
+	{
+		public ulong LastSpawnMsec;
+		public int NextSlot;
+	}
 
 	public override void _Ready()
 	{
@@ -43,6 +67,7 @@ public partial class CombatManager : Node
 		{
 			_energy.PlayerTurnStarted += OnPlayerTurnStarted;
 			_energy.PlayerTurnEnded += OnPlayerTurnEnded;
+			_energy.EnergyChanged += OnEnergyChanged;
 		}
 
 		ApplyDeckStacking();
@@ -57,6 +82,7 @@ public partial class CombatManager : Node
 		{
 			_energy.PlayerTurnStarted -= OnPlayerTurnStarted;
 			_energy.PlayerTurnEnded -= OnPlayerTurnEnded;
+			_energy.EnergyChanged -= OnEnergyChanged;
 		}
 	}
 
@@ -134,7 +160,7 @@ public partial class CombatManager : Node
 		_enemiesPlayedThisTurn.Clear();
 		ApplyTurnDeckStates();
 		foreach (var player in AlivePlayers().ToList())
-			ApplyEndOfTurnStatuses(player);
+			await ApplyEndOfTurnStatusesAsync(player);
 
 		await ToSignal(GetTree().CreateTimer(EnemyTurnStartDelaySec), "timeout");
 		foreach (var enemy in _enemies.ToList())
@@ -146,7 +172,7 @@ public partial class CombatManager : Node
 
 			await enemy.PlayTurnAsync();
 			if (enemy != null && GodotObject.IsInstanceValid(enemy) && enemy.Alive)
-				ApplyEndOfTurnStatuses(enemy);
+				await ApplyEndOfTurnStatusesAsync(enemy);
 			_enemiesPlayedThisTurn.Add(enemy);
 			ApplyTurnDeckStates();
 		}
@@ -158,6 +184,7 @@ public partial class CombatManager : Node
 	private void ApplyTurnDeckStates()
 	{
 		bool playerTurn = _energy == null || _energy.IsPlayerTurn;
+		bool playerHasEnergy = _energy == null || _energy.CanSpend(_energy.CardEnergyCost);
 
 		foreach (var enemy in _enemies)
 		{
@@ -171,8 +198,17 @@ public partial class CombatManager : Node
 		foreach (var player in _players)
 		{
 			if (player is PlayerUnit playerUnit && GodotObject.IsInstanceValid(playerUnit))
-				playerUnit.SetDeckTurnDimmed(!playerTurn);
+			{
+				playerUnit.SetDeckDeadDimmed(!playerUnit.Alive);
+				playerUnit.SetDeckTurnDimmed(!playerTurn || !playerUnit.Alive);
+				playerUnit.SetDeckEnergyDimmed(playerTurn && playerUnit.Alive && !playerHasEnergy);
+			}
 		}
+	}
+
+	private void OnEnergyChanged(int current, int max)
+	{
+		ApplyTurnDeckStates();
 	}
 
 	private void ApplyDeckStacking()
@@ -246,7 +282,7 @@ public partial class CombatManager : Node
 					case "block":
 					{
 						foreach (var target in ResolveBeneficialTargets(targetId, allies, source))
-							target.GainBlock(effect.Amount);
+							GainBlockWithPopup(target, effect.Amount);
 						break;
 					}
 					case "heal":
@@ -258,14 +294,14 @@ public partial class CombatManager : Node
 					case "regen":
 					{
 						foreach (var target in ResolveBeneficialTargets(targetId, allies, source))
-							target.ApplyStatus("regen", effect.Amount);
+							ApplyStatusWithPopup(target, "regen", effect.Amount);
 						break;
 					}
 					case "bleed":
 					case "weak":
 					{
 						foreach (var target in ResolveHarmfulTargets(targetId, opponents, singleOpponent))
-							target.ApplyStatus(effectId, effect.Amount);
+							ApplyStatusWithPopup(target, effectId, effect.Amount);
 						break;
 					}
 					case "play_top_cards":
@@ -354,6 +390,21 @@ public partial class CombatManager : Node
 			SpawnDamagePopupAt(target, healed, isHeal: true);
 	}
 
+	private void GainBlockWithPopup(IDamageable target, int amount)
+	{
+		if (target == null || !target.Alive || amount <= 0) return;
+		target.GainBlock(amount);
+		SpawnIconPopupAt(target, amount, "block", PopupBuffColor);
+	}
+
+	private void ApplyStatusWithPopup(IDamageable target, string id, int amount)
+	{
+		if (target == null || !target.Alive || amount <= 0) return;
+		target.ApplyStatus(id, amount);
+		bool buff = id == "regen";
+		SpawnIconPopupAt(target, amount, id, buff ? PopupBuffColor : PopupCurseColor);
+	}
+
 	private int GetAttackAmountAfterWeak(IDamageable source, int amount)
 	{
 		if (source == null || source.GetStatusAmount("weak") <= 0)
@@ -397,14 +448,17 @@ public partial class CombatManager : Node
 			await ally.PlayTopCardsAsync(count);
 	}
 
-	private void ApplyEndOfTurnStatuses(IDamageable unit)
+	private async Task ApplyEndOfTurnStatusesAsync(IDamageable unit)
 	{
 		if (unit == null || !unit.Alive)
 			return;
 
 		int bleed = unit.GetStatusAmount("bleed");
 		if (bleed > 0)
+		{
 			DealDirectDamage(unit, bleed);
+			await WaitForStatusEffectPresentation();
+		}
 
 		if (!unit.Alive)
 			return;
@@ -414,9 +468,18 @@ public partial class CombatManager : Node
 		{
 			HealWithPopup(unit, regen);
 			unit.ReduceStatus("regen", 1);
+			await WaitForStatusEffectPresentation();
 		}
 
 		unit.ReduceStatus("weak", 1);
+	}
+
+	private async Task WaitForStatusEffectPresentation()
+	{
+		if (EndOfTurnStatusEffectDelaySec <= 0f)
+			return;
+
+		await ToSignal(GetTree().CreateTimer(EndOfTurnStatusEffectDelaySec), "timeout");
 	}
 
 	private void SpawnDamagePopupAt(IDamageable target, int amount, bool isHeal)
@@ -428,22 +491,137 @@ public partial class CombatManager : Node
 		var popup = DamagePopupScene.Instantiate<DamagePopup>();
 		if (popup.Size == Vector2.Zero)
 		{
-			popup.CustomMinimumSize = new Vector2(32, 16);
+			popup.CustomMinimumSize = new Vector2(160, 56);
 			popup.Size = popup.CustomMinimumSize;
 		}
 
-		// Parent under the target's parent so global coordinates make sense
-		Node parent = node.GetParent() ?? GetTree().CurrentScene ?? this;
+		Node parent = GetPopupParent();
 		parent.AddChild(popup);
+		popup.ZAsRelative = false;
+		popup.ZIndex = PopupZIndex;
 
-		var anchor = target.GetPopupAnchorGlobal();
-		var pos = (anchor - new Vector2(popup.Size.X * 0.5f, popup.Size.Y)).Floor();
+		var anchor = GetPopupAnchorCanvas(target, node);
+		var pos = (anchor - new Vector2(popup.Size.X * 0.5f, popup.Size.Y) + GetPopupSlotOffset(node, popup.Size.Y)).Floor();
 		popup.GlobalPosition = pos;
 
-		// No extreme z; just relative
-		popup.ZAsRelative = true;
-
-		GD.Print($"SpawnDamagePopup(world-parent) -> pos={pos} amount={amount}");
+		GD.Print($"SpawnDamagePopup(high-layer) -> pos={pos} amount={amount}");
 		popup.ShowNumber(amount, isHeal);
+	}
+
+	private void SpawnIconPopupAt(IDamageable target, int amount, string iconId, Color color)
+	{
+		if (DamagePopupScene == null) { GD.PushWarning("DamagePopupScene not set."); return; }
+		var node = target as Node;
+		if (node == null || !GodotObject.IsInstanceValid(node)) return;
+
+		var popup = DamagePopupScene.Instantiate<DamagePopup>();
+		if (popup.Size == Vector2.Zero)
+		{
+			popup.CustomMinimumSize = new Vector2(160, 56);
+			popup.Size = popup.CustomMinimumSize;
+		}
+
+		Node parent = GetPopupParent();
+		parent.AddChild(popup);
+		popup.ZAsRelative = false;
+		popup.ZIndex = PopupZIndex;
+
+		var anchor = GetPopupAnchorCanvas(target, node);
+		var pos = (anchor - new Vector2(popup.Size.X * 0.5f, popup.Size.Y) + GetPopupSlotOffset(node, popup.Size.Y)).Floor();
+		popup.GlobalPosition = pos;
+		popup.ShowIconValue(amount, GetPopupIcon(iconId), color);
+	}
+
+	private Node GetPopupParent()
+	{
+		if (_vfx is CanvasLayer configuredLayer && GodotObject.IsInstanceValid(configuredLayer))
+		{
+			configuredLayer.Layer = Mathf.Max(configuredLayer.Layer, PopupCanvasLayer);
+			return configuredLayer;
+		}
+
+		if (_popupLayer != null && GodotObject.IsInstanceValid(_popupLayer))
+			return _popupLayer;
+
+		var root = GetTree()?.Root;
+		_popupLayer = root?.GetNodeOrNull<CanvasLayer>(PopupLayerName);
+		if (_popupLayer == null || !GodotObject.IsInstanceValid(_popupLayer))
+		{
+			_popupLayer = new CanvasLayer
+			{
+				Name = PopupLayerName,
+				Layer = PopupCanvasLayer
+			};
+			Node parent = root ?? GetTree()?.CurrentScene ?? this;
+			parent.AddChild(_popupLayer);
+		}
+		else
+		{
+			_popupLayer.Layer = PopupCanvasLayer;
+		}
+
+		return _popupLayer;
+	}
+
+	private Vector2 GetPopupAnchorCanvas(IDamageable target, Node targetNode)
+	{
+		var anchor = target.GetPopupAnchorGlobal();
+		if (targetNode is Node2D node2D && node2D.GetViewport() != null)
+			return node2D.GetViewport().GetCanvasTransform() * anchor;
+
+		return anchor;
+	}
+
+	private Vector2 GetPopupSlotOffset(Node targetNode, float popupHeight)
+	{
+		int slot = GetPopupSlot(targetNode);
+		if (slot <= 0)
+			return Vector2.Zero;
+
+		return new Vector2(0f, -slot * Mathf.Max(1f, popupHeight));
+	}
+
+	private int GetPopupSlot(Node targetNode)
+	{
+		ulong now = Time.GetTicksMsec();
+		if (!_popupBursts.TryGetValue(targetNode, out PopupBurstState state))
+		{
+			state = new PopupBurstState();
+			_popupBursts[targetNode] = state;
+		}
+
+		if (now - state.LastSpawnMsec > PopupBurstWindowMsec)
+			state.NextSlot = 0;
+
+		int slot = state.NextSlot;
+		state.NextSlot++;
+		state.LastSpawnMsec = now;
+		return slot;
+	}
+
+	private Texture2D GetPopupIcon(string id)
+	{
+		if (string.IsNullOrWhiteSpace(id))
+			return null;
+
+		if (_popupIcons.TryGetValue(id, out Texture2D icon))
+			return icon;
+
+		if (!PopupIconPaths.TryGetValue(id, out string path))
+			return null;
+
+		icon = LoadPopupTexture(path);
+		_popupIcons[id] = icon;
+		return icon;
+	}
+
+	private Texture2D LoadPopupTexture(string path)
+	{
+		var texture = ResourceLoader.Load<Texture2D>(path);
+		if (texture != null)
+			return texture;
+
+		var image = Image.LoadFromFile(ProjectSettings.GlobalizePath(path));
+		return image == null || image.IsEmpty() ? null : ImageTexture.CreateFromImage(image);
 	}
 }

@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3 uid="uid://blyun0sui4axj"]
+[gd_scene load_steps=23 format=3 uid="uid://blyun0sui4axj"]
 
 [ext_resource type="PackedScene" uid="uid://c341vh8po86n6" path="res://Assets/Components/CombatTargeting.tscn" id="5_tkjg1"]
 [ext_resource type="PackedScene" uid="uid://nu0fyjda0sg6" path="res://Assets/Components/enemy.tscn" id="6_y8d5v"]
@@ -9,6 +9,8 @@
 [ext_resource type="Script" uid="uid://l816cj8pyhn0" path="res://Assets/Scripts/CombatHud.cs" id="11_hud"]
 [ext_resource type="FontFile" uid="uid://b6nooaoreg886" path="res://Assets/Fonts/Minecraft.ttf" id="12_font"]
 [ext_resource type="Texture2D" uid="uid://xon806a2samu" path="res://Assets/Sprites/Enemies/Gollux/gollux_idle.png" id="13_gollux_idle"]
+[ext_resource type="Script" uid="uid://cmylq545442uv" path="res://Assets/Scripts/PauseMenu.cs" id="13_pause"]
+[ext_resource type="FontFile" uid="uid://b4dw7y3ang4m3" path="res://Assets/Fonts/upheaval/upheavtt.ttf" id="13_upheaval"]
 [ext_resource type="Texture2D" uid="uid://dd3n2opsjgcyo" path="res://Assets/Sprites/Enemies/Gollux/gollux_attack_A.png" id="14_gollux_attack"]
 [ext_resource type="Texture2D" uid="uid://bup12yptvtvvn" path="res://Assets/Sprites/Enemies/Gollux/gollux_hit.png" id="15_gollux_hit"]
 [ext_resource type="Texture2D" uid="uid://4a52782soxuh" path="res://Assets/Sprites/Enemies/Frogger/frogger_idle.png" id="16_frogger_idle"]
@@ -17,7 +19,9 @@
 [ext_resource type="Texture2D" uid="uid://d2va1r7sn6dy6" path="res://Assets/Sprites/Enemies/Fire Worm/Sprites/Worm/Idle.png" id="19_worm_idle"]
 [ext_resource type="Texture2D" uid="uid://shunmu3agjv4" path="res://Assets/Sprites/Enemies/Fire Worm/Sprites/Worm/Attack.png" id="20_worm_attack"]
 [ext_resource type="Texture2D" uid="uid://cr6o048d1fbdg" path="res://Assets/Sprites/Enemies/Fire Worm/Sprites/Worm/Get Hit.png" id="21_worm_hit"]
-[ext_resource type="Resource" path="res://Assets/Resources/DeckLists/InspiredEnemyDeckList.tres" id="22_inspired_deck"]
+[ext_resource type="Resource" path="res://Assets/Resources/DeckLists/StoneGolemDeckList.tres" id="22_stone_deck"]
+[ext_resource type="Resource" path="res://Assets/Resources/DeckLists/FrogDeckList.tres" id="23_frog_deck"]
+[ext_resource type="Resource" path="res://Assets/Resources/DeckLists/FirewormDeckList.tres" id="24_fireworm_deck"]
 
 [node name="Battlefield" type="Node2D"]
 
@@ -25,16 +29,14 @@
 position = Vector2(-194, -100)
 
 [node name="BaldPirate" parent="." instance=ExtResource("8_player_unit")]
-z_as_relative = false
-position = Vector2(-750, -134)
+position = Vector2(-772, -3)
 PopupAnchorOffset = Vector2(0, -95)
 DeckGap = Vector2(8, 8)
 DefaultDeckSize = Vector2(48, 72)
 SpriteRootPath = "res://Assets/Sprites/pirate-placeholder-sprites/Sprites/2-Enemy-Bald Pirate"
 
 [node name="BigGuy" parent="." instance=ExtResource("8_player_unit")]
-z_as_relative = false
-position = Vector2(-420, -31)
+position = Vector2(-437, 14)
 PopupAnchorOffset = Vector2(0, -105)
 DeckGap = Vector2(8, 8)
 DefaultDeckSize = Vector2(48, 72)
@@ -42,8 +44,7 @@ SpriteRootPath = "res://Assets/Sprites/pirate-placeholder-sprites/Sprites/4-Enem
 ActionFolderName = "11-Throw (Bomb)"
 
 [node name="Captain" parent="." instance=ExtResource("8_player_unit")]
-z_as_relative = false
-position = Vector2(-660, 26)
+position = Vector2(-605, 8)
 PopupAnchorOffset = Vector2(0, -100)
 DeckGap = Vector2(8, 8)
 DefaultDeckSize = Vector2(48, 72)
@@ -62,18 +63,19 @@ EnergyPath = NodePath("../EnergyManager")
 [node name="Enemies" type="Control" parent="."]
 layout_mode = 3
 anchors_preset = 0
+offset_left = -5.0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="Mushroom" parent="Enemies" instance=ExtResource("6_y8d5v")]
+[node name="StoneGolem" parent="Enemies" instance=ExtResource("6_y8d5v")]
 z_as_relative = false
-offset_left = 146.0
-offset_top = -74.0
-offset_right = 274.0
-offset_bottom = 55.0
+offset_left = 299.0
+offset_top = -103.0
+offset_right = 427.0
+offset_bottom = 26.0
 HealthBarGap = -4.0
 DefaultDeckSize = Vector2(48, 72)
-DeckListOverride = ExtResource("22_inspired_deck")
+DeckListOverride = ExtResource("22_stone_deck")
 IdleSpriteSheet = ExtResource("13_gollux_idle")
 IdleFrameSize = Vector2i(128, 128)
 AttackSpriteSheet = ExtResource("14_gollux_attack")
@@ -82,14 +84,15 @@ HitSpriteSheet = ExtResource("15_gollux_hit")
 HitFrameSize = Vector2i(128, 128)
 ActionFrameSeconds = 0.025
 
-[node name="Skeleton" parent="Enemies" instance=ExtResource("6_y8d5v")]
+[node name="Frog" parent="Enemies" instance=ExtResource("6_y8d5v")]
 z_as_relative = false
-offset_left = 40.0
-offset_top = -70.0
-offset_right = 168.0
-offset_bottom = 58.0
+offset_left = -31.0
+offset_top = -100.0
+offset_right = 97.0
+offset_bottom = 28.0
 HealthBarGap = -4.0
 DefaultDeckSize = Vector2(48, 72)
+DeckListOverride = ExtResource("23_frog_deck")
 IdleSpriteSheet = ExtResource("16_frogger_idle")
 IdleFrameSize = Vector2i(128, 128)
 AttackSpriteSheet = ExtResource("17_frogger_attack")
@@ -98,14 +101,15 @@ HitSpriteSheet = ExtResource("18_frogger_hit")
 HitFrameSize = Vector2i(128, 128)
 ActionFrameSeconds = 0.025
 
-[node name="FlyingEye" parent="Enemies" instance=ExtResource("6_y8d5v")]
+[node name="Fireworm" parent="Enemies" instance=ExtResource("6_y8d5v")]
 z_as_relative = false
-offset_left = 289.0
-offset_top = -12.0
-offset_right = 379.0
-offset_bottom = 78.0
+offset_left = 145.0
+offset_top = -55.0
+offset_right = 235.0
+offset_bottom = 35.0
 HealthBarGap = -4.0
 DefaultDeckSize = Vector2(48, 72)
+DeckListOverride = ExtResource("24_fireworm_deck")
 IdleSpriteSheet = ExtResource("19_worm_idle")
 IdleFrameSize = Vector2i(90, 90)
 AttackSpriteSheet = ExtResource("20_worm_attack")
@@ -137,3 +141,8 @@ grow_vertical = 2
 script = ExtResource("11_hud")
 EnergyPath = NodePath("../../EnergyManager")
 Font = ExtResource("12_font")
+
+[node name="PauseMenu" type="CanvasLayer" parent="."]
+script = ExtResource("13_pause")
+BodyFont = ExtResource("12_font")
+BoldFont = ExtResource("13_upheaval")

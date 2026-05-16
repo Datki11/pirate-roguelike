@@ -16,14 +16,18 @@ public partial class PlayerUnit : Node2D, IDamageable
 	[Export] public Vector2 HealthBarSize { get; set; } = new(96, 20);
 	[Export] public float HealthBarGap { get; set; } = 4f;
 	[Export] public Vector2 StatusBarSize { get; set; } = new(96, 18);
-	[Export] public float StatusBarGap { get; set; } = 1f;
+	[Export] public float StatusBarGap { get; set; } = 2f;
 	[Export] public Vector2 DeckGap { get; set; } = new(8, 4);
 	[Export] public Vector2 DefaultDeckSize { get; set; } = new(112, 105);
-	[Export] public Vector2 PopupAnchorGap { get; set; } = new(0, 16);
+	[Export] public Vector2 PopupAnchorGap { get; set; } = new(0, 8);
+	[Export] public float TargetRingWidthMultiplier { get; set; } = 1.8f;
+	[Export] public float TargetRingMinimumWidth { get; set; } = 42f;
+	[Export] public float TargetRingVerticalOffset { get; set; } = -2f;
 	[ExportGroup("Animation")]
 	[Export(PropertyHint.Dir)] public string SpriteRootPath { get; set; } = "";
 	[Export] public string IdleFolderName { get; set; } = "1-Idle";
 	[Export] public string ActionFolderName { get; set; } = "7-Attack";
+	[Export] public string DeadGroundFolderName { get; set; } = "9-Dead Ground";
 	[Export] public float IdleFrameSeconds { get; set; } = 0.08f;
 	[Export] public float ActionFrameSeconds { get; set; } = 0.055f;
 	[Export] public bool FaceRight { get; set; } = true;
@@ -35,9 +39,11 @@ public partial class PlayerUnit : Node2D, IDamageable
 	private Control _hudTooltipArea;
 	private TooltipDisplay _hudTooltip;
 	private Deck _deck;
-	private Tween _hurtTween;
+	private TargetRing _targetRing;
+	private Tween _feedbackTween;
 	private List<Texture2D> _idleFrames = new();
 	private List<Texture2D> _actionFrames = new();
+	private List<Texture2D> _deadGroundFrames = new();
 	private List<Texture2D> _currentFrames = new();
 	private float _frameTime;
 	private int _frameIndex;
@@ -82,6 +88,7 @@ public partial class PlayerUnit : Node2D, IDamageable
 		{
 			_deck.EnableInput = true;
 			_deck.Side = Deck.DeckSide.Player;
+			_deck.SetDeadDimmed(!Alive);
 		}
 
 		_combat = GetTree().Root.FindChild("CombatManager", true, false) as CombatManager;
@@ -124,9 +131,16 @@ public partial class PlayerUnit : Node2D, IDamageable
 		HP = Mathf.Max(0, HP - amount);
 		_hpBar?.Set(HP, MaxHP);
 		RefreshStatusBar();
-		PlayHurtAnimation();
+		PlayFeedbackFlash(new Color(1f, 0.16f, 0.12f));
 		EmitSignal(SignalName.Damaged, amount);
-		if (!Alive) EmitSignal(SignalName.Died);
+		if (!Alive)
+		{
+			Block = 0;
+			RefreshStatusBar();
+			PlayDeadGround();
+			_deck?.SetDeadDimmed(true);
+			EmitSignal(SignalName.Died);
+		}
 	}
 
 	public int TakeAttackDamage(int amount)
@@ -144,10 +158,14 @@ public partial class PlayerUnit : Node2D, IDamageable
 	public void Heal(int amount)
 	{
 		if (amount <= 0 || !Alive) return;
+		int before = HP;
 		HP = Mathf.Min(MaxHP, HP + amount);
 		_hpBar?.Set(HP, MaxHP);
 		RefreshStatusBar();
-		EmitSignal(SignalName.Healed, amount);
+		int healed = HP - before;
+		if (healed > 0)
+			PlayFeedbackFlash(new Color(0.22f, 1f, 0.28f));
+		EmitSignal(SignalName.Healed, healed);
 	}
 
 	public void GainBlock(int amount)
@@ -155,6 +173,7 @@ public partial class PlayerUnit : Node2D, IDamageable
 		if (amount <= 0 || !Alive) return;
 		Block += amount;
 		RefreshStatusBar();
+		PlayFeedbackFlash(new Color(0.22f, 0.68f, 1f));
 	}
 
 	public void ClearBlock()
@@ -169,6 +188,7 @@ public partial class PlayerUnit : Node2D, IDamageable
 		if (string.IsNullOrWhiteSpace(id) || amount <= 0 || !Alive) return;
 		_statuses[id] = GetStatusAmount(id) + amount;
 		RefreshStatusBar();
+		PlayFeedbackFlash(id == "regen" ? new Color(0.22f, 0.68f, 1f) : new Color(0.72f, 0.18f, 1f));
 	}
 
 	public void ReduceStatus(string id, int amount)
@@ -196,7 +216,7 @@ public partial class PlayerUnit : Node2D, IDamageable
 
 	public void PlayCardAnimation()
 	{
-		if (_actionFrames.Count == 0) return;
+		if (!Alive || _actionFrames.Count == 0) return;
 		_currentFrames = _actionFrames;
 		_frameIndex = 0;
 		_frameTime = 0;
@@ -207,6 +227,16 @@ public partial class PlayerUnit : Node2D, IDamageable
 	public void SetDeckTurnDimmed(bool dimmed)
 	{
 		_deck?.SetTurnDimmed(dimmed);
+	}
+
+	public void SetDeckEnergyDimmed(bool dimmed)
+	{
+		_deck?.SetEnergyDimmed(dimmed);
+	}
+
+	public void SetDeckDeadDimmed(bool dimmed)
+	{
+		_deck?.SetDeadDimmed(dimmed);
 	}
 
 	public void SetDeckBaseDrawPriority(int priority)
@@ -225,19 +255,78 @@ public partial class PlayerUnit : Node2D, IDamageable
 		return GlobalPosition;
 	}
 
-	private void PlayHurtAnimation()
+	public void SetFriendlyTargetable(bool on)
 	{
-		if (_sprite == null) return;
-		_hurtTween?.Kill();
-		_sprite.Modulate = new Color(1f, 0.35f, 0.35f);
-		_hurtTween = CreateTween();
-		_hurtTween.TweenProperty(_sprite, "modulate", Colors.White, 0.18f);
+		EnsureFriendlyTargetRing();
+		if (_targetRing == null)
+			return;
+
+		_targetRing.Visible = on;
+		_targetRing.SetHover(on);
+	}
+
+	public Rect2 GetTargetingCanvasRect()
+	{
+		bool hasRect = false;
+		Rect2 rect = default;
+
+		if (TryGetSpriteRect(out Rect2 spriteRect))
+			MergeCanvasRect(LocalRectToCanvas(spriteRect), ref rect, ref hasRect);
+
+		MergeVisibleControlCanvasRect(_hpBar, ref rect, ref hasRect);
+		MergeVisibleControlCanvasRect(_statusBar, ref rect, ref hasRect);
+		if (_targetRing != null && _targetRing.Visible)
+			MergeVisibleControlCanvasRect(_targetRing, ref rect, ref hasRect);
+
+		return hasRect ? rect.Grow(6f) : new Rect2(GetViewport().GetMousePosition(), Vector2.Zero);
+	}
+
+	public Vector2 GetTargetingAnchorCanvas()
+	{
+		var rect = GetTargetingCanvasRect();
+		return rect.Position + rect.Size * 0.5f;
+	}
+
+	private void PlayFeedbackFlash(Color color)
+	{
+		if (_sprite == null || !Alive) return;
+		_feedbackTween?.Kill();
+		_sprite.Modulate = color;
+		_feedbackTween = CreateTween();
+		_feedbackTween.TweenProperty(_sprite, "modulate", Colors.White, 0.16f);
+		_feedbackTween.TweenProperty(_sprite, "modulate", color.Lightened(0.15f), 0.12f);
+		_feedbackTween.TweenProperty(_sprite, "modulate", Colors.White, 0.24f);
 	}
 
 	private void LoadAnimations()
 	{
 		_idleFrames = LoadFrames(IdleFolderName);
 		_actionFrames = LoadFrames(ActionFolderName);
+		_deadGroundFrames = LoadFrames(ResolveDeadGroundFolderName());
+	}
+
+	private string ResolveDeadGroundFolderName()
+	{
+		if (string.IsNullOrWhiteSpace(SpriteRootPath))
+			return DeadGroundFolderName;
+
+		if (!string.IsNullOrWhiteSpace(DeadGroundFolderName) && DirectoryExists($"{SpriteRootPath.TrimEnd('/')}/{DeadGroundFolderName}"))
+			return DeadGroundFolderName;
+
+		using var dir = DirAccess.Open(SpriteRootPath);
+		if (dir == null)
+			return DeadGroundFolderName;
+
+		return dir.GetDirectories()
+			.Where(d => d.EndsWith("Dead Ground") || d.EndsWith("Fead Ground"))
+			.OrderBy(ParseLeadingNumber)
+			.FirstOrDefault() ?? DeadGroundFolderName;
+	}
+
+	private bool DirectoryExists(string path)
+	{
+		using var dir = DirAccess.Open(path);
+		return dir != null;
 	}
 
 	private List<Texture2D> LoadFrames(string folderName)
@@ -273,13 +362,41 @@ public partial class PlayerUnit : Node2D, IDamageable
 		return int.TryParse(stem, out int number) ? number : int.MaxValue;
 	}
 
+	private int ParseLeadingNumber(string name)
+	{
+		int dash = name.IndexOf('-');
+		if (dash <= 0)
+			return int.MaxValue;
+
+		return int.TryParse(name[..dash], out int number) ? number : int.MaxValue;
+	}
+
 	private void PlayIdle()
 	{
+		if (!Alive && _deadGroundFrames.Count > 0)
+		{
+			PlayDeadGround();
+			return;
+		}
+
 		_currentFrames = _idleFrames;
 		_frameIndex = 0;
 		_frameTime = 0;
 		_playingAction = false;
 		ApplyFrame();
+	}
+
+	private void PlayDeadGround()
+	{
+		if (_deadGroundFrames.Count == 0)
+			return;
+
+		_currentFrames = new List<Texture2D>();
+		_frameIndex = 0;
+		_frameTime = 0;
+		_playingAction = false;
+		if (_sprite != null)
+			_sprite.Texture = _deadGroundFrames[0];
 	}
 
 	private void ApplyFrame()
@@ -345,6 +462,8 @@ public partial class PlayerUnit : Node2D, IDamageable
 			float y = spriteRect.Position.Y - DeckGap.Y - deckRect.End.Y;
 			_deck.Position = new Vector2(Mathf.Round(x), Mathf.Round(y));
 		}
+
+		ApplyFriendlyTargetRingLayout(spriteRect);
 	}
 
 	private bool TryGetSpriteRect(out Rect2 rect)
@@ -426,6 +545,86 @@ public partial class PlayerUnit : Node2D, IDamageable
 
 		_statusBar = new StatusBar { Name = "StatusBar" };
 		AddChild(_statusBar);
+	}
+
+	private void EnsureFriendlyTargetRing()
+	{
+		if (_targetRing != null || Engine.IsEditorHint())
+			return;
+
+		_targetRing = new TargetRing
+		{
+			Name = "FriendlyTargetRing",
+			Visible = false,
+			MouseFilter = Control.MouseFilterEnum.Ignore,
+			ZIndex = -5,
+			BaseColor = new Color(0.22f, 0.68f, 1f, 1f),
+			FillColor = new Color(0.22f, 0.68f, 1f, 0.25f),
+			ShadowColor = new Color(0f, 0.05f, 0.14f, 0.9f),
+			Thickness = 2
+		};
+		AddChild(_targetRing);
+		if (TryGetSpriteRect(out Rect2 spriteRect))
+			ApplyFriendlyTargetRingLayout(spriteRect);
+	}
+
+	private void ApplyFriendlyTargetRingLayout(Rect2 spriteRect)
+	{
+		if (_targetRing == null)
+			return;
+
+		float ringWidth = Mathf.Max(TargetRingMinimumWidth, spriteRect.Size.X * TargetRingWidthMultiplier);
+		float ringHeight = Mathf.Max(18f, ringWidth * 0.62f);
+		_targetRing.CustomMinimumSize = new Vector2(ringWidth, ringHeight);
+		_targetRing.Size = new Vector2(ringWidth, ringHeight);
+		_targetRing.Position = new Vector2(
+			Mathf.Round(spriteRect.Position.X + (spriteRect.Size.X - ringWidth) * 0.5f),
+			Mathf.Round(spriteRect.End.Y - ringHeight * 0.5f + TargetRingVerticalOffset)
+		);
+	}
+
+	private Rect2 LocalRectToCanvas(Rect2 localRect)
+	{
+		Transform2D transform = GetGlobalTransformWithCanvas();
+		Vector2 a = transform * localRect.Position;
+		Vector2 b = transform * new Vector2(localRect.End.X, localRect.Position.Y);
+		Vector2 c = transform * localRect.End;
+		Vector2 d = transform * new Vector2(localRect.Position.X, localRect.End.Y);
+		var rect = new Rect2(a, Vector2.Zero);
+		rect = rect.Expand(b).Expand(c).Expand(d);
+		return rect;
+	}
+
+	private void MergeVisibleControlCanvasRect(Control control, ref Rect2 rect, ref bool hasRect)
+	{
+		if (control == null || !control.Visible)
+			return;
+
+		MergeCanvasRect(GetControlCanvasRect(control), ref rect, ref hasRect);
+	}
+
+	private Rect2 GetControlCanvasRect(Control control)
+	{
+		Vector2 size = control.Size;
+		if (size.X <= 0f || size.Y <= 0f)
+			size = control.CustomMinimumSize;
+
+		return new Rect2(control.GetGlobalTransformWithCanvas().Origin, size);
+	}
+
+	private void MergeCanvasRect(Rect2 next, ref Rect2 rect, ref bool hasRect)
+	{
+		if (next.Size.X <= 0f || next.Size.Y <= 0f)
+			return;
+
+		if (!hasRect)
+		{
+			rect = next;
+			hasRect = true;
+			return;
+		}
+
+		rect = rect.Merge(next);
 	}
 
 	private void RefreshStatusBar()

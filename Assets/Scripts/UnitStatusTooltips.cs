@@ -16,13 +16,10 @@ public static class UnitStatusTooltips
 
 	public static List<TooltipEntry> Build(IReadOnlyDictionary<string, int> statuses, int block)
 	{
-		var entries = new List<TooltipEntry>
-		{
-			new("HP", "Health. When this reaches 0, the unit is defeated.", GetIcon("hp")),
-			new("Block", block > 0
-				? $"Prevents incoming attack damage. Current block: {block}. Block is cleared at the start of the player's turn."
-				: "Prevents incoming attack damage. Block is cleared at the start of the player's turn.", GetIcon("block"))
-		};
+		var entries = new List<TooltipEntry>();
+
+		if (block > 0)
+			entries.Add(new("Block", $"Prevents incoming attack damage. Current block: {block}. Block is cleared at the start of the player's turn.", GetIcon("block")));
 
 		AddStatus(entries, statuses, "bleed", "Bleed", "At the end of this unit's turn, it takes damage equal to bleed.");
 		AddStatus(entries, statuses, "weak", "Weak", "This unit deals 50% less damage. At the end of its turn, it loses 1 weak.");

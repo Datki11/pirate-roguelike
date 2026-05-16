@@ -18,10 +18,10 @@ public partial class Enemy : Control, IDamageable
 	[Export] public Vector2 HealthBarSize { get; set; } = new(88, 20);
 	[Export] public float HealthBarGap { get; set; } = 4f;
 	[Export] public Vector2 StatusBarSize { get; set; } = new(96, 18);
-	[Export] public float StatusBarGap { get; set; } = 1f;
+	[Export] public float StatusBarGap { get; set; } = 2f;
 	[Export] public Vector2 DeckGap { get; set; } = new(8, 4);
 	[Export] public Vector2 DefaultDeckSize { get; set; } = new(112, 105);
-	[Export] public Vector2 PopupAnchorGap { get; set; } = new(0, 16);
+	[Export] public Vector2 PopupAnchorGap { get; set; } = new(0, 8);
 	[Export] public float TargetRingWidthMultiplier { get; set; } = 1.8f;
 	[Export] public float TargetRingMinimumWidth { get; set; } = 42f;
 	[Export] public float TargetRingVerticalOffset { get; set; } = -2f;
@@ -68,6 +68,7 @@ public partial class Enemy : Control, IDamageable
 
 	private Deck _deck;
 	private CombatManager _combat;
+	private Tween _feedbackTween;
 	private enum EnemyAnimation { Idle, Attack, Hit }
 	private readonly List<AtlasTexture> _idleFrames = new();
 	private readonly List<AtlasTexture> _attackFrames = new();
@@ -80,6 +81,7 @@ public partial class Enemy : Control, IDamageable
 	private bool _layoutSpriteRectValid;
 	private Rect2 _layoutSpriteRect;
 	private bool _deathPresentationRunning;
+	private bool _unitHovering;
 	private readonly Dictionary<string, int> _statuses = new();
 
 	// --- Signals (ADD THIS BACK) ---
@@ -138,13 +140,14 @@ public partial class Enemy : Control, IDamageable
 
 		if (_deck != null)
 		{
+			_deck.Side = Deck.DeckSide.Enemy;
 			if (DeckListOverride != null)
-				_deck.DeckList = DeckListOverride;
+				_deck.RebuildFromDeckList(DeckListOverride);
 			_deck.EnableInput = false;
 			_deck.DiscardOnTopClick = false;
-			_deck.Side = Deck.DeckSide.Enemy;
 			_deck.PlayRequested += OnDeckPlayRequested;
 			_deck.Shuffled += OnDeckShuffled;
+			_deck.ActiveHoverChanged += OnDeckActiveHoverChanged;
 		}
 
 		_combat?.RegisterEnemy(this);
@@ -186,6 +189,7 @@ public partial class Enemy : Control, IDamageable
 		{
 			_deck.PlayRequested -= OnDeckPlayRequested;
 			_deck.Shuffled -= OnDeckShuffled;
+			_deck.ActiveHoverChanged -= OnDeckActiveHoverChanged;
 		}
 		_combat?.UnregisterEnemy(this);
 	}
@@ -269,6 +273,7 @@ public partial class Enemy : Control, IDamageable
 		RefreshStatusBar();
 		EmitSignal(SignalName.Damaged, amount);
 		PlayHitAnimation();
+		PlayFeedbackFlash(new Color(1f, 0.16f, 0.12f));
 		if (!Alive)
 		{
 			SetTargetable(false);
@@ -292,10 +297,14 @@ public partial class Enemy : Control, IDamageable
 	public void Heal(int amount)
 	{
 		if (amount <= 0 || !Alive) return;
+		int before = HP;
 		HP = Mathf.Min(MaxHP, HP + amount);
 		_hp?.Set(HP, MaxHP);
 		RefreshStatusBar();
-		EmitSignal(SignalName.Healed, amount);
+		int healed = HP - before;
+		if (healed > 0)
+			PlayFeedbackFlash(new Color(0.22f, 1f, 0.28f));
+		EmitSignal(SignalName.Healed, healed);
 	}
 
 	public void GainBlock(int amount)
@@ -303,6 +312,7 @@ public partial class Enemy : Control, IDamageable
 		if (amount <= 0 || !Alive) return;
 		Block += amount;
 		RefreshStatusBar();
+		PlayFeedbackFlash(new Color(0.22f, 0.68f, 1f));
 	}
 
 	public void ClearBlock()
@@ -317,6 +327,7 @@ public partial class Enemy : Control, IDamageable
 		if (string.IsNullOrWhiteSpace(id) || amount <= 0 || !Alive) return;
 		_statuses[id] = GetStatusAmount(id) + amount;
 		RefreshStatusBar();
+		PlayFeedbackFlash(id == "regen" ? new Color(0.22f, 0.68f, 1f) : new Color(0.72f, 0.18f, 1f));
 	}
 
 	public void ReduceStatus(string id, int amount)
@@ -402,13 +413,27 @@ public partial class Enemy : Control, IDamageable
 	
 	private void OnMouseEntered()
 	{
-		// Only show hover while targetable
-		if (_ring != null && _ring.Visible) _ringTR?.SetHover(true);
+		_unitHovering = true;
+		_deck?.SetOwnerHovering(true);
+		ApplyOwnedHoverVisual(true);
 	}
 
 	private void OnMouseExited()
 	{
-		_ringTR?.SetHover(false);
+		_unitHovering = false;
+		_deck?.SetOwnerHovering(false);
+		ApplyOwnedHoverVisual(_deck?.IsActiveHover == true);
+	}
+
+	private void OnDeckActiveHoverChanged(bool active)
+	{
+		ApplyOwnedHoverVisual(active || _unitHovering);
+	}
+
+	private void ApplyOwnedHoverVisual(bool active)
+	{
+		if (_ring != null && _ring.Visible)
+			_ringTR?.SetHover(active);
 	}
 
 	public void PlayCardAnimation()
@@ -419,6 +444,17 @@ public partial class Enemy : Control, IDamageable
 	public void PlayHitAnimation()
 	{
 		PlayAnimation(EnemyAnimation.Hit);
+	}
+
+	private void PlayFeedbackFlash(Color color)
+	{
+		if (_sprite == null) return;
+		_feedbackTween?.Kill();
+		_sprite.Modulate = color;
+		_feedbackTween = CreateTween();
+		_feedbackTween.TweenProperty(_sprite, "modulate", Colors.White, 0.16f);
+		_feedbackTween.TweenProperty(_sprite, "modulate", color.Lightened(0.15f), 0.12f);
+		_feedbackTween.TweenProperty(_sprite, "modulate", Colors.White, 0.24f);
 	}
 
 	private async void BeginDeathPresentation()

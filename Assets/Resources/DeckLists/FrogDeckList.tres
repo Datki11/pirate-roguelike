@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="DeckList" load_steps=6 format=3]
+
+[ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_card"]
+[ext_resource type="Script" uid="uid://osm0e1rmrshh" path="res://Assets/Scripts/DeckList.cs" id="1_deck"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/poison_lick.tres" id="2_lick"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/poison_burst.tres" id="3_burst"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/poison_spit.tres" id="4_spit"]
+
+[resource]
+script = ExtResource("1_deck")
+Cards = Array[ExtResource("1_card")]([ExtResource("2_lick"), ExtResource("2_lick"), ExtResource("3_burst"), ExtResource("4_spit"), ExtResource("4_spit")])

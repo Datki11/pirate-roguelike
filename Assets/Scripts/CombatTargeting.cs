@@ -13,13 +13,16 @@ public partial class CombatTargeting : Node
 	private Deck[] _decks;
 	private Control _enemiesRoot;
 	private Enemy[] _enemies;
+	private PlayerUnit[] _players;
 	private CombatManager _combat;                      // NEW
 	private EnergyManager _energy;
 
 	private enum TargetingMode
 	{
 		SingleEnemy,
-		AllEnemies
+		AllEnemies,
+		SelfPlayer,
+		AllPlayers
 	}
 
 	private bool _targeting = false;
@@ -28,6 +31,7 @@ public partial class CombatTargeting : Node
 	private CanvasLayer _targetingVisualLayer;
 	private TargetingArrowOverlay _targetingArrow;
 	private Enemy _lockedTarget;
+	private PlayerUnit _lockedPlayerTarget;
 	private TargetingMode _targetingMode;
 
 	public override void _Ready()
@@ -54,6 +58,7 @@ public partial class CombatTargeting : Node
 			tmp.Add(d);
 		}
 		_decks = tmp.ToArray();
+		_players = _decks.Select(GetDeckOwner).OfType<PlayerUnit>().Distinct().ToArray();
 		SetProcess(false);
 	}
 
@@ -86,6 +91,20 @@ public partial class CombatTargeting : Node
 			_pendingDeck = deck;
 			BeginTargeting(TargetingMode.SingleEnemy);
 		}
+		else if (IsSelfPlayerCast(card))
+		{
+			if (!CanSpendCardEnergy()) return;
+			_pendingCard = card;
+			_pendingDeck = deck;
+			BeginTargeting(TargetingMode.SelfPlayer);
+		}
+		else if (IsAllPlayersCast(card))
+		{
+			if (!CanSpendCardEnergy()) return;
+			_pendingCard = card;
+			_pendingDeck = deck;
+			BeginTargeting(TargetingMode.AllPlayers);
+		}
 		else
 		{
 			if (TrySpendCardEnergy())
@@ -110,6 +129,24 @@ public partial class CombatTargeting : Node
 		return (tid == "multiple" || tid == "all" || tid == "all_enemies") && hasAttack;
 	}
 
+	private bool IsSelfPlayerCast(CardData c)
+	{
+		var tid = (c.TargetDef as TargetDef)?.Id;
+		return tid == "self" && HasBeneficialEffect(c) && !HasHarmfulEffect(c);
+	}
+
+	private bool IsAllPlayersCast(CardData c)
+	{
+		var tid = (c.TargetDef as TargetDef)?.Id;
+		return (tid == "all" || tid == "all_allies") && HasBeneficialEffect(c) && !HasHarmfulEffect(c);
+	}
+
+	private bool HasBeneficialEffect(CardData c)
+		=> c?.Effects != null && c.Effects.Any(e => e?.Def?.Id is "block" or "heal" or "regen");
+
+	private bool HasHarmfulEffect(CardData c)
+		=> c?.Effects != null && c.Effects.Any(e => e?.Def?.Id is "attack" or "bleed" or "weak");
+
 	private int GetAttackAmount(CardData c)
 		=> c.Effects.Where(e => e?.Def?.Id == "attack").Select(e => e.Amount).FirstOrDefault();
 
@@ -119,6 +156,7 @@ public partial class CombatTargeting : Node
 		_targeting = true;
 		_targetingMode = mode;
 		_lockedTarget = null;
+		_lockedPlayerTarget = null;
 		foreach (var e in _enemies)
 		{
 			if (e == null || !IsInstanceValid(e) || !e.Alive) continue;
@@ -127,6 +165,16 @@ public partial class CombatTargeting : Node
 			if (singleTarget)
 				e.Clicked += OnEnemyClicked;
 		}
+
+		PlayerUnit selfTarget = GetDeckOwner(_pendingDeck) as PlayerUnit;
+		foreach (var player in _players)
+		{
+			if (player == null || !IsInstanceValid(player) || !player.Alive)
+				continue;
+
+			player.SetFriendlyTargetable(mode == TargetingMode.SelfPlayer && player == selfTarget);
+		}
+
 		ApplyTargetingVisuals(true);
 		SetProcess(true);
 		UpdateTargetingArrow();
@@ -141,10 +189,18 @@ public partial class CombatTargeting : Node
 			e.SetTargetable(false);
 			e.Clicked -= OnEnemyClicked;
 		}
+		foreach (var player in _players)
+		{
+			if (player == null || !IsInstanceValid(player))
+				continue;
+
+			player.SetFriendlyTargetable(false);
+		}
 		_pendingCard = null;
 		_pendingDeck = null;
 		_targeting = false;
 		_lockedTarget = null;
+		_lockedPlayerTarget = null;
 		_targetingArrow?.ClearArrow();
 		SetProcess(false);
 	}
@@ -230,8 +286,27 @@ public partial class CombatTargeting : Node
 			return;
 		}
 
+		if (_targetingMode == TargetingMode.AllPlayers)
+		{
+			Vector2 allMouse = GetViewport().GetMousePosition();
+			bool locked = IsInAllPlayersTargetZone(allMouse);
+			Vector2 allEndPoint = locked ? GetAllPlayersTargetAnchor() : allMouse;
+			arrow.SetAllAlliesZone(GetAllPlayersZoneStartX(), locked);
+			arrow.SetArrow(_pendingDeck.GetTopCardCanvasRect(), allEndPoint, locked, friendly: true);
+			return;
+		}
+
 		arrow.ClearAllEnemiesZone();
 		Vector2 mouse = GetViewport().GetMousePosition();
+		if (_targetingMode == TargetingMode.SelfPlayer)
+		{
+			if (_lockedPlayerTarget == null || !IsInstanceValid(_lockedPlayerTarget) || !_lockedPlayerTarget.Alive || !_lockedPlayerTarget.GetTargetingCanvasRect().HasPoint(mouse))
+				_lockedPlayerTarget = GetFriendlyTargetUnderMouse(mouse);
+			Vector2 playerEndPoint = _lockedPlayerTarget != null ? _lockedPlayerTarget.GetTargetingAnchorCanvas() : mouse;
+			arrow.SetArrow(_pendingDeck.GetTopCardCanvasRect(), playerEndPoint, _lockedPlayerTarget != null, friendly: true);
+			return;
+		}
+
 		if (_lockedTarget == null || !IsInstanceValid(_lockedTarget) || !_lockedTarget.Alive || !_lockedTarget.GetTargetingCanvasRect().HasPoint(mouse))
 			_lockedTarget = GetTargetUnderMouse(mouse);
 		Vector2 endPoint = _lockedTarget != null ? _lockedTarget.GetTargetingAnchorCanvas() : mouse;
@@ -250,6 +325,15 @@ public partial class CombatTargeting : Node
 		}
 
 		return null;
+	}
+
+	private PlayerUnit GetFriendlyTargetUnderMouse(Vector2 mouse)
+	{
+		PlayerUnit owner = GetDeckOwner(_pendingDeck) as PlayerUnit;
+		if (owner == null || !IsInstanceValid(owner) || !owner.Alive)
+			return null;
+
+		return owner.GetTargetingCanvasRect().HasPoint(mouse) ? owner : null;
 	}
 
 	private TargetingArrowOverlay GetTargetingArrow()
@@ -275,16 +359,33 @@ public partial class CombatTargeting : Node
 		return mouse.X >= GetAllEnemiesZoneStartX();
 	}
 
+	private bool IsInAllPlayersTargetZone(Vector2 mouse)
+	{
+		return mouse.X <= GetAllPlayersZoneStartX();
+	}
+
 	private float GetAllEnemiesZoneStartX()
 	{
 		var viewport = GetViewport().GetVisibleRect();
 		return Mathf.Round(viewport.Size.X * 0.6f);
 	}
 
+	private float GetAllPlayersZoneStartX()
+	{
+		var viewport = GetViewport().GetVisibleRect();
+		return Mathf.Round(viewport.Size.X * 0.4f);
+	}
+
 	private Vector2 GetAllEnemiesTargetAnchor()
 	{
 		var viewport = GetViewport().GetVisibleRect();
 		return new Vector2(GetAllEnemiesZoneStartX(), viewport.Size.Y * 0.5f).Floor();
+	}
+
+	private Vector2 GetAllPlayersTargetAnchor()
+	{
+		var viewport = GetViewport().GetVisibleRect();
+		return new Vector2(GetAllPlayersZoneStartX(), viewport.Size.Y * 0.5f).Floor();
 	}
 
 	private async void ConfirmAllEnemiesTarget()
@@ -298,6 +399,32 @@ public partial class CombatTargeting : Node
 		if (!TrySpendCardEnergy()) return;
 		if (_combat != null) await _combat.PlayCardAuto(deck, card, Deck.DeckSide.Player, GetDeckOwner(deck));
 		else GD.PushWarning("CombatManager missing; AoE skipped.");
+	}
+
+	private async void ConfirmAllPlayersTarget()
+	{
+		if (!_targeting || _targetingMode != TargetingMode.AllPlayers || _pendingDeck == null || _pendingCard == null)
+			return;
+
+		var deck = _pendingDeck;
+		var card = _pendingCard;
+		EndTargeting();
+		if (!TrySpendCardEnergy()) return;
+		if (_combat != null) await _combat.PlayCardAuto(deck, card, Deck.DeckSide.Player, GetDeckOwner(deck));
+		else await deck.AdvanceTopToDiscardWithPresentation(card);
+	}
+
+	private async void ConfirmSelfTarget()
+	{
+		if (!_targeting || _targetingMode != TargetingMode.SelfPlayer || _pendingDeck == null || _pendingCard == null)
+			return;
+
+		var deck = _pendingDeck;
+		var card = _pendingCard;
+		EndTargeting();
+		if (!TrySpendCardEnergy()) return;
+		if (_combat != null) await _combat.PlayCardAuto(deck, card, Deck.DeckSide.Player, GetDeckOwner(deck));
+		else await deck.AdvanceTopToDiscardWithPresentation(card);
 	}
 
 	public override void _Input(InputEvent e)
@@ -325,8 +452,22 @@ public partial class CombatTargeting : Node
 			return;
 		}
 
+		if (_targetingMode == TargetingMode.AllPlayers && IsInAllPlayersTargetZone(mb.Position))
+		{
+			ConfirmAllPlayersTarget();
+			GetViewport().SetInputAsHandled();
+			return;
+		}
+
 		if (_targetingMode == TargetingMode.SingleEnemy && GetTargetUnderMouse(mb.Position) != null)
 			return;
+
+		if (_targetingMode == TargetingMode.SelfPlayer && GetFriendlyTargetUnderMouse(mb.Position) != null)
+		{
+			ConfirmSelfTarget();
+			GetViewport().SetInputAsHandled();
+			return;
+		}
 
 		EndTargeting();
 		GetViewport().SetInputAsHandled();
@@ -348,20 +489,26 @@ public partial class TargetingArrowOverlay : Control
 	private static readonly Color AimColor = new(0.94f, 0.67f, 0.14f, 1f);
 	private static readonly Color LockedColor = new(1f, 0.96f, 0.68f, 1f);
 	private static readonly Color ZoneBaseColor = new(0.9f, 0.2f, 0.2f, 1f);
+	private static readonly Color FriendlyAimColor = new(0.24f, 0.72f, 1f, 1f);
+	private static readonly Color FriendlyLockedColor = new(0.65f, 0.92f, 1f, 1f);
+	private static readonly Color FriendlyZoneBaseColor = new(0.16f, 0.56f, 1f, 1f);
 
 	private Rect2 _cardRect;
 	private Vector2 _endPoint;
 	private bool _hasArrow;
 	private bool _locked;
+	private bool _friendlyArrow;
 	private bool _hasAllEnemiesZone;
 	private bool _allEnemiesZoneActive;
+	private bool _allEnemiesZoneFriendly;
 	private float _allEnemiesZoneStartX;
 
-	public void SetArrow(Rect2 cardRect, Vector2 endPoint, bool locked)
+	public void SetArrow(Rect2 cardRect, Vector2 endPoint, bool locked, bool friendly = false)
 	{
 		_cardRect = cardRect;
 		_endPoint = endPoint;
 		_locked = locked;
+		_friendlyArrow = friendly;
 		_hasArrow = cardRect.Size.X > 1f && cardRect.Size.Y > 1f;
 		Size = GetViewport().GetVisibleRect().Size;
 		QueueRedraw();
@@ -376,8 +523,19 @@ public partial class TargetingArrowOverlay : Control
 
 	public void SetAllEnemiesZone(float startX, bool active)
 	{
+		SetAllTargetZone(startX, active, friendly: false);
+	}
+
+	public void SetAllAlliesZone(float startX, bool active)
+	{
+		SetAllTargetZone(startX, active, friendly: true);
+	}
+
+	private void SetAllTargetZone(float startX, bool active, bool friendly)
+	{
 		_allEnemiesZoneStartX = startX;
 		_allEnemiesZoneActive = active;
+		_allEnemiesZoneFriendly = friendly;
 		_hasAllEnemiesZone = true;
 		QueueRedraw();
 	}
@@ -407,7 +565,9 @@ public partial class TargetingArrowOverlay : Control
 		Vector2 dir = delta.Normalized();
 		Vector2 end = _endPoint - dir * 7f;
 		Vector2 shadowOffset = new(1f, 1f);
-		Color lineColor = _locked ? LockedColor : AimColor;
+		Color lineColor = _friendlyArrow
+			? (_locked ? FriendlyLockedColor : FriendlyAimColor)
+			: (_locked ? LockedColor : AimColor);
 
 		DrawLine(start + shadowOffset, end + shadowOffset, ShadowColor, 5f, false);
 		DrawLine(start, end, lineColor, _locked ? 4f : 3f, false);
@@ -421,7 +581,8 @@ public partial class TargetingArrowOverlay : Control
 		float pulse = (Mathf.Sin(Time.GetTicksMsec() / 1000f * 5.5f) + 1f) * 0.5f;
 		float alpha = _allEnemiesZoneActive ? 0.82f + pulse * 0.18f : 0.45f + pulse * 0.16f;
 		float width = _allEnemiesZoneActive ? 4f + pulse * 3f : 3f + pulse * 1.5f;
-		Color color = _allEnemiesZoneActive ? ZoneBaseColor.Lightened(0.18f) : ZoneBaseColor;
+		Color baseColor = _allEnemiesZoneFriendly ? FriendlyZoneBaseColor : ZoneBaseColor;
+		Color color = _allEnemiesZoneActive ? baseColor.Lightened(0.18f) : baseColor;
 		color.A = alpha;
 		Color shadow = ShadowColor;
 		shadow.A = alpha * 0.65f;

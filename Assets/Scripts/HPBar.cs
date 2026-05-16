@@ -12,6 +12,7 @@ public partial class HPBar : Control
 	// Text config
 	[Export] public bool ShowText = true;
 	[Export] public Color TextColor = Colors.White;
+	[Export] public float TextBaselineOffset = 2f;
 
 	// Exported font takes priority; leave null to use the theme default.
 	[Export] public FontFile PixelFont;
@@ -53,7 +54,7 @@ public partial class HPBar : Control
 		DrawRect(rect, Back, true);
 		float t = (float)Value / Mathf.Max(1, Max);
 		int w = (int)Mathf.Round(size.X * t);
-		DrawRect(new Rect2(Vector2.Zero, new Vector2(w, size.Y)), Fill, true);
+		DrawRect(new Rect2(Vector2.Zero, new Vector2(w, size.Y)), Block > 0 ? BlockFill : Fill, true);
 		DrawRect(rect, Colors.Black, false, 1);
 
 		if (!ShowText) return;
@@ -65,7 +66,7 @@ public partial class HPBar : Control
 				 : (GetThemeFontSize("font_size") > 0 ? GetThemeFontSize("font_size") : 16);
 
 		string healthText = $"{Value}/{Max}";
-		float baseline = Mathf.Round((size.Y - font.GetHeight(fs)) * 0.5f + font.GetAscent(fs));
+		float baseline = Mathf.Round((size.Y - font.GetHeight(fs)) * 0.5f + font.GetAscent(fs) + TextBaselineOffset);
 		float healthWidth = font.GetStringSize(healthText, HorizontalAlignment.Left, -1, fs).X;
 		float healthX = Mathf.Round((size.X - healthWidth) * 0.5f);
 		var healthPos = new Vector2(healthX, baseline);

@@ -151,6 +151,7 @@ public partial class SmallCard : BaseCardView
 			foreach (var effect in Data.Effects)
 			{
 				if (effect?.Def == null) continue;
+				if (ShouldOmitEffectLine(effect)) continue;
 				if (hasContent) _body.Newline();
 				RenderEffectLine(effect);
 				hasContent = true;
@@ -199,6 +200,11 @@ public partial class SmallCard : BaseCardView
 		_body.Pop();
 	}
 
+	private bool ShouldOmitEffectLine(EffectEntry e)
+	{
+		return e?.Def?.Id == "play_top_cards" && !string.IsNullOrWhiteSpace(Data?.RulesText);
+	}
+
 	private string BuildTargetSuffix(EffectDef effect)
 	{
 		string targetId = (Data.TargetDef as TargetDef)?.Id?.ToLowerInvariant() ?? "";
@@ -206,8 +212,9 @@ public partial class SmallCard : BaseCardView
 
 		return targetId switch
 		{
-			"all" or "multiple" or "all_enemies" => " to ALL",
-			"all_allies" => beneficial ? " to ALL" : "",
+			"all" or "multiple" => beneficial ? " to all allies" : " to all enemies",
+			"all_enemies" => " to all enemies",
+			"all_allies" => " to all allies",
 			"random" or "random_enemy" or "random_enemies" => " RANDOMLY",
 			_ => ""
 		};

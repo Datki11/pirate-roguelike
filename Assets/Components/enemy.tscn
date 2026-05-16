@@ -15,7 +15,9 @@ offset_right = 54.0
 offset_bottom = 54.0
 script = ExtResource("1_t6tus")
 HealthBarSize = Vector2(74, 20)
+StatusBarGap = 1.0
 DeckGap = Vector2(8, 8)
+PopupAnchorGap = Vector2(0, 16)
 CombatPath = NodePath("")
 
 [node name="Sprite" type="TextureRect" parent="."]

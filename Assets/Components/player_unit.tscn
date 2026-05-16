@@ -10,6 +10,8 @@
 z_as_relative = false
 script = ExtResource("1_player")
 HealthBarSize = Vector2(84, 20)
+StatusBarGap = 1.0
+PopupAnchorGap = Vector2(0, 16)
 
 [node name="Sprite" type="Sprite2D" parent="."]
 texture_filter = 1

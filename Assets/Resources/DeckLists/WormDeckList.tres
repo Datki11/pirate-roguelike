@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="DeckList" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://Assets/Scripts/CardData.cs" id="1_card"]
+[ext_resource type="Script" path="res://Assets/Scripts/DeckList.cs" id="2_deck"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/enemy_claw_swipe.tres" id="3_claw"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/shriek.tres" id="4_shriek"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/soul_steal.tres" id="5_soul"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/rabid_bite.tres" id="6_bite"]
+
+[resource]
+script = ExtResource("2_deck")
+Cards = Array[ExtResource("1_card")]([ExtResource("3_claw"), ExtResource("4_shriek"), ExtResource("5_soul"), ExtResource("3_claw"), ExtResource("6_bite")])

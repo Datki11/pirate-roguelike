@@ -54,13 +54,17 @@ public partial class Deck : Control
 	private bool _playPresentationRunning;
 	private bool _targetingDimmed;
 	private bool _turnDimmed;
+	private bool _energyDimmed;
+	private bool _deadDimmed;
 	private bool _isActiveHover;
+	private bool _ownerHovering;
 	private bool _hoveringTopCard;
 	private bool _hoveringPile;
 	private bool _topCardTooltipSuppressed;
 	private bool _effectiveTooltipSuppressed;
 	private int _hoverSerial;
 	private Color _normalModulate = Colors.White;
+	private bool _topCardsDimmed;
 	private static int _openDrawPileModalCount;
 	private static int _nextHoverSerial;
 	private static readonly List<Deck> _hoverDecks = new();
@@ -72,6 +76,7 @@ public partial class Deck : Control
 	[Signal] public delegate void TopClickedEventHandler();
 	[Signal] public delegate void PlayRequestedEventHandler(Deck deck, CardData card);
 	[Signal] public delegate void ShuffledEventHandler(Deck deck, CardData newTop);
+	[Signal] public delegate void ActiveHoverChangedEventHandler(bool active);
 
 	public override void _Ready()
 	{
@@ -220,6 +225,17 @@ public partial class Deck : Control
 		return _draw.Count > 0;
 	}
 
+	public void RebuildFromDeckList(Resource deckList = null)
+	{
+		if (deckList != null)
+			DeckList = deckList;
+
+		BuildDeck();
+		Shuffle(_draw);
+		RefreshView();
+		EmitSignal(SignalName.TopChanged, Peek());
+	}
+
 	public CardData AdvanceTopToDiscard()
 	{
 		if (_draw.Count == 0)
@@ -330,6 +346,24 @@ public partial class Deck : Control
 		ApplyEffectiveVisualState();
 	}
 
+	public void SetEnergyDimmed(bool dimmed)
+	{
+		if (_energyDimmed == dimmed)
+			return;
+
+		_energyDimmed = dimmed;
+		ApplyEffectiveVisualState();
+	}
+
+	public void SetDeadDimmed(bool dimmed)
+	{
+		if (_deadDimmed == dimmed)
+			return;
+
+		_deadDimmed = dimmed;
+		ApplyEffectiveVisualState();
+	}
+
 	public void SetBaseDrawPriority(int priority)
 	{
 		if (BaseDrawPriority == priority)
@@ -344,6 +378,19 @@ public partial class Deck : Control
 	{
 		_topCardTooltipSuppressed = suppressed;
 		ApplyEffectiveTooltipSuppression();
+	}
+
+	public bool IsActiveHover => _isActiveHover;
+
+	public void SetOwnerHovering(bool hovering)
+	{
+		if (_ownerHovering == hovering)
+			return;
+
+		_ownerHovering = hovering;
+		if (hovering)
+			_hoverSerial = ++_nextHoverSerial;
+		RefreshActiveHoverDeck();
 	}
 
 	public Rect2 GetTopCardCanvasRect()
@@ -444,6 +491,7 @@ public partial class Deck : Control
 			node.MouseExited += OnTopCardMouseExited;
 			node.MouseFilter = MouseFilterEnum.Stop;
 			node.GuiInput += OnTopGuiInput;
+			ApplyTopCardModulate(force: true);
 
 			if (AutoPlaceTop)
 			{
@@ -878,7 +926,7 @@ public partial class Deck : Control
 		=> !_targetingDimmed && !Deck.IsDrawPileModalOpen;
 
 	private bool CanPlayTopCard()
-		=> EnableInput && !_targetingDimmed && !_turnDimmed && !Deck.IsDrawPileModalOpen;
+		=> EnableInput && !_deadDimmed && !_targetingDimmed && !_turnDimmed && !_energyDimmed && !Deck.IsDrawPileModalOpen;
 
 	private Rect2 GetPlayableCardRect()
 	{
@@ -950,7 +998,7 @@ public partial class Deck : Control
 			&& !Deck.IsDrawPileModalOpen
 			&& !_targetingDimmed
 			&& !_topCardTooltipSuppressed
-			&& (_hoveringTopCard || _hoveringPile);
+			&& (_hoveringTopCard || _hoveringPile || _ownerHovering);
 	}
 
 	private static void RefreshActiveHoverDeck()
@@ -1000,16 +1048,39 @@ public partial class Deck : Control
 
 		_isActiveHover = active;
 		ApplyEffectiveVisualState();
+		EmitSignal(SignalName.ActiveHoverChanged, active);
 	}
 
 	private void ApplyEffectiveVisualState()
 	{
-		bool hoverRestoresTurnDim = _isActiveHover && _turnDimmed && !_targetingDimmed;
-		bool dimmed = (_targetingDimmed || _turnDimmed) && !hoverRestoresTurnDim;
-		Modulate = dimmed ? DimmedModulate : _normalModulate;
+		bool hoverRestoresTurnDim = !_deadDimmed && _isActiveHover && _turnDimmed && !_energyDimmed && !_targetingDimmed;
+		bool wholeDeckDimmed = !_deadDimmed && (_targetingDimmed || _turnDimmed) && !hoverRestoresTurnDim;
+		Modulate = wholeDeckDimmed ? DimmedModulate : _normalModulate;
+		ApplyTopCardModulate();
 		ApplyDrawPriority();
 		ApplyTopCardDrawPriority();
 		ApplyEffectiveTooltipSuppression();
+	}
+
+	private void ApplyTopCardModulate(bool force = false)
+	{
+		bool topCardsDimmed = _deadDimmed || (_energyDimmed && !_targetingDimmed && !_turnDimmed);
+		if (!force && _topCardsDimmed == topCardsDimmed)
+			return;
+
+		_topCardsDimmed = topCardsDimmed;
+		Color topModulate = topCardsDimmed ? DimmedModulate : _normalModulate;
+		if (_top != null)
+		{
+			foreach (Node child in _top.GetChildren())
+			{
+				if (child is CanvasItem item)
+					item.Modulate = topModulate;
+			}
+		}
+
+		if (_hoverPreviewCard != null && GodotObject.IsInstanceValid(_hoverPreviewCard))
+			_hoverPreviewCard.Modulate = topModulate;
 	}
 
 	private void ApplyDrawPriority()
@@ -1054,7 +1125,7 @@ public partial class Deck : Control
 
 		_hoverPreviewCard.Size = source.Size;
 		_hoverPreviewCard.Position = source.GetGlobalTransformWithCanvas().Origin.Floor();
-		_hoverPreviewCard.Modulate = _normalModulate;
+		_hoverPreviewCard.Modulate = _topCardsDimmed ? DimmedModulate : _normalModulate;
 		_hoverPreviewCard.Visible = true;
 		if (_hoverPreviewCard.GetParent() is Node parent)
 			parent.MoveChild(_hoverPreviewCard, parent.GetChildCount() - 1);
