@@ -24,14 +24,14 @@
 position = Vector2(-194, -100)
 
 [node name="BaldPirate" parent="." instance=ExtResource("8_player_unit")]
-position = Vector2(-789, 7)
+position = Vector2(-790, -145)
 PopupAnchorOffset = Vector2(0, -95)
 DeckGap = Vector2(8, 8)
 DefaultDeckSize = Vector2(48, 72)
 SpriteRootPath = "res://Assets/Sprites/pirate-placeholder-sprites/Sprites/2-Enemy-Bald Pirate"
 
 [node name="BigGuy" parent="." instance=ExtResource("8_player_unit")]
-position = Vector2(-367, 51)
+position = Vector2(-405, -7)
 PopupAnchorOffset = Vector2(0, -105)
 DeckGap = Vector2(8, 8)
 DefaultDeckSize = Vector2(48, 72)
@@ -39,7 +39,7 @@ SpriteRootPath = "res://Assets/Sprites/pirate-placeholder-sprites/Sprites/4-Enem
 ActionFolderName = "11-Throw (Bomb)"
 
 [node name="Captain" parent="." instance=ExtResource("8_player_unit")]
-position = Vector2(-566, -51)
+position = Vector2(-689, 93)
 PopupAnchorOffset = Vector2(0, -100)
 DeckGap = Vector2(8, 8)
 DefaultDeckSize = Vector2(48, 72)
@@ -62,10 +62,10 @@ offset_right = 40.0
 offset_bottom = 40.0
 
 [node name="Mushroom" parent="Enemies" instance=ExtResource("6_y8d5v")]
-offset_left = 163.0
-offset_top = -165.0
-offset_right = 291.0
-offset_bottom = -36.0
+offset_left = 290.0
+offset_top = -259.0
+offset_right = 418.0
+offset_bottom = -130.0
 HealthBarGap = -4.0
 DefaultDeckSize = Vector2(48, 72)
 IdleSpriteSheet = ExtResource("13_gollux_idle")
@@ -77,10 +77,10 @@ HitFrameSize = Vector2i(128, 128)
 ActionFrameSeconds = 0.025
 
 [node name="Skeleton" parent="Enemies" instance=ExtResource("6_y8d5v")]
-offset_left = 6.0
-offset_top = -19.0
-offset_right = 134.0
-offset_bottom = 109.0
+offset_left = -8.0
+offset_top = -108.0
+offset_right = 120.0
+offset_bottom = 20.0
 HealthBarGap = -4.0
 DefaultDeckSize = Vector2(48, 72)
 IdleSpriteSheet = ExtResource("16_frogger_idle")
@@ -92,10 +92,10 @@ HitFrameSize = Vector2i(128, 128)
 ActionFrameSeconds = 0.025
 
 [node name="FlyingEye" parent="Enemies" instance=ExtResource("6_y8d5v")]
-offset_left = 359.0
-offset_top = -109.0
-offset_right = 449.0
-offset_bottom = -19.0
+offset_left = 279.0
+offset_top = 65.0
+offset_right = 369.0
+offset_bottom = 155.0
 HealthBarGap = -4.0
 DefaultDeckSize = Vector2(48, 72)
 IdleSpriteSheet = ExtResource("19_worm_idle")
