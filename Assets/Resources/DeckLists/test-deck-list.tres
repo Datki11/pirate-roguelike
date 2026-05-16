@@ -1,11 +1,16 @@
-[gd_resource type="Resource" script_class="DeckList" load_steps=5 format=3 uid="uid://b2k8mwmepw5xv"]
+[gd_resource type="Resource" script_class="DeckList" load_steps=10 format=3 uid="uid://b2k8mwmepw5xv"]
 
-[ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_jbwci"]
-[ext_resource type="Resource" uid="uid://bette2m1dy13u" path="res://Assets/Resources/SmallCards/Gun.tres" id="1_lhwxx"]
-[ext_resource type="Script" uid="uid://osm0e1rmrshh" path="res://Assets/Scripts/DeckList.cs" id="1_y504l"]
-[ext_resource type="Resource" uid="uid://d21apck5g2qg4" path="res://Assets/Resources/SmallCards/sword.tres" id="3_41ov0"]
+[ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_card"]
+[ext_resource type="Script" uid="uid://osm0e1rmrshh" path="res://Assets/Scripts/DeckList.cs" id="2_deck"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/rally.tres" id="3_rally"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/whirlwind.tres" id="4_whirlwind"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/brick_up.tres" id="5_brick"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/rapier.tres" id="6_rapier"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/miracle.tres" id="7_miracle"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/meditate.tres" id="8_meditate"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/believe.tres" id="9_believe"]
 
 [resource]
-script = ExtResource("1_y504l")
-Cards = Array[ExtResource("1_jbwci")]([ExtResource("3_41ov0"), ExtResource("3_41ov0"), ExtResource("1_lhwxx"), ExtResource("1_lhwxx")])
+script = ExtResource("2_deck")
+Cards = Array[ExtResource("1_card")]([ExtResource("3_rally"), ExtResource("4_whirlwind"), ExtResource("5_brick"), ExtResource("6_rapier"), ExtResource("7_miracle"), ExtResource("8_meditate"), ExtResource("9_believe")])
 metadata/_custom_type_script = "uid://osm0e1rmrshh"

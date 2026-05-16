@@ -2,7 +2,7 @@ using Godot;
 using Godot.Collections;
 
 public enum Rarity { Common, Uncommon, Rare, Legendary }
-public enum CardTrigger { None, Lethal, Revenge, Shuffle }
+public enum CardTrigger { None, Lethal, Revenge, Shuffle, Pierce }
 
 [GlobalClass] // so it shows up in "New Resource"
 public partial class CardData : Resource
@@ -23,6 +23,7 @@ public partial class CardData : Resource
 	[Export] public CardTrigger Trigger { get; set; } = CardTrigger.None;
 	[Export(PropertyHint.MultilineText)] public string TriggerText { get; set; } = "";
 	[Export] public int LethalHealAmount { get; set; } = 0;
+	[Export] public int PierceHealAmount { get; set; } = 0;
 	[Export] public bool ReturnToDrawOnLethal { get; set; } = false;
 	[Export] public bool PlayTopCardOnShuffle { get; set; } = false;
 }

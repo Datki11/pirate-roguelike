@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="EffectDef" load_steps=3 format=3]
+
+[ext_resource type="Texture2D" path="res://Assets/Sprites/Icons/placeholder-icons/1-bit_Pixel_Icons/Sprites_Cropped/Boardgames_Cards_Deck_Pile.png" id="1_icon"]
+[ext_resource type="Script" path="res://Assets/Scripts/EffectDef.cs" id="2_script"]
+
+[resource]
+script = ExtResource("2_script")
+Id = "play_top_cards"
+DisplayName = "Top Cards"
+Icon = ExtResource("1_icon")
+ShortFormat = "{ICON} {AMOUNT}"
+LongFormat = "An ally plays {AMOUNT} cards from the top of their deck."
+metadata/_custom_type_script = "res://Assets/Scripts/EffectDef.cs"

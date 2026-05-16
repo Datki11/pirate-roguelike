@@ -90,8 +90,8 @@ public partial class CombatTargeting : Node
 		{
 			if (TrySpendCardEnergy())
 			{
-				if (GetDeckOwner(deck) is PlayerUnit playerUnit) playerUnit.PlayCardAnimation();
-				await deck.AdvanceTopToDiscardWithPresentation(card);  // non-attack or self/ally effects later
+				if (_combat != null) await _combat.PlayCardAuto(deck, card, Deck.DeckSide.Player, GetDeckOwner(deck));
+				else await deck.AdvanceTopToDiscardWithPresentation(card);
 			}
 		}
 	}
@@ -107,7 +107,7 @@ public partial class CombatTargeting : Node
 	{
 		var tid = (c.TargetDef as TargetDef)?.Id;
 		bool hasAttack = c.Effects != null && c.Effects.Any(e => e?.Def?.Id == "attack");
-		return (tid == "multiple" || tid == "all_enemies") && hasAttack;
+		return (tid == "multiple" || tid == "all" || tid == "all_enemies") && hasAttack;
 	}
 
 	private int GetAttackAmount(CardData c)

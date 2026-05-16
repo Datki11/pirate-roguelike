@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3 uid="uid://blyun0sui4axj"]
+[gd_scene load_steps=19 format=3 uid="uid://blyun0sui4axj"]
 
 [ext_resource type="PackedScene" uid="uid://c341vh8po86n6" path="res://Assets/Components/CombatTargeting.tscn" id="5_tkjg1"]
 [ext_resource type="PackedScene" uid="uid://nu0fyjda0sg6" path="res://Assets/Components/enemy.tscn" id="6_y8d5v"]
@@ -17,6 +17,7 @@
 [ext_resource type="Texture2D" uid="uid://d2va1r7sn6dy6" path="res://Assets/Sprites/Enemies/Fire Worm/Sprites/Worm/Idle.png" id="19_worm_idle"]
 [ext_resource type="Texture2D" uid="uid://shunmu3agjv4" path="res://Assets/Sprites/Enemies/Fire Worm/Sprites/Worm/Attack.png" id="20_worm_attack"]
 [ext_resource type="Texture2D" uid="uid://cr6o048d1fbdg" path="res://Assets/Sprites/Enemies/Fire Worm/Sprites/Worm/Get Hit.png" id="21_worm_hit"]
+[ext_resource type="Resource" path="res://Assets/Resources/DeckLists/InspiredEnemyDeckList.tres" id="22_inspired_deck"]
 
 [node name="Battlefield" type="Node2D"]
 
@@ -24,14 +25,16 @@
 position = Vector2(-194, -100)
 
 [node name="BaldPirate" parent="." instance=ExtResource("8_player_unit")]
-position = Vector2(-751, -149)
+z_as_relative = false
+position = Vector2(-750, -134)
 PopupAnchorOffset = Vector2(0, -95)
 DeckGap = Vector2(8, 8)
 DefaultDeckSize = Vector2(48, 72)
 SpriteRootPath = "res://Assets/Sprites/pirate-placeholder-sprites/Sprites/2-Enemy-Bald Pirate"
 
 [node name="BigGuy" parent="." instance=ExtResource("8_player_unit")]
-position = Vector2(-405, -7)
+z_as_relative = false
+position = Vector2(-420, -31)
 PopupAnchorOffset = Vector2(0, -105)
 DeckGap = Vector2(8, 8)
 DefaultDeckSize = Vector2(48, 72)
@@ -39,7 +42,8 @@ SpriteRootPath = "res://Assets/Sprites/pirate-placeholder-sprites/Sprites/4-Enem
 ActionFolderName = "11-Throw (Bomb)"
 
 [node name="Captain" parent="." instance=ExtResource("8_player_unit")]
-position = Vector2(-661, 107)
+z_as_relative = false
+position = Vector2(-660, 26)
 PopupAnchorOffset = Vector2(0, -100)
 DeckGap = Vector2(8, 8)
 DefaultDeckSize = Vector2(48, 72)
@@ -62,12 +66,14 @@ offset_right = 40.0
 offset_bottom = 40.0
 
 [node name="Mushroom" parent="Enemies" instance=ExtResource("6_y8d5v")]
+z_as_relative = false
 offset_left = 146.0
 offset_top = -74.0
 offset_right = 274.0
 offset_bottom = 55.0
 HealthBarGap = -4.0
 DefaultDeckSize = Vector2(48, 72)
+DeckListOverride = ExtResource("22_inspired_deck")
 IdleSpriteSheet = ExtResource("13_gollux_idle")
 IdleFrameSize = Vector2i(128, 128)
 AttackSpriteSheet = ExtResource("14_gollux_attack")
@@ -77,6 +83,7 @@ HitFrameSize = Vector2i(128, 128)
 ActionFrameSeconds = 0.025
 
 [node name="Skeleton" parent="Enemies" instance=ExtResource("6_y8d5v")]
+z_as_relative = false
 offset_left = 40.0
 offset_top = -70.0
 offset_right = 168.0
@@ -92,6 +99,7 @@ HitFrameSize = Vector2i(128, 128)
 ActionFrameSeconds = 0.025
 
 [node name="FlyingEye" parent="Enemies" instance=ExtResource("6_y8d5v")]
+z_as_relative = false
 offset_left = 289.0
 offset_top = -12.0
 offset_right = 379.0

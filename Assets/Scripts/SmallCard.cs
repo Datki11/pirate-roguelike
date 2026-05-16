@@ -180,6 +180,11 @@ public partial class SmallCard : BaseCardView
 		{
 			"attack" => "Deal",
 			"block" => "Gain",
+			"heal" => "Gain",
+			"regen" => "Gain",
+			"bleed" => "Apply",
+			"weak" => "Apply",
+			"play_top_cards" => "Play",
 			_ => e.Def.DisplayName
 		};
 
@@ -197,7 +202,7 @@ public partial class SmallCard : BaseCardView
 	private string BuildTargetSuffix(EffectDef effect)
 	{
 		string targetId = (Data.TargetDef as TargetDef)?.Id?.ToLowerInvariant() ?? "";
-		bool beneficial = effect.Id is "block";
+		bool beneficial = effect.Id is "block" or "heal" or "regen";
 
 		return targetId switch
 		{
@@ -267,6 +272,11 @@ public partial class SmallCard : BaseCardView
 		{
 			"attack" => "Damage dealt to a target.",
 			"block" => "Prevents incoming damage.",
+			"heal" => "Restores HP, up to maximum HP.",
+			"bleed" => "At the end of your turn, take bleed damage.",
+			"weak" => "Deal 50% less damage. At the end of your turn, lose 1 weak.",
+			"regen" => "At the end of your turn, gain HP equal to regen, then lose 1 regen.",
+			"play_top_cards" => "An ally plays cards from the top of their deck.",
 			_ => string.IsNullOrWhiteSpace(effect.LongFormat) ? effect.DisplayName : effect.LongFormat
 		};
 
@@ -274,7 +284,9 @@ public partial class SmallCard : BaseCardView
 		=> target.Id switch
 		{
 			"single" => "Choose one enemy target.",
-			"multiple" or "all" or "all_enemies" => "Affects all enemies.",
+			"all" => "Affects all valid targets.",
+			"multiple" or "all_enemies" => "Affects all enemies.",
+			"all_allies" => "Affects all allies.",
 			"self" => "Targets this unit.",
 			_ => target.DisplayName
 		};
@@ -285,6 +297,7 @@ public partial class SmallCard : BaseCardView
 			CardTrigger.Lethal => "Happens when this card kills a unit.",
 			CardTrigger.Revenge => "Happens when this unit takes damage.",
 			CardTrigger.Shuffle => "Happens when this unit shuffles its deck.",
+			CardTrigger.Pierce => "Happens when this card deals unblocked attack damage.",
 			_ => ""
 		};
 

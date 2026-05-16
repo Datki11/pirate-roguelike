@@ -1,5 +1,6 @@
 using Godot;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 [Tool]
@@ -9,12 +10,15 @@ public partial class Enemy : Control, IDamageable
 
 	[Export] public NodePath SpritePath { get; set; } = "Sprite";
 	[Export] public NodePath HpPath     { get; set; } = "HP";
+	[Export] public NodePath StatusPath { get; set; } = "StatusBar";
 	[Export] public NodePath RingPath   { get; set; } = "Ring";
 	[Export] public NodePath PopupAnchorPath { get; set; } = "Damage Popup Anchor";
 	[ExportGroup("Standard Layout")]
 	[Export] public bool AutoLayoutAttachments { get; set; } = true;
-	[Export] public Vector2 HealthBarSize { get; set; } = new(60, 18);
+	[Export] public Vector2 HealthBarSize { get; set; } = new(82, 18);
 	[Export] public float HealthBarGap { get; set; } = 4f;
+	[Export] public Vector2 StatusBarSize { get; set; } = new(96, 18);
+	[Export] public float StatusBarGap { get; set; } = 1f;
 	[Export] public Vector2 DeckGap { get; set; } = new(8, 4);
 	[Export] public Vector2 DefaultDeckSize { get; set; } = new(112, 105);
 	[Export] public Vector2 PopupAnchorGap { get; set; } = new(0, 16);
@@ -24,6 +28,7 @@ public partial class Enemy : Control, IDamageable
 
 	// Deck + combat
 	[Export] public NodePath DeckPath { get; set; } = "Deck";
+	[Export] public Resource DeckListOverride { get; set; }
 	[Export] public NodePath CombatPath { get; set; }
 	[Export] public float ThinkDelaySec { get; set; } = 0.6f;
 
@@ -54,6 +59,9 @@ public partial class Enemy : Control, IDamageable
 
 	private TextureRect _sprite;
 	private HPBar _hp;
+	private StatusBar _statusBar;
+	private Control _hudTooltipArea;
+	private TooltipDisplay _hudTooltip;
 	private Control _ring;
 	private TargetRing _ringTR;     // <— cached cast
 	private Control _popupAnchor;
@@ -72,13 +80,15 @@ public partial class Enemy : Control, IDamageable
 	private bool _layoutSpriteRectValid;
 	private Rect2 _layoutSpriteRect;
 	private bool _deathPresentationRunning;
+	private readonly Dictionary<string, int> _statuses = new();
 
 	// --- Signals (ADD THIS BACK) ---
 	[Signal] public delegate void ClickedEventHandler(Enemy who);
 
 	// IDamageable
-	public int MaxHP { get; private set; } = 10;
-	public int HP    { get; private set; } = 10;
+	public int MaxHP { get; private set; } = 40;
+	public int HP    { get; private set; } = 40;
+	public int Block { get; private set; }
 	public bool Alive => HP > 0;
 
 	[Signal] public delegate void DamagedEventHandler(int amount);
@@ -89,6 +99,7 @@ public partial class Enemy : Control, IDamageable
 	{
 		_sprite      = GetNodeOrNull<TextureRect>(SpritePath);
 		_hp          = GetNodeOrNull<HPBar>(HpPath);
+		_statusBar   = GetNodeOrNull<StatusBar>(StatusPath);
 		_ring        = GetNodeOrNull<Control>(RingPath);
 		_ringTR      = _ring as TargetRing;           // <— keep a typed ref
 		_popupAnchor = GetNodeOrNull<Control>(PopupAnchorPath);
@@ -99,6 +110,7 @@ public partial class Enemy : Control, IDamageable
 		MouseFilter = MouseFilterEnum.Stop;
 		if (_sprite != null) _sprite.MouseFilter = MouseFilterEnum.Pass;
 		if (_hp     != null) _hp.MouseFilter     = MouseFilterEnum.Pass;
+		if (_statusBar != null) _statusBar.MouseFilter = MouseFilterEnum.Ignore;
 		if (_ring   != null) _ring.MouseFilter   = MouseFilterEnum.Pass;
 		
 		// hook hover
@@ -112,9 +124,12 @@ public partial class Enemy : Control, IDamageable
 			HP    = MaxHP;
 			if (!HasAnimationFrames() && enemyDef.Art != null && _sprite != null) _sprite.Texture = enemyDef.Art;
 		}
+		EnsureStatusBar();
+		EnsureHudTooltip();
 		ApplyFrame();
 		ApplyStandardLayout();
 		_hp?.Set(HP, MaxHP);
+		RefreshStatusBar();
 		if (Engine.IsEditorHint())
 			return;
 
@@ -123,6 +138,8 @@ public partial class Enemy : Control, IDamageable
 
 		if (_deck != null)
 		{
+			if (DeckListOverride != null)
+				_deck.DeckList = DeckListOverride;
 			_deck.EnableInput = false;
 			_deck.DiscardOnTopClick = false;
 			_deck.Side = Deck.DeckSide.Enemy;
@@ -219,11 +236,37 @@ public partial class Enemy : Control, IDamageable
 		await ToSignal(GetTree().CreateTimer(TurnRecoveryDelaySec), "timeout");
 	}
 
+	public async Task PlayTopCardsAsync(int count)
+	{
+		if (!Alive || _deck == null || _combat == null || count <= 0) return;
+
+		for (int i = 0; i < count; i++)
+		{
+			if (!Alive || _deck.Peek() == null)
+				_deck.EnsureTop();
+
+			var card = _deck.Peek();
+			if (card == null)
+				return;
+			if (card.Effects != null && card.Effects.Any(e => e?.Def?.Id == "play_top_cards"))
+			{
+				await _deck.AdvanceTopToDiscardWithPresentation(card);
+				continue;
+			}
+
+			PlayCardAnimation();
+			await ToSignal(GetTree().CreateTimer(TurnImpactDelaySec), "timeout");
+			await _combat.PlayCardAuto(_deck, card, Deck.DeckSide.Enemy, this);
+			await ToSignal(GetTree().CreateTimer(TurnRecoveryDelaySec), "timeout");
+		}
+	}
+
 	public void TakeDamage(int amount)
 	{
 		if (amount <= 0 || !Alive) return;
 		HP = Mathf.Max(0, HP - amount);
 		_hp?.Set(HP, MaxHP);
+		RefreshStatusBar();
 		EmitSignal(SignalName.Damaged, amount);
 		PlayHitAnimation();
 		if (!Alive)
@@ -234,13 +277,59 @@ public partial class Enemy : Control, IDamageable
 		}
 	}
 
+	public int TakeAttackDamage(int amount)
+	{
+		if (amount <= 0 || !Alive) return 0;
+		int blocked = Mathf.Min(Block, amount);
+		Block -= blocked;
+		int hpDamage = amount - blocked;
+		if (hpDamage > 0)
+			TakeDamage(hpDamage);
+		RefreshStatusBar();
+		return hpDamage;
+	}
+
 	public void Heal(int amount)
 	{
 		if (amount <= 0 || !Alive) return;
 		HP = Mathf.Min(MaxHP, HP + amount);
 		_hp?.Set(HP, MaxHP);
+		RefreshStatusBar();
 		EmitSignal(SignalName.Healed, amount);
 	}
+
+	public void GainBlock(int amount)
+	{
+		if (amount <= 0 || !Alive) return;
+		Block += amount;
+		RefreshStatusBar();
+	}
+
+	public void ClearBlock()
+	{
+		if (Block == 0) return;
+		Block = 0;
+		RefreshStatusBar();
+	}
+
+	public void ApplyStatus(string id, int amount)
+	{
+		if (string.IsNullOrWhiteSpace(id) || amount <= 0 || !Alive) return;
+		_statuses[id] = GetStatusAmount(id) + amount;
+		RefreshStatusBar();
+	}
+
+	public void ReduceStatus(string id, int amount)
+	{
+		if (string.IsNullOrWhiteSpace(id) || amount <= 0) return;
+		int next = GetStatusAmount(id) - amount;
+		if (next > 0) _statuses[id] = next;
+		else _statuses.Remove(id);
+		RefreshStatusBar();
+	}
+
+	public int GetStatusAmount(string id)
+		=> !string.IsNullOrWhiteSpace(id) && _statuses.TryGetValue(id, out int amount) ? amount : 0;
 
 	public Vector2 GetPopupAnchorGlobal()
 	{
@@ -298,6 +387,7 @@ public partial class Enemy : Control, IDamageable
 		Rect2 rect = GetControlCanvasRect(this);
 		rect = MergeVisibleControlCanvasRect(rect, _sprite);
 		rect = MergeVisibleControlCanvasRect(rect, _hp);
+		rect = MergeVisibleControlCanvasRect(rect, _statusBar);
 		if (_ring != null && _ring.Visible)
 			rect = rect.Merge(GetControlCanvasRect(_ring));
 
@@ -340,6 +430,7 @@ public partial class Enemy : Control, IDamageable
 		MouseFilter = MouseFilterEnum.Ignore;
 		if (_deck != null) _deck.Visible = false;
 		if (_hp != null) _hp.Visible = false;
+		if (_statusBar != null) _statusBar.Visible = false;
 		if (_ring != null) _ring.Visible = false;
 
 		if (DeathFadeDelaySec > 0f)
@@ -438,7 +529,7 @@ public partial class Enemy : Control, IDamageable
 		if (_sprite == null || _currentFrames == null || _currentFrames.Count == 0) return;
 		_frameIndex = Mathf.Clamp(_frameIndex, 0, _currentFrames.Count - 1);
 		_sprite.Texture = _currentFrames[_frameIndex];
-		_sprite.FlipH = !FaceLeft;
+		_sprite.FlipH = FaceLeft;
 		Vector2 frameSize = _sprite.Texture?.GetSize() ?? IdleFrameSize;
 		_sprite.CustomMinimumSize = frameSize;
 		_sprite.Size = frameSize;
@@ -458,6 +549,31 @@ public partial class Enemy : Control, IDamageable
 				Mathf.Round(spriteRect.Position.X + (spriteRect.Size.X - HealthBarSize.X) * 0.5f),
 				Mathf.Round(spriteRect.End.Y + HealthBarGap)
 			);
+		}
+
+		if (_statusBar != null)
+		{
+			_statusBar.CustomMinimumSize = StatusBarSize;
+			_statusBar.Size = StatusBarSize;
+			float hpX = _hp?.Position.X ?? Mathf.Round(spriteRect.Position.X + (spriteRect.Size.X - StatusBarSize.X) * 0.5f);
+			float hpY = _hp?.Position.Y ?? Mathf.Round(spriteRect.End.Y + HealthBarGap);
+			_statusBar.Position = new Vector2(
+				Mathf.Round(hpX),
+				Mathf.Round(hpY + HealthBarSize.Y + StatusBarGap)
+			);
+		}
+
+		if (_hudTooltipArea != null)
+		{
+			float hpX = _hp?.Position.X ?? Mathf.Round(spriteRect.Position.X + (spriteRect.Size.X - HealthBarSize.X) * 0.5f);
+			float hpY = _hp?.Position.Y ?? Mathf.Round(spriteRect.End.Y + HealthBarGap);
+			float width = Mathf.Max(HealthBarSize.X, StatusBarSize.X);
+			float height = HealthBarSize.Y + StatusBarGap + StatusBarSize.Y;
+			_hudTooltipArea.Position = new Vector2(Mathf.Round(hpX), Mathf.Round(hpY));
+			_hudTooltipArea.CustomMinimumSize = new Vector2(width, height);
+			_hudTooltipArea.Size = _hudTooltipArea.CustomMinimumSize;
+			if (_hudTooltip != null)
+				_hudTooltip.Position = new Vector2(Mathf.Round(width + 6f), 0);
 		}
 
 		if (_ring != null)
@@ -570,6 +686,48 @@ public partial class Enemy : Control, IDamageable
 			size = control.CustomMinimumSize;
 
 		return new Rect2(control.GetGlobalTransformWithCanvas().Origin, size);
+	}
+
+	private void EnsureStatusBar()
+	{
+		if (_statusBar != null || Engine.IsEditorHint())
+			return;
+
+		_statusBar = new StatusBar { Name = "StatusBar" };
+		AddChild(_statusBar);
+	}
+
+	private void RefreshStatusBar()
+	{
+		_hp?.SetBlock(Block);
+		_statusBar?.SetStatuses(_statuses, Block);
+		_hudTooltip?.SetEntries(UnitStatusTooltips.Build(_statuses, Block));
+	}
+
+	private void EnsureHudTooltip()
+	{
+		if (_hudTooltipArea != null || Engine.IsEditorHint())
+			return;
+
+		_hudTooltipArea = new Control
+		{
+			Name = "HudTooltipArea",
+			MouseFilter = MouseFilterEnum.Ignore
+		};
+		AddChild(_hudTooltipArea);
+
+		_hudTooltip = new TooltipDisplay
+		{
+			Name = "HudTooltip",
+			MouseFilter = MouseFilterEnum.Ignore,
+			PixelFont = ResourceLoader.Load<FontFile>("res://Assets/Fonts/Minecraft.ttf"),
+			FontSize = 16,
+			BoldPixelFont = ResourceLoader.Load<FontFile>("res://Assets/Fonts/upheaval/upheavtt.ttf"),
+			BoldFontSize = 20,
+			PanelSize = new Vector2(230, 54)
+		};
+		_hudTooltipArea.AddChild(_hudTooltip);
+		_hudTooltip.SetHoverSource(_hudTooltipArea);
 	}
 
 }

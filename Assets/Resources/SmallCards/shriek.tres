@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=9 format=3 uid="uid://b28y1t6lq24n1"]
+
+[ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_card"]
+[ext_resource type="Texture2D" uid="uid://by0d3lcw8t2bd" path="res://Assets/Sprites/Cards/attack-art/64x64/Swordtember2025 by tjtrewin.itch.io - Week 1/05--bell__tjtrewin-itch-io.png" id="2_art"]
+[ext_resource type="Script" uid="uid://d2ueo4m1lbc51" path="res://Assets/Scripts/EffectEntry.cs" id="3_entry"]
+[ext_resource type="Resource" uid="uid://c1a0m3ei8u4oj" path="res://Assets/Resources/Effects/attack.tres" id="4_attack"]
+[ext_resource type="Resource" path="res://Assets/Resources/Effects/weak.tres" id="5_weak"]
+[ext_resource type="Resource" path="res://Assets/Resources/Targets/all.tres" id="6_target"]
+
+[sub_resource type="Resource" id="Effect_shriek_attack"]
+script = ExtResource("3_entry")
+Def = ExtResource("4_attack")
+Amount = 3
+
+[sub_resource type="Resource" id="Effect_shriek_weak"]
+script = ExtResource("3_entry")
+Def = ExtResource("5_weak")
+Amount = 2
+
+[resource]
+script = ExtResource("1_card")
+Title = "Shriek"
+Description = "Shake the whole crew."
+RulesText = ""
+Art = ExtResource("2_art")
+ManaCost = 0
+Rarity = 1
+TargetDef = ExtResource("6_target")
+Effects = [SubResource("Effect_shriek_attack"), SubResource("Effect_shriek_weak")]
+Trigger = 0
+TriggerText = ""
+LethalHealAmount = 0
+PierceHealAmount = 0
+ReturnToDrawOnLethal = false
+PlayTopCardOnShuffle = false

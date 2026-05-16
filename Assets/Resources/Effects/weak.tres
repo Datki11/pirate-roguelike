@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="EffectDef" load_steps=3 format=3]
+
+[ext_resource type="Texture2D" path="res://Assets/Sprites/Icons/placeholder-icons/1-bit_Pixel_Icons/Sprites_Cropped/RPG_Stat_Strength_Fist_Melee_Attack_Small.png" id="1_icon"]
+[ext_resource type="Script" path="res://Assets/Scripts/EffectDef.cs" id="2_script"]
+
+[resource]
+script = ExtResource("2_script")
+Id = "weak"
+DisplayName = "Weak"
+Icon = ExtResource("1_icon")
+ShortFormat = "{ICON} {AMOUNT}"
+LongFormat = "Deal 50% less damage. At the end of your turn, lose 1 weak."
+metadata/_custom_type_script = "res://Assets/Scripts/EffectDef.cs"

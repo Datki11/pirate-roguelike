@@ -4,8 +4,10 @@ public partial class HPBar : Control
 {
 	[Export] public int Max = 10;
 	[Export] public int Value = 10;
+	[Export] public int Block = 0;
 	[Export] public Color Back = new Color(0,0,0,1);
 	[Export] public Color Fill = new Color(0.1f,0.8f,0.1f,1);
+	[Export] public Color BlockFill = new Color(0.1f, 0.42f, 0.95f, 1);
 
 	// Text config
 	[Export] public bool ShowText = true;
@@ -14,9 +16,17 @@ public partial class HPBar : Control
 	// Exported font takes priority; leave null to use the theme default.
 	[Export] public FontFile PixelFont;
 	[Export] public int PixelFontSize = 16;
+	[Export] public Texture2D BlockIcon;
+
+	private const int IconSize = 16;
+	private const int IconHeight = 18;
+	private const int IconGap = 2;
+	private const int BlockRightPadding = 2;
 
 	public override void _Ready()
 	{
+		PixelFont ??= ResourceLoader.Load<FontFile>("res://Assets/Fonts/Minecraft.ttf");
+		BlockIcon ??= ResourceLoader.Load<Texture2D>("res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/shield_padded.png");
 		ConfigurePixelFont(PixelFont);
 	}
 
@@ -24,6 +34,12 @@ public partial class HPBar : Control
 	{
 		Max = Mathf.Max(1, max);
 		Value = Mathf.Clamp(value, 0, Max);
+		QueueRedraw();
+	}
+
+	public void SetBlock(int block)
+	{
+		Block = Mathf.Max(0, block);
 		QueueRedraw();
 	}
 
@@ -36,7 +52,7 @@ public partial class HPBar : Control
 		DrawRect(rect, Back, true);
 		float t = (float)Value / Mathf.Max(1, Max);
 		int w = (int)Mathf.Round(size.X * t);
-		DrawRect(new Rect2(Vector2.Zero, new Vector2(w, size.Y)), Fill, true);
+		DrawRect(new Rect2(Vector2.Zero, new Vector2(w, size.Y)), Block > 0 ? BlockFill : Fill, true);
 		DrawRect(rect, Colors.Black, false, 1);
 
 		if (!ShowText) return;
@@ -47,13 +63,41 @@ public partial class HPBar : Control
 		int fs = PixelFont != null ? PixelFontSize
 				 : (GetThemeFontSize("font_size") > 0 ? GetThemeFontSize("font_size") : 16);
 
-		string s = $"{Value}/{Max}";
+		string healthText = $"{Value}/{Max}";
 		float baseline = Mathf.Round((size.Y - font.GetHeight(fs)) * 0.5f + font.GetAscent(fs));
-		var pos = new Vector2(0, baseline);
+		float blockWidth = GetBlockWidth(font, fs);
+		float healthWidth = font.GetStringSize(healthText, HorizontalAlignment.Left, -1, fs).X;
+		float healthAreaWidth = Mathf.Max(1f, size.X - blockWidth);
+		float healthX = Mathf.Round((healthAreaWidth - healthWidth) * 0.5f);
+		var healthPos = new Vector2(healthX, baseline);
 
-		// 1px outline for readability, centered horizontally
-		DrawStringOutline(font, pos, s, HorizontalAlignment.Center, size.X, fs, 1, Colors.Black);
-		DrawString(font,         pos, s, HorizontalAlignment.Center, size.X, fs, TextColor);
+		DrawStringOutline(font, healthPos, healthText, HorizontalAlignment.Left, healthWidth, fs, 1, Colors.Black);
+		DrawString(font, healthPos, healthText, HorizontalAlignment.Left, healthWidth, fs, TextColor);
+
+		if (Block <= 0)
+			return;
+
+		string blockText = Block.ToString();
+		float blockTextWidth = font.GetStringSize(blockText, HorizontalAlignment.Left, -1, fs).X;
+		float blockX = Mathf.Round(size.X - blockWidth + BlockRightPadding);
+		if (BlockIcon != null)
+		{
+			DrawTextureRect(BlockIcon, new Rect2(new Vector2(blockX, 0), new Vector2(IconSize, IconHeight)), false);
+			blockX += IconSize + IconGap;
+		}
+
+		var blockPos = new Vector2(blockX, baseline);
+		DrawStringOutline(font, blockPos, blockText, HorizontalAlignment.Left, blockTextWidth, fs, 1, Colors.Black);
+		DrawString(font, blockPos, blockText, HorizontalAlignment.Left, blockTextWidth, fs, TextColor);
+	}
+
+	private float GetBlockWidth(Font font, int fs)
+	{
+		if (Block <= 0)
+			return 0f;
+
+		float textWidth = font.GetStringSize(Block.ToString(), HorizontalAlignment.Left, -1, fs).X;
+		return BlockRightPadding + (BlockIcon != null ? IconSize + IconGap : 0) + textWidth + BlockRightPadding;
 	}
 
 	private void ConfigurePixelFont(Font font)
@@ -63,6 +107,7 @@ public partial class HPBar : Control
 			fontFile.Antialiasing = TextServer.FontAntialiasing.None;
 			fontFile.GenerateMipmaps = false;
 			fontFile.SubpixelPositioning = TextServer.SubpixelPositioning.Disabled;
+			fontFile.AllowSystemFallback = false;
 		}
 	}
 }

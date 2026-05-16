@@ -121,6 +121,8 @@ public partial class CombatManager : Node
 	private void OnPlayerTurnStarted()
 	{
 		_enemiesPlayedThisTurn.Clear();
+		foreach (var unit in AlivePlayers().Concat(AliveEnemies()).ToList())
+			unit.ClearBlock();
 		ApplyDeckStacking();
 		ApplyTurnDeckStates();
 	}
@@ -131,6 +133,8 @@ public partial class CombatManager : Node
 		_enemyTurnRunning = true;
 		_enemiesPlayedThisTurn.Clear();
 		ApplyTurnDeckStates();
+		foreach (var player in AlivePlayers().ToList())
+			ApplyEndOfTurnStatuses(player);
 
 		await ToSignal(GetTree().CreateTimer(EnemyTurnStartDelaySec), "timeout");
 		foreach (var enemy in _enemies.ToList())
@@ -141,6 +145,8 @@ public partial class CombatManager : Node
 				break;
 
 			await enemy.PlayTurnAsync();
+			if (enemy != null && GodotObject.IsInstanceValid(enemy) && enemy.Alive)
+				ApplyEndOfTurnStatuses(enemy);
 			_enemiesPlayedThisTurn.Add(enemy);
 			ApplyTurnDeckStates();
 		}
@@ -204,48 +210,79 @@ public partial class CombatManager : Node
 	private async Task PlayCard(Deck deck, CardData card, Deck.DeckSide side, IDamageable chosenTarget, IDamageable source)
 	{
 		if (deck == null || card == null) return;
+		source ??= deck.GetParent() as IDamageable;
 		if (source is PlayerUnit playerUnit) playerUnit.PlayCardAnimation();
 		await deck.BeginCardPlayPresentation(card);
 
-		// Which group does this card act ON?
-		// Player deck typically targets enemies; Enemy deck typically targets players.
 		bool targetsEnemies = side == Deck.DeckSide.Player;
+		var opponents = targetsEnemies ? AliveEnemies().ToList() : AlivePlayers().ToList();
+		var allies = targetsEnemies ? AlivePlayers().ToList() : AliveEnemies().ToList();
 
 		var targetId = (card.TargetDef as TargetDef)?.Id ?? "single";   // "single" | "all" (or "multiple")
-		int attack = SumEffect(card, "attack");
+		IDamageable singleOpponent = chosenTarget != null && chosenTarget.Alive ? chosenTarget : PickRandom(opponents);
 		bool lethal = false;
+		bool pierced = false;
 
-		if (attack > 0)
+		if (card.Effects != null)
 		{
-			if (targetId == "all" || targetId == "multiple" || targetId == "all_enemies")
+			foreach (var effect in card.Effects)
 			{
-				var group = targetsEnemies ? AliveEnemies().ToList() : AlivePlayers().ToList();
-				if (group.Count == 0)
+				if (effect?.Def == null || effect.Amount <= 0)
+					continue;
+
+				string effectId = effect.Def.Id;
+				switch (effectId)
 				{
-					GD.Print("PlayCard | no targets for ALL.");
-					await deck.AdvanceTopToDiscardWithPresentation(card);
-					return;
+					case "attack":
+					{
+						int attack = GetAttackAmountAfterWeak(source, effect.Amount);
+						foreach (var target in ResolveHarmfulTargets(targetId, opponents, singleOpponent))
+						{
+							lethal |= DealAttackDamage(target, attack, out bool unblocked);
+							pierced |= unblocked;
+						}
+						break;
+					}
+					case "block":
+					{
+						foreach (var target in ResolveBeneficialTargets(targetId, allies, source))
+							target.GainBlock(effect.Amount);
+						break;
+					}
+					case "heal":
+					{
+						foreach (var target in ResolveBeneficialTargets(targetId, allies, source))
+							HealWithPopup(target, effect.Amount);
+						break;
+					}
+					case "regen":
+					{
+						foreach (var target in ResolveBeneficialTargets(targetId, allies, source))
+							target.ApplyStatus("regen", effect.Amount);
+						break;
+					}
+					case "bleed":
+					case "weak":
+					{
+						foreach (var target in ResolveHarmfulTargets(targetId, opponents, singleOpponent))
+							target.ApplyStatus(effectId, effect.Amount);
+						break;
+					}
+					case "play_top_cards":
+					{
+						if (source is Enemy enemySource)
+							await PlayAllyTopCards(enemySource, effect.Amount);
+						break;
+					}
 				}
-				lethal = DealDamageMany(group, attack);
-			}
-			else // "single" (default/fallback)
-			{
-				var tgt = chosenTarget;
-				if (tgt == null)
-				{
-					var group = targetsEnemies ? AliveEnemies().ToList() : AlivePlayers().ToList();
-					tgt = PickRandom(group);
-				}
-				if (tgt != null) lethal = DealDamage(tgt, attack);
-				else GD.Print("PlayCard | no single target found.");
 			}
 		}
+
+		if (pierced && card.Trigger == CardTrigger.Pierce && card.PierceHealAmount > 0 && source != null && source.Alive)
+			HealWithPopup(source, card.PierceHealAmount);
 
 		if (lethal && card.LethalHealAmount > 0 && source != null && source.Alive)
-		{
-			source.Heal(card.LethalHealAmount);
-			SpawnDamagePopupAt(source, card.LethalHealAmount, isHeal: true);
-		}
+			HealWithPopup(source, card.LethalHealAmount);
 
 		if (lethal && card.ReturnToDrawOnLethal)
 		{
@@ -275,20 +312,111 @@ public partial class CombatManager : Node
 	// -------------------------------------------------------------------------
 	public bool DealDamage(IDamageable target, int amount)
 	{
-		GD.Print($"CombatManager.DealDamage -> {amount} on {target?.GetType().Name}");
-		if (target == null || !target.Alive || amount <= 0) return false;
-
-		target.TakeDamage(amount);
-		SpawnDamagePopupAt(target, amount, isHeal: false);
-		return !target.Alive;
+		return DealAttackDamage(target, amount, out _);
 	}
 
 	public bool DealDamageMany(IEnumerable<IDamageable> targets, int amount)
 	{
 		bool anyLethal = false;
 		foreach (var t in targets)
-			anyLethal |= DealDamage(t, amount);
+			anyLethal |= DealAttackDamage(t, amount, out _);
 		return anyLethal;
+	}
+
+	private bool DealAttackDamage(IDamageable target, int amount, out bool unblocked)
+	{
+		unblocked = false;
+		GD.Print($"CombatManager.DealAttackDamage -> {amount} on {target?.GetType().Name}");
+		if (target == null || !target.Alive || amount <= 0) return false;
+
+		int hpDamage = target.TakeAttackDamage(amount);
+		unblocked = hpDamage > 0;
+		if (hpDamage > 0)
+			SpawnDamagePopupAt(target, hpDamage, isHeal: false);
+		return !target.Alive;
+	}
+
+	private bool DealDirectDamage(IDamageable target, int amount)
+	{
+		if (target == null || !target.Alive || amount <= 0) return false;
+		target.TakeDamage(amount);
+		SpawnDamagePopupAt(target, amount, isHeal: false);
+		return !target.Alive;
+	}
+
+	private void HealWithPopup(IDamageable target, int amount)
+	{
+		if (target == null || !target.Alive || amount <= 0) return;
+		int before = target.HP;
+		target.Heal(amount);
+		int healed = target.HP - before;
+		if (healed > 0)
+			SpawnDamagePopupAt(target, healed, isHeal: true);
+	}
+
+	private int GetAttackAmountAfterWeak(IDamageable source, int amount)
+	{
+		if (source == null || source.GetStatusAmount("weak") <= 0)
+			return amount;
+
+		return Mathf.Max(1, Mathf.CeilToInt(amount * 0.5f));
+	}
+
+	private List<IDamageable> ResolveHarmfulTargets(string targetId, List<IDamageable> opponents, IDamageable singleOpponent)
+	{
+		if (IsAllTarget(targetId))
+			return opponents.Where(t => t != null && t.Alive).ToList();
+
+		return singleOpponent != null && singleOpponent.Alive ? new List<IDamageable> { singleOpponent } : new List<IDamageable>();
+	}
+
+	private List<IDamageable> ResolveBeneficialTargets(string targetId, List<IDamageable> allies, IDamageable source)
+	{
+		if (IsAllTarget(targetId))
+			return allies.Where(t => t != null && t.Alive).ToList();
+
+		if (source != null && source.Alive)
+			return new List<IDamageable> { source };
+
+		return new List<IDamageable>();
+	}
+
+	private bool IsAllTarget(string targetId)
+		=> targetId is "all" or "multiple" or "all_enemies" or "all_allies";
+
+	private async Task PlayAllyTopCards(Enemy source, int count)
+	{
+		if (source == null || count <= 0)
+			return;
+
+		var allies = _enemies
+			.Where(e => e != null && GodotObject.IsInstanceValid(e) && e.Alive && e != source)
+			.ToList();
+		var ally = PickRandom(allies);
+		if (ally != null)
+			await ally.PlayTopCardsAsync(count);
+	}
+
+	private void ApplyEndOfTurnStatuses(IDamageable unit)
+	{
+		if (unit == null || !unit.Alive)
+			return;
+
+		int bleed = unit.GetStatusAmount("bleed");
+		if (bleed > 0)
+			DealDirectDamage(unit, bleed);
+
+		if (!unit.Alive)
+			return;
+
+		int regen = unit.GetStatusAmount("regen");
+		if (regen > 0)
+		{
+			HealWithPopup(unit, regen);
+			unit.ReduceStatus("regen", 1);
+		}
+
+		unit.ReduceStatus("weak", 1);
 	}
 
 	private void SpawnDamagePopupAt(IDamageable target, int amount, bool isHeal)

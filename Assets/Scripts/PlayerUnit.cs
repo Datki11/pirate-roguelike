@@ -9,11 +9,14 @@ public partial class PlayerUnit : Node2D, IDamageable
 	[Export] public Vector2 PopupAnchorOffset { get; set; } = new(0, -96);
 	[Export] public NodePath SpritePath { get; set; } = "Sprite";
 	[Export] public NodePath HpPath { get; set; } = "HP";
+	[Export] public NodePath StatusPath { get; set; } = "StatusBar";
 	[Export] public NodePath DeckPath { get; set; } = "Deck";
 	[ExportGroup("Standard Layout")]
 	[Export] public bool AutoLayoutAttachments { get; set; } = true;
-	[Export] public Vector2 HealthBarSize { get; set; } = new(70, 18);
+	[Export] public Vector2 HealthBarSize { get; set; } = new(92, 18);
 	[Export] public float HealthBarGap { get; set; } = 4f;
+	[Export] public Vector2 StatusBarSize { get; set; } = new(96, 18);
+	[Export] public float StatusBarGap { get; set; } = 1f;
 	[Export] public Vector2 DeckGap { get; set; } = new(8, 4);
 	[Export] public Vector2 DefaultDeckSize { get; set; } = new(112, 105);
 	[Export] public Vector2 PopupAnchorGap { get; set; } = new(0, 16);
@@ -28,6 +31,9 @@ public partial class PlayerUnit : Node2D, IDamageable
 	private CombatManager _combat;
 	private Sprite2D _sprite;
 	private HPBar _hpBar;
+	private StatusBar _statusBar;
+	private Control _hudTooltipArea;
+	private TooltipDisplay _hudTooltip;
 	private Deck _deck;
 	private Tween _hurtTween;
 	private List<Texture2D> _idleFrames = new();
@@ -38,9 +44,11 @@ public partial class PlayerUnit : Node2D, IDamageable
 	private bool _playingAction;
 	private bool _layoutSpriteRectValid;
 	private Rect2 _layoutSpriteRect;
+	private readonly Dictionary<string, int> _statuses = new();
 
 	public int MaxHP { get; private set; }
 	public int HP { get; private set; }
+	public int Block { get; private set; }
 	public bool Alive => HP > 0;
 
 	[Signal] public delegate void DamagedEventHandler(int amount);
@@ -53,6 +61,7 @@ public partial class PlayerUnit : Node2D, IDamageable
 		HP = MaxHP;
 		_sprite = GetNodeOrNull<Sprite2D>(SpritePath);
 		_hpBar = GetNodeOrNull<HPBar>(HpPath);
+		_statusBar = GetNodeOrNull<StatusBar>(StatusPath);
 		_deck = GetNodeOrNull<Deck>(DeckPath);
 		if (_sprite != null)
 		{
@@ -61,8 +70,11 @@ public partial class PlayerUnit : Node2D, IDamageable
 		}
 		LoadAnimations();
 		PlayIdle();
+		EnsureStatusBar();
+		EnsureHudTooltip();
 		ApplyStandardLayout();
 		_hpBar?.Set(HP, MaxHP);
+		RefreshStatusBar();
 		if (Engine.IsEditorHint())
 			return;
 
@@ -111,9 +123,22 @@ public partial class PlayerUnit : Node2D, IDamageable
 		if (amount <= 0 || !Alive) return;
 		HP = Mathf.Max(0, HP - amount);
 		_hpBar?.Set(HP, MaxHP);
+		RefreshStatusBar();
 		PlayHurtAnimation();
 		EmitSignal(SignalName.Damaged, amount);
 		if (!Alive) EmitSignal(SignalName.Died);
+	}
+
+	public int TakeAttackDamage(int amount)
+	{
+		if (amount <= 0 || !Alive) return 0;
+		int blocked = Mathf.Min(Block, amount);
+		Block -= blocked;
+		int hpDamage = amount - blocked;
+		if (hpDamage > 0)
+			TakeDamage(hpDamage);
+		RefreshStatusBar();
+		return hpDamage;
 	}
 
 	public void Heal(int amount)
@@ -121,8 +146,42 @@ public partial class PlayerUnit : Node2D, IDamageable
 		if (amount <= 0 || !Alive) return;
 		HP = Mathf.Min(MaxHP, HP + amount);
 		_hpBar?.Set(HP, MaxHP);
+		RefreshStatusBar();
 		EmitSignal(SignalName.Healed, amount);
 	}
+
+	public void GainBlock(int amount)
+	{
+		if (amount <= 0 || !Alive) return;
+		Block += amount;
+		RefreshStatusBar();
+	}
+
+	public void ClearBlock()
+	{
+		if (Block == 0) return;
+		Block = 0;
+		RefreshStatusBar();
+	}
+
+	public void ApplyStatus(string id, int amount)
+	{
+		if (string.IsNullOrWhiteSpace(id) || amount <= 0 || !Alive) return;
+		_statuses[id] = GetStatusAmount(id) + amount;
+		RefreshStatusBar();
+	}
+
+	public void ReduceStatus(string id, int amount)
+	{
+		if (string.IsNullOrWhiteSpace(id) || amount <= 0) return;
+		int next = GetStatusAmount(id) - amount;
+		if (next > 0) _statuses[id] = next;
+		else _statuses.Remove(id);
+		RefreshStatusBar();
+	}
+
+	public int GetStatusAmount(string id)
+		=> !string.IsNullOrWhiteSpace(id) && _statuses.TryGetValue(id, out int amount) ? amount : 0;
 
 	public Vector2 GetPopupAnchorGlobal()
 	{
@@ -245,6 +304,31 @@ public partial class PlayerUnit : Node2D, IDamageable
 			);
 		}
 
+		if (_statusBar != null)
+		{
+			_statusBar.CustomMinimumSize = StatusBarSize;
+			_statusBar.Size = StatusBarSize;
+			float hpX = _hpBar?.Position.X ?? Mathf.Round(spriteRect.Position.X + (spriteRect.Size.X - StatusBarSize.X) * 0.5f);
+			float hpY = _hpBar?.Position.Y ?? Mathf.Round(spriteRect.End.Y + HealthBarGap);
+			_statusBar.Position = new Vector2(
+				Mathf.Round(hpX),
+				Mathf.Round(hpY + HealthBarSize.Y + StatusBarGap)
+			);
+		}
+
+		if (_hudTooltipArea != null)
+		{
+			float hpX = _hpBar?.Position.X ?? Mathf.Round(spriteRect.Position.X + (spriteRect.Size.X - HealthBarSize.X) * 0.5f);
+			float hpY = _hpBar?.Position.Y ?? Mathf.Round(spriteRect.End.Y + HealthBarGap);
+			float width = Mathf.Max(HealthBarSize.X, StatusBarSize.X);
+			float height = HealthBarSize.Y + StatusBarGap + StatusBarSize.Y;
+			_hudTooltipArea.Position = new Vector2(Mathf.Round(hpX), Mathf.Round(hpY));
+			_hudTooltipArea.CustomMinimumSize = new Vector2(width, height);
+			_hudTooltipArea.Size = _hudTooltipArea.CustomMinimumSize;
+			if (_hudTooltip != null)
+				_hudTooltip.Position = new Vector2(Mathf.Round(width + 6f), 0);
+		}
+
 		if (_deck != null)
 		{
 			Vector2 deckSize = GetDeckSize();
@@ -320,5 +404,47 @@ public partial class PlayerUnit : Node2D, IDamageable
 		if (size.X <= 0 || size.Y <= 0)
 			size = DefaultDeckSize;
 		return size;
+	}
+
+	private void EnsureStatusBar()
+	{
+		if (_statusBar != null || Engine.IsEditorHint())
+			return;
+
+		_statusBar = new StatusBar { Name = "StatusBar" };
+		AddChild(_statusBar);
+	}
+
+	private void RefreshStatusBar()
+	{
+		_hpBar?.SetBlock(Block);
+		_statusBar?.SetStatuses(_statuses, Block);
+		_hudTooltip?.SetEntries(UnitStatusTooltips.Build(_statuses, Block));
+	}
+
+	private void EnsureHudTooltip()
+	{
+		if (_hudTooltipArea != null || Engine.IsEditorHint())
+			return;
+
+		_hudTooltipArea = new Control
+		{
+			Name = "HudTooltipArea",
+			MouseFilter = Control.MouseFilterEnum.Ignore
+		};
+		AddChild(_hudTooltipArea);
+
+		_hudTooltip = new TooltipDisplay
+		{
+			Name = "HudTooltip",
+			MouseFilter = Control.MouseFilterEnum.Ignore,
+			PixelFont = ResourceLoader.Load<FontFile>("res://Assets/Fonts/Minecraft.ttf"),
+			FontSize = 16,
+			BoldPixelFont = ResourceLoader.Load<FontFile>("res://Assets/Fonts/upheaval/upheavtt.ttf"),
+			BoldFontSize = 20,
+			PanelSize = new Vector2(230, 54)
+		};
+		_hudTooltipArea.AddChild(_hudTooltip);
+		_hudTooltip.SetHoverSource(_hudTooltipArea);
 	}
 }
