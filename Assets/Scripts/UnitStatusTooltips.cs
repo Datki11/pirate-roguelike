@@ -7,6 +7,7 @@ public static class UnitStatusTooltips
 	{
 		["hp"] = "res://Assets/Sprites/Icons/placeholder-icons/1-bit_Pixel_Icons/Sprites_Cropped/RPG_Stat_HP_Health_Heart.png",
 		["block"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/shield_padded.png",
+		["protector"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/shield_padded.png",
 		["bleed"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/bleed_padded.png",
 		["weak"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/weak_padded.png",
 		["regen"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/regen_padded.png"
@@ -21,6 +22,7 @@ public static class UnitStatusTooltips
 		if (block > 0)
 			entries.Add(new("Block", $"Prevents incoming attack damage. Current block: {block}. Block is cleared at the start of the player's turn.", GetIcon("block")));
 
+		AddStatus(entries, statuses, "protector", "Protector", "Single-target attack damage against this team is redirected to this unit. Loses 1 at the end of this unit's turn.");
 		AddStatus(entries, statuses, "bleed", "Bleed", "At the end of this unit's turn, it takes damage equal to bleed.");
 		AddStatus(entries, statuses, "weak", "Weak", "This unit deals 50% less damage. At the end of its turn, it loses 1 weak.");
 		AddStatus(entries, statuses, "regen", "Regen", "At the end of this unit's turn, it gains HP equal to regen, then loses 1 regen.");

@@ -186,6 +186,8 @@ public partial class SmallCard : BaseCardView
 			"bleed" => "Apply",
 			"weak" => "Apply",
 			"play_top_cards" => "Play",
+			"protect" => "Apply",
+			"body_slam" => "Deal",
 			_ => e.Def.DisplayName
 		};
 
@@ -202,13 +204,13 @@ public partial class SmallCard : BaseCardView
 
 	private bool ShouldOmitEffectLine(EffectEntry e)
 	{
-		return e?.Def?.Id == "play_top_cards" && !string.IsNullOrWhiteSpace(Data?.RulesText);
+		return e?.Def?.Id is "play_top_cards" or "protect" or "body_slam" && !string.IsNullOrWhiteSpace(Data?.RulesText);
 	}
 
 	private string BuildTargetSuffix(EffectDef effect)
 	{
 		string targetId = (Data.TargetDef as TargetDef)?.Id?.ToLowerInvariant() ?? "";
-		bool beneficial = effect.Id is "block" or "heal" or "regen";
+		bool beneficial = effect.Id is "block" or "heal" or "regen" or "protect" or "play_top_cards";
 
 		return targetId switch
 		{
@@ -294,6 +296,7 @@ public partial class SmallCard : BaseCardView
 			"all" => "Affects all valid targets.",
 			"multiple" or "all_enemies" => "Affects all enemies.",
 			"all_allies" => "Affects all allies.",
+			"ally" => "Choose one ally target.",
 			"self" => "Targets this unit.",
 			_ => target.DisplayName
 		};

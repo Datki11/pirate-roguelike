@@ -21,6 +21,7 @@ public partial class CombatTargeting : Node
 	{
 		SingleEnemy,
 		AllEnemies,
+		SinglePlayer,
 		SelfPlayer,
 		AllPlayers
 	}
@@ -100,6 +101,13 @@ public partial class CombatTargeting : Node
 			_pendingDeck = deck;
 			BeginTargeting(TargetingMode.SelfPlayer);
 		}
+		else if (IsSinglePlayerCast(card))
+		{
+			if (!CanSpendCardEnergy()) return;
+			_pendingCard = card;
+			_pendingDeck = deck;
+			BeginTargeting(TargetingMode.SinglePlayer);
+		}
 		else if (IsAllPlayersCast(card))
 		{
 			if (!CanSpendCardEnergy()) return;
@@ -120,15 +128,13 @@ public partial class CombatTargeting : Node
 	private bool IsSingleTargetAttack(CardData c)
 	{
 		var tid = (c.TargetDef as TargetDef)?.Id;
-		bool hasAttack = c.Effects != null && c.Effects.Any(e => e?.Def?.Id == "attack");
-		return tid == "single" && hasAttack;
+		return tid == "single" && HasHarmfulEffect(c);
 	}
 
 	private bool IsAllEnemiesAttack(CardData c)
 	{
 		var tid = (c.TargetDef as TargetDef)?.Id;
-		bool hasAttack = c.Effects != null && c.Effects.Any(e => e?.Def?.Id == "attack");
-		return (tid == "multiple" || tid == "all" || tid == "all_enemies") && hasAttack;
+		return (tid == "multiple" || tid == "all_enemies" || tid == "all") && HasHarmfulEffect(c);
 	}
 
 	private bool IsSelfPlayerCast(CardData c)
@@ -143,11 +149,17 @@ public partial class CombatTargeting : Node
 		return (tid == "all" || tid == "all_allies") && HasBeneficialEffect(c) && !HasHarmfulEffect(c);
 	}
 
+	private bool IsSinglePlayerCast(CardData c)
+	{
+		var tid = (c.TargetDef as TargetDef)?.Id;
+		return tid == "ally" && HasBeneficialEffect(c) && !HasHarmfulEffect(c);
+	}
+
 	private bool HasBeneficialEffect(CardData c)
-		=> c?.Effects != null && c.Effects.Any(e => e?.Def?.Id is "block" or "heal" or "regen");
+		=> c?.Effects != null && c.Effects.Any(e => e?.Def?.Id is "block" or "heal" or "regen" or "protect" or "play_top_cards");
 
 	private bool HasHarmfulEffect(CardData c)
-		=> c?.Effects != null && c.Effects.Any(e => e?.Def?.Id is "attack" or "bleed" or "weak");
+		=> c?.Effects != null && c.Effects.Any(e => e?.Def?.Id is "attack" or "body_slam" or "bleed" or "weak");
 
 	private int GetAttackAmount(CardData c)
 		=> c.Effects.Where(e => e?.Def?.Id == "attack").Select(e => e.Amount).FirstOrDefault();
@@ -176,7 +188,9 @@ public partial class CombatTargeting : Node
 			if (player == null || !IsInstanceValid(player) || !player.Alive)
 				continue;
 
-			player.SetFriendlyTargetable(mode == TargetingMode.SelfPlayer && player == selfTarget);
+			bool singleFriendlyTarget = mode == TargetingMode.SelfPlayer && player == selfTarget;
+			bool allyTarget = mode == TargetingMode.SinglePlayer && player != selfTarget;
+			player.SetFriendlyTargetable(singleFriendlyTarget || allyTarget);
 		}
 
 		ApplyTargetingVisuals(true);
@@ -308,14 +322,17 @@ public partial class CombatTargeting : Node
 		SetAllEnemiesGroupTargeting(false);
 		SetAllPlayersGroupTargeting(false);
 		Vector2 mouse = GetViewport().GetMousePosition();
-		if (_targetingMode == TargetingMode.SelfPlayer)
+		if (_targetingMode == TargetingMode.SelfPlayer || _targetingMode == TargetingMode.SinglePlayer)
 		{
 			if (_lockedPlayerTarget == null || !IsInstanceValid(_lockedPlayerTarget) || !_lockedPlayerTarget.Alive || !_lockedPlayerTarget.GetTargetingCanvasRect().HasPoint(mouse))
 				_lockedPlayerTarget = GetFriendlyTargetUnderMouse(mouse);
+			ApplyFriendlyTargetHover(_lockedPlayerTarget);
 			Vector2 playerEndPoint = _lockedPlayerTarget != null ? _lockedPlayerTarget.GetTargetingAnchorCanvas() : mouse;
 			arrow.SetArrow(_pendingDeck.GetTopCardCanvasRect(), playerEndPoint, _lockedPlayerTarget != null, friendly: true);
 			return;
 		}
+
+		ApplyFriendlyTargetHover(null);
 
 		if (_lockedTarget == null || !IsInstanceValid(_lockedTarget) || !_lockedTarget.Alive || !_lockedTarget.GetTargetingCanvasRect().HasPoint(mouse))
 			_lockedTarget = GetTargetUnderMouse(mouse);
@@ -340,10 +357,38 @@ public partial class CombatTargeting : Node
 	private PlayerUnit GetFriendlyTargetUnderMouse(Vector2 mouse)
 	{
 		PlayerUnit owner = GetDeckOwner(_pendingDeck) as PlayerUnit;
-		if (owner == null || !IsInstanceValid(owner) || !owner.Alive)
+		if (_players == null)
 			return null;
 
-		return owner.GetTargetingCanvasRect().HasPoint(mouse) ? owner : null;
+		foreach (var player in _players)
+		{
+			if (player == null || !IsInstanceValid(player) || !player.Alive)
+				continue;
+
+			if (_targetingMode == TargetingMode.SelfPlayer && player != owner)
+				continue;
+			if (_targetingMode == TargetingMode.SinglePlayer && player == owner)
+				continue;
+
+			if (player.GetTargetingCanvasRect().HasPoint(mouse))
+				return player;
+		}
+
+		return null;
+	}
+
+	private void ApplyFriendlyTargetHover(PlayerUnit hovered)
+	{
+		if (_players == null)
+			return;
+
+		foreach (var player in _players)
+		{
+			if (player == null || !IsInstanceValid(player))
+				continue;
+
+			player.SetFriendlyTargetHover(player == hovered);
+		}
 	}
 
 	private TargetingArrowOverlay GetTargetingArrow()
@@ -489,6 +534,19 @@ public partial class CombatTargeting : Node
 		else await deck.AdvanceTopToDiscardWithPresentation(card);
 	}
 
+	private async void ConfirmPlayerTarget(PlayerUnit target)
+	{
+		if (!_targeting || _targetingMode != TargetingMode.SinglePlayer || _pendingDeck == null || _pendingCard == null || target == null)
+			return;
+
+		var deck = _pendingDeck;
+		var card = _pendingCard;
+		EndTargeting();
+		if (!TrySpendCardEnergy()) return;
+		if (_combat != null) await _combat.PlayCardOnTarget(deck, card, Deck.DeckSide.Player, target, GetDeckOwner(deck));
+		else await deck.AdvanceTopToDiscardWithPresentation(card);
+	}
+
 	public override void _Input(InputEvent e)
 	{
 		if (Deck.IsDrawPileModalOpen || !_targeting)
@@ -519,6 +577,17 @@ public partial class CombatTargeting : Node
 			ConfirmAllPlayersTarget();
 			GetViewport().SetInputAsHandled();
 			return;
+		}
+
+		if (_targetingMode == TargetingMode.SinglePlayer)
+		{
+			var target = GetFriendlyTargetUnderMouse(mb.Position);
+			if (target != null)
+			{
+				ConfirmPlayerTarget(target);
+				GetViewport().SetInputAsHandled();
+				return;
+			}
 		}
 
 		if (_targetingMode == TargetingMode.SingleEnemy && GetTargetUnderMouse(mb.Position) != null)

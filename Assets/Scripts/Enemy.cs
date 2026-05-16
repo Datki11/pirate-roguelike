@@ -18,7 +18,7 @@ public partial class Enemy : Control, IDamageable
 	[Export] public Vector2 HealthBarSize { get; set; } = new(88, 20);
 	[Export] public float HealthBarGap { get; set; } = 4f;
 	[Export] public Vector2 StatusBarSize { get; set; } = new(96, 18);
-	[Export] public float StatusBarGap { get; set; } = 2f;
+	[Export] public float StatusBarGap { get; set; } = 4f;
 	[Export] public Vector2 DeckGap { get; set; } = new(8, 4);
 	[Export] public Vector2 DefaultDeckSize { get; set; } = new(112, 105);
 	[Export] public Vector2 PopupAnchorGap { get; set; } = new(0, 8);
@@ -373,9 +373,9 @@ public partial class Enemy : Control, IDamageable
 			return;
 
 		_groupTargetingHighlight = on;
-		ApplyTargetRingStyle(groupHighlight: on);
+		ApplyTargetRingStyle(groupHighlight: false);
 		_ring.Visible = on;
-		_ringTR?.SetHover(false);
+		_ringTR?.SetHover(on);
 		_ring.QueueRedraw();
 	}
 
@@ -475,6 +475,9 @@ public partial class Enemy : Control, IDamageable
 
 	private void ApplyOwnedHoverVisual(bool active)
 	{
+		if (_groupTargetingHighlight)
+			return;
+
 		if (_ring != null && _ring.Visible)
 			_ringTR?.SetHover(active);
 	}

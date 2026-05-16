@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=7 format=3 uid="uid://cucs2wp04y2tw"]
+
+[ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_card"]
+[ext_resource type="Texture2D" uid="uid://bm6kbahyhbbh0" path="res://Assets/Sprites/Cards/attack-art/64x64/rpg-items-all/stone.png" id="2_art"]
+[ext_resource type="Script" uid="uid://d2ueo4m1lbc51" path="res://Assets/Scripts/EffectEntry.cs" id="3_entry"]
+[ext_resource type="Resource" path="res://Assets/Resources/Effects/body_slam.tres" id="4_slam"]
+[ext_resource type="Resource" uid="uid://bieypex2q2gcy" path="res://Assets/Resources/Targets/single.tres" id="5_target"]
+
+[sub_resource type="Resource" id="Effect_body_slam"]
+script = ExtResource("3_entry")
+Def = ExtResource("4_slam")
+Amount = 1
+
+[resource]
+script = ExtResource("1_card")
+Title = "Body Slam"
+Description = "Crash forward."
+RulesText = "Deal damage equal to current block."
+Art = ExtResource("2_art")
+ManaCost = 0
+Rarity = 0
+TargetDef = ExtResource("5_target")
+Effects = [SubResource("Effect_body_slam")]
+Trigger = 0
+TriggerText = ""
+LethalHealAmount = 0
+PierceHealAmount = 0
+ReturnToDrawOnLethal = false
+PlayTopCardOnShuffle = false

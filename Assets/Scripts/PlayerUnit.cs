@@ -11,12 +11,13 @@ public partial class PlayerUnit : Node2D, IDamageable
 	[Export] public NodePath HpPath { get; set; } = "HP";
 	[Export] public NodePath StatusPath { get; set; } = "StatusBar";
 	[Export] public NodePath DeckPath { get; set; } = "Deck";
+	[Export] public Resource DeckListOverride { get; set; }
 	[ExportGroup("Standard Layout")]
 	[Export] public bool AutoLayoutAttachments { get; set; } = true;
 	[Export] public Vector2 HealthBarSize { get; set; } = new(96, 20);
 	[Export] public float HealthBarGap { get; set; } = 4f;
 	[Export] public Vector2 StatusBarSize { get; set; } = new(96, 18);
-	[Export] public float StatusBarGap { get; set; } = 2f;
+	[Export] public float StatusBarGap { get; set; } = 4f;
 	[Export] public Vector2 DeckGap { get; set; } = new(8, 4);
 	[Export] public Vector2 DefaultDeckSize { get; set; } = new(112, 105);
 	[Export] public Vector2 PopupAnchorGap { get; set; } = new(0, 8);
@@ -62,6 +63,16 @@ public partial class PlayerUnit : Node2D, IDamageable
 	[Signal] public delegate void HealedEventHandler(int amount);
 	[Signal] public delegate void DiedEventHandler();
 
+	public override void _EnterTree()
+	{
+		if (DeckListOverride == null)
+			return;
+
+		var deck = GetNodeOrNull<Deck>(DeckPath);
+		if (deck != null)
+			deck.DeckList = DeckListOverride;
+	}
+
 	public override void _Ready()
 	{
 		MaxHP = Mathf.Max(1, StartingMaxHP);
@@ -87,6 +98,8 @@ public partial class PlayerUnit : Node2D, IDamageable
 
 		if (_deck != null)
 		{
+			if (DeckListOverride != null)
+				_deck.RebuildFromDeckList(DeckListOverride);
 			_deck.EnableInput = true;
 			_deck.Side = Deck.DeckSide.Player;
 			_deck.SetDeadDimmed(!Alive);
@@ -225,6 +238,32 @@ public partial class PlayerUnit : Node2D, IDamageable
 		ApplyFrame();
 	}
 
+	public async System.Threading.Tasks.Task PlayTopCardsAsync(int count)
+	{
+		if (!Alive || _deck == null || _combat == null || count <= 0)
+			return;
+
+		for (int i = 0; i < count; i++)
+		{
+			if (!Alive || _deck.Peek() == null)
+				_deck.EnsureTop();
+
+			var card = _deck.Peek();
+			if (card == null)
+				return;
+			if (card.Effects != null && card.Effects.Any(e => e?.Def?.Id == "play_top_cards"))
+			{
+				await _deck.AdvanceTopToDiscardWithPresentation(card);
+				continue;
+			}
+
+			PlayCardAnimation();
+			await ToSignal(GetTree().CreateTimer(0.35f), "timeout");
+			await _combat.PlayCardAuto(_deck, card, Deck.DeckSide.Player, this);
+			await ToSignal(GetTree().CreateTimer(0.25f), "timeout");
+		}
+	}
+
 	public void SetDeckTurnDimmed(bool dimmed)
 	{
 		_deck?.SetTurnDimmed(dimmed);
@@ -265,7 +304,7 @@ public partial class PlayerUnit : Node2D, IDamageable
 		_groupTargetingHighlight = false;
 		ApplyFriendlyTargetRingStyle(groupHighlight: false);
 		_targetRing.Visible = on;
-		_targetRing.SetHover(on);
+		_targetRing.SetHover(false);
 	}
 
 	public void SetGroupFriendlyTargetable(bool on)
@@ -278,10 +317,18 @@ public partial class PlayerUnit : Node2D, IDamageable
 			return;
 
 		_groupTargetingHighlight = on;
-		ApplyFriendlyTargetRingStyle(groupHighlight: on);
+		ApplyFriendlyTargetRingStyle(groupHighlight: false);
 		_targetRing.Visible = on;
-		_targetRing.SetHover(false);
+		_targetRing.SetHover(on);
 		_targetRing.QueueRedraw();
+	}
+
+	public void SetFriendlyTargetHover(bool on)
+	{
+		if (_targetRing == null || !_targetRing.Visible)
+			return;
+
+		_targetRing.SetHover(on);
 	}
 
 	public Rect2 GetTargetingCanvasRect()

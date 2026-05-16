@@ -10,6 +10,7 @@ public partial class StatusBar : Control
 
 	private static readonly Dictionary<string, string> IconPaths = new()
 	{
+		["protector"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/shield_padded.png",
 		["bleed"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/bleed_padded.png",
 		["weak"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/weak_padded.png",
 		["regen"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/regen_padded.png"
@@ -57,7 +58,7 @@ public partial class StatusBar : Control
 
 		ConfigurePixelFont(font);
 		float x = Mathf.Max(0f, Mathf.Round((Size.X - GetContentWidth(font, PixelFontSize)) * 0.5f));
-		foreach (string id in new[] { "bleed", "weak", "regen" })
+		foreach (string id in new[] { "protector", "bleed", "weak", "regen" })
 		{
 			if (!_statuses.TryGetValue(id, out int amount) || amount <= 0)
 				continue;
@@ -79,7 +80,7 @@ public partial class StatusBar : Control
 	private float GetContentWidth(Font font, int fs)
 	{
 		float width = 0f;
-		foreach (string id in new[] { "bleed", "weak", "regen" })
+		foreach (string id in new[] { "protector", "bleed", "weak", "regen" })
 		{
 			if (!_statuses.TryGetValue(id, out int amount) || amount <= 0)
 				continue;

@@ -1,4 +1,4 @@
-[gd_scene load_steps=23 format=3 uid="uid://blyun0sui4axj"]
+[gd_scene load_steps=26 format=3 uid="uid://blyun0sui4axj"]
 
 [ext_resource type="PackedScene" uid="uid://c341vh8po86n6" path="res://Assets/Components/CombatTargeting.tscn" id="5_tkjg1"]
 [ext_resource type="PackedScene" uid="uid://nu0fyjda0sg6" path="res://Assets/Components/enemy.tscn" id="6_y8d5v"]
@@ -22,6 +22,9 @@
 [ext_resource type="Resource" path="res://Assets/Resources/DeckLists/StoneGolemDeckList.tres" id="22_stone_deck"]
 [ext_resource type="Resource" path="res://Assets/Resources/DeckLists/FrogDeckList.tres" id="23_frog_deck"]
 [ext_resource type="Resource" path="res://Assets/Resources/DeckLists/FirewormDeckList.tres" id="24_fireworm_deck"]
+[ext_resource type="Resource" path="res://Assets/Resources/DeckLists/DechkandDeckList.tres" id="25_dechkand_deck"]
+[ext_resource type="Resource" path="res://Assets/Resources/DeckLists/BruteDeckList.tres" id="26_brute_deck"]
+[ext_resource type="Resource" path="res://Assets/Resources/DeckLists/CaptainDeckList.tres" id="27_captain_deck"]
 
 [node name="Battlefield" type="Node2D"]
 
@@ -31,13 +34,16 @@ position = Vector2(-194, -100)
 [node name="BaldPirate" parent="." instance=ExtResource("8_player_unit")]
 position = Vector2(-772, -3)
 PopupAnchorOffset = Vector2(0, -95)
+DeckListOverride = ExtResource("25_dechkand_deck")
 DeckGap = Vector2(8, 8)
 DefaultDeckSize = Vector2(48, 72)
 SpriteRootPath = "res://Assets/Sprites/pirate-placeholder-sprites/Sprites/2-Enemy-Bald Pirate"
 
 [node name="BigGuy" parent="." instance=ExtResource("8_player_unit")]
 position = Vector2(-437, 14)
+StartingMaxHP = 45
 PopupAnchorOffset = Vector2(0, -105)
+DeckListOverride = ExtResource("26_brute_deck")
 DeckGap = Vector2(8, 8)
 DefaultDeckSize = Vector2(48, 72)
 SpriteRootPath = "res://Assets/Sprites/pirate-placeholder-sprites/Sprites/4-Enemy-Big Guy"
@@ -45,7 +51,9 @@ ActionFolderName = "11-Throw (Bomb)"
 
 [node name="Captain" parent="." instance=ExtResource("8_player_unit")]
 position = Vector2(-605, 8)
+StartingMaxHP = 25
 PopupAnchorOffset = Vector2(0, -100)
+DeckListOverride = ExtResource("27_captain_deck")
 DeckGap = Vector2(8, 8)
 DefaultDeckSize = Vector2(48, 72)
 SpriteRootPath = "res://Assets/Sprites/pirate-placeholder-sprites/Sprites/5-Enemy-Captain"
@@ -73,7 +81,6 @@ offset_left = 299.0
 offset_top = -103.0
 offset_right = 427.0
 offset_bottom = 26.0
-HealthBarGap = -4.0
 DefaultDeckSize = Vector2(48, 72)
 DeckListOverride = ExtResource("22_stone_deck")
 IdleSpriteSheet = ExtResource("13_gollux_idle")
@@ -90,7 +97,6 @@ offset_left = -31.0
 offset_top = -100.0
 offset_right = 97.0
 offset_bottom = 28.0
-HealthBarGap = -4.0
 DefaultDeckSize = Vector2(48, 72)
 DeckListOverride = ExtResource("23_frog_deck")
 IdleSpriteSheet = ExtResource("16_frogger_idle")
@@ -107,7 +113,6 @@ offset_left = 145.0
 offset_top = -55.0
 offset_right = 235.0
 offset_bottom = 35.0
-HealthBarGap = -4.0
 DefaultDeckSize = Vector2(48, 72)
 DeckListOverride = ExtResource("24_fireworm_deck")
 IdleSpriteSheet = ExtResource("19_worm_idle")

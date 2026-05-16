@@ -1,26 +1,26 @@
-[gd_resource type="Resource" script_class="CardData" load_steps=7 format=3 uid="uid://bdax52dieedcy"]
+[gd_resource type="Resource" script_class="CardData" load_steps=7 format=3 uid="uid://6kif71dnjaop"]
 
 [ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_card"]
 [ext_resource type="Texture2D" uid="uid://4urtiikxxumr" path="res://Assets/Sprites/Cards/attack-art/64x64/rpg-items-all/book.png" id="2_art"]
 [ext_resource type="Script" uid="uid://d2ueo4m1lbc51" path="res://Assets/Scripts/EffectEntry.cs" id="3_entry"]
 [ext_resource type="Resource" path="res://Assets/Resources/Effects/play_top_cards.tres" id="4_play"]
-[ext_resource type="Resource" path="res://Assets/Resources/Targets/ally.tres" id="5_target"]
+[ext_resource type="Resource" path="res://Assets/Resources/Targets/all_allies.tres" id="5_target"]
 
-[sub_resource type="Resource" id="Effect_inspire_play"]
+[sub_resource type="Resource" id="Effect_battle_cry_play"]
 script = ExtResource("3_entry")
 Def = ExtResource("4_play")
-Amount = 3
+Amount = 1
 
 [resource]
 script = ExtResource("1_card")
-Title = "Inspire"
-Description = "An ally acts."
-RulesText = "An ally plays their top 3 cards."
+Title = "Battle Cry"
+Description = "Call the crew forward."
+RulesText = "All allies play their top card. This unit does not play an extra card."
 Art = ExtResource("2_art")
 ManaCost = 0
-Rarity = 2
+Rarity = 1
 TargetDef = ExtResource("5_target")
-Effects = [SubResource("Effect_inspire_play")]
+Effects = [SubResource("Effect_battle_cry_play")]
 Trigger = 0
 TriggerText = ""
 LethalHealAmount = 0

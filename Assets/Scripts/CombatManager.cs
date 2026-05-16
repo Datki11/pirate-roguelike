@@ -39,6 +39,7 @@ public partial class CombatManager : Node
 	private static readonly Dictionary<string, string> PopupIconPaths = new()
 	{
 		["block"] = "res://Assets/Sprites/Icons/Generated/block_32x36.png",
+		["protector"] = "res://Assets/Sprites/Icons/Generated/block_32x36.png",
 		["bleed"] = "res://Assets/Sprites/Icons/Generated/bleed_32x36.png",
 		["weak"] = "res://Assets/Sprites/Icons/Generated/weak_32x36.png",
 		["regen"] = "res://Assets/Sprites/Icons/Generated/regen_32x36.png"
@@ -272,7 +273,17 @@ public partial class CombatManager : Node
 					case "attack":
 					{
 						int attack = GetAttackAmountAfterWeak(source, effect.Amount);
-						foreach (var target in ResolveHarmfulTargets(targetId, opponents, singleOpponent))
+						foreach (var target in ResolveAttackTargets(targetId, opponents, singleOpponent))
+						{
+							lethal |= DealAttackDamage(target, attack, out bool unblocked);
+							pierced |= unblocked;
+						}
+						break;
+					}
+					case "body_slam":
+					{
+						int attack = GetAttackAmountAfterWeak(source, source?.Block ?? 0);
+						foreach (var target in ResolveAttackTargets(targetId, opponents, singleOpponent))
 						{
 							lethal |= DealAttackDamage(target, attack, out bool unblocked);
 							pierced |= unblocked;
@@ -297,6 +308,12 @@ public partial class CombatManager : Node
 							ApplyStatusWithPopup(target, "regen", effect.Amount);
 						break;
 					}
+					case "protect":
+					{
+						foreach (var target in ResolveBeneficialTargets(targetId, allies, source))
+							ApplyStatusWithPopup(target, "protector", effect.Amount);
+						break;
+					}
 					case "bleed":
 					case "weak":
 					{
@@ -306,8 +323,7 @@ public partial class CombatManager : Node
 					}
 					case "play_top_cards":
 					{
-						if (source is Enemy enemySource)
-							await PlayAllyTopCards(enemySource, effect.Amount);
+						await PlayAllyTopCards(source, chosenTarget, allies, targetId, effect.Amount);
 						break;
 					}
 				}
@@ -401,7 +417,7 @@ public partial class CombatManager : Node
 	{
 		if (target == null || !target.Alive || amount <= 0) return;
 		target.ApplyStatus(id, amount);
-		bool buff = id == "regen";
+		bool buff = id is "regen" or "protector";
 		SpawnIconPopupAt(target, amount, id, buff ? PopupBuffColor : PopupCurseColor);
 	}
 
@@ -421,6 +437,18 @@ public partial class CombatManager : Node
 		return singleOpponent != null && singleOpponent.Alive ? new List<IDamageable> { singleOpponent } : new List<IDamageable>();
 	}
 
+	private List<IDamageable> ResolveAttackTargets(string targetId, List<IDamageable> opponents, IDamageable singleOpponent)
+	{
+		if (IsAllTarget(targetId))
+			return opponents.Where(t => t != null && t.Alive).ToList();
+
+		var protector = opponents.FirstOrDefault(t => t != null && t.Alive && t.GetStatusAmount("protector") > 0);
+		if (protector != null)
+			return new List<IDamageable> { protector };
+
+		return singleOpponent != null && singleOpponent.Alive ? new List<IDamageable> { singleOpponent } : new List<IDamageable>();
+	}
+
 	private List<IDamageable> ResolveBeneficialTargets(string targetId, List<IDamageable> allies, IDamageable source)
 	{
 		if (IsAllTarget(targetId))
@@ -435,17 +463,39 @@ public partial class CombatManager : Node
 	private bool IsAllTarget(string targetId)
 		=> targetId is "all" or "multiple" or "all_enemies" or "all_allies";
 
-	private async Task PlayAllyTopCards(Enemy source, int count)
+	private async Task PlayAllyTopCards(IDamageable source, IDamageable chosenTarget, List<IDamageable> allies, string targetId, int count)
 	{
 		if (source == null || count <= 0)
 			return;
 
-		var allies = _enemies
-			.Where(e => e != null && GodotObject.IsInstanceValid(e) && e.Alive && e != source)
+		var validAllies = allies
+			.Where(unit => unit != null && unit.Alive && unit != source)
 			.ToList();
-		var ally = PickRandom(allies);
-		if (ally != null)
-			await ally.PlayTopCardsAsync(count);
+
+		if (IsAllTarget(targetId))
+		{
+			foreach (var ally in validAllies)
+				await PlayTopCardsOnUnit(ally, count);
+			return;
+		}
+
+		var target = chosenTarget != null && chosenTarget.Alive && chosenTarget != source
+			? chosenTarget
+			: PickRandom(validAllies);
+		await PlayTopCardsOnUnit(target, count);
+	}
+
+	private async Task PlayTopCardsOnUnit(IDamageable unit, int count)
+	{
+		switch (unit)
+		{
+			case Enemy enemy:
+				await enemy.PlayTopCardsAsync(count);
+				break;
+			case PlayerUnit player:
+				await player.PlayTopCardsAsync(count);
+				break;
+		}
 	}
 
 	private async Task ApplyEndOfTurnStatusesAsync(IDamageable unit)
@@ -472,6 +522,7 @@ public partial class CombatManager : Node
 		}
 
 		unit.ReduceStatus("weak", 1);
+		unit.ReduceStatus("protector", 1);
 	}
 
 	private async Task WaitForStatusEffectPresentation()

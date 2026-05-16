@@ -144,10 +144,17 @@ public partial class Deck : Control
 		if (Engine.IsEditorHint())
 			return;
 
-		if (_openDrawPileModalCount > 0 || !CanPlayTopCard() || e is not InputEventMouseButton mb || !mb.Pressed || mb.ButtonIndex != MouseButton.Left)
+		if (_openDrawPileModalCount > 0 || e is not InputEventMouseButton mb || !mb.Pressed || mb.ButtonIndex != MouseButton.Left)
 			return;
 
-		if (!GetPlayableCardRect().HasPoint(GetGlobalMousePosition()))
+		if (CanOpenPileModal(_discard) && GetDiscardMarkerCanvasRect().HasPoint(mb.Position))
+		{
+			OpenPileModal("Discard Pile", new List<CardData>(_discard), drawPile: false);
+			GetViewport().SetInputAsHandled();
+			return;
+		}
+
+		if (!CanPlayTopCard() || !GetPlayableCardRect().HasPoint(GetGlobalMousePosition()))
 			return;
 
 		RequestTopCardPlay();
@@ -519,24 +526,51 @@ public partial class Deck : Control
 		if (Engine.IsEditorHint() || e is not InputEventMouseButton mb || !mb.Pressed || mb.ButtonIndex != MouseButton.Left)
 			return;
 
-		if (!CanOpenDrawPile())
+		if (!CanOpenPileModal(_draw))
 		{
 			AcceptEvent();
 			return;
 		}
 
-		OpenDrawPileModal();
+		OpenPileModal("Draw Pile", GetRandomizedDrawPileSnapshot(), drawPile: true);
 		AcceptEvent();
 	}
 
-	private void OpenDrawPileModal()
+	private void OnDiscardMarkerGuiInput(InputEvent e)
+	{
+		if (Engine.IsEditorHint() || e is not InputEventMouseButton mb || !mb.Pressed || mb.ButtonIndex != MouseButton.Left)
+			return;
+
+		if (CanOpenPileModal(_discard))
+			OpenPileModal("Discard Pile", new List<CardData>(_discard), drawPile: false);
+
+		AcceptEvent();
+	}
+
+	private Rect2 GetDiscardMarkerCanvasRect()
+	{
+		if (_pile == null)
+			return new Rect2();
+
+		Vector2 size = CardBack?.GetSize() ?? new Vector2(48, 72);
+		int facing = FacingSign();
+		float x = -facing * (Mathf.Max(0, DiscardBehindOffset) + Mathf.Max(0, DrawForwardOffset));
+		Rect2 local = new(_pile.Position + new Vector2(Mathf.Floor(x), 0), size);
+		Transform2D transform = GetGlobalTransformWithCanvas();
+		Vector2 a = transform * local.Position;
+		Vector2 b = transform * new Vector2(local.End.X, local.Position.Y);
+		Vector2 c = transform * local.End;
+		Vector2 d = transform * new Vector2(local.Position.X, local.End.Y);
+		return new Rect2(a, Vector2.Zero).Expand(b).Expand(c).Expand(d);
+	}
+
+	private void OpenPileModal(string title, List<CardData> cards, bool drawPile)
 	{
 		if (!IsInsideTree() || CardViewScene == null)
 			return;
 
 		CloseDrawPileModal();
 
-		var cards = GetRandomizedDrawPileSnapshot();
 		_drawPileModalLayer = new CanvasLayer { Layer = 200 };
 		_openDrawPileModalCount++;
 
@@ -561,11 +595,11 @@ public partial class Deck : Control
 
 		_drawPileModalLayer.AddChild(overlay);
 		(GetTree().CurrentScene as Node ?? GetTree().Root).AddChild(_drawPileModalLayer);
-		LayoutDrawPileModal(overlay, cards);
+		LayoutPileModal(overlay, title, cards, drawPile);
 		TooltipDisplay.ModalTooltipScope = overlay;
 	}
 
-	private void LayoutDrawPileModal(Control overlay, List<CardData> cards)
+	private void LayoutPileModal(Control overlay, string title, List<CardData> cards, bool drawPile)
 	{
 		Vector2 viewport = GetViewportRect().Size;
 		const float cardGap = 12f;
@@ -574,6 +608,12 @@ public partial class Deck : Control
 		float rowWidth = cards.Count * cardSize.X + Mathf.Max(0, cards.Count - 1) * cardGap;
 		float startX = Mathf.Round((viewport.X - rowWidth) * 0.5f);
 		float cardY = Mathf.Round((viewport.Y - cardSize.Y) * 0.5f - 24f);
+
+		var heading = CreateModalLabel($"{title} ({cards.Count})", 20);
+		heading.HorizontalAlignment = HorizontalAlignment.Center;
+		heading.Size = new Vector2(viewport.X, 28);
+		heading.Position = new Vector2(0, cardY - heading.Size.Y - modalGap).Floor();
+		overlay.AddChild(heading);
 
 		for (int i = 0; i < cards.Count; i++)
 		{
@@ -586,14 +626,19 @@ public partial class Deck : Control
 			overlay.AddChild(cardView);
 		}
 
-		var disclaimer = CreateModalLabel("Cards are not shown in any particular order", 20);
-		disclaimer.HorizontalAlignment = HorizontalAlignment.Center;
-		disclaimer.Size = new Vector2(viewport.X, 28);
-		disclaimer.Position = new Vector2(0, cardY + cardSize.Y + modalGap).Floor();
-		overlay.AddChild(disclaimer);
+		float closeY = cardY + cardSize.Y + modalGap;
+		if (drawPile)
+		{
+			var disclaimer = CreateModalLabel("Cards are not shown in any particular order", 20);
+			disclaimer.HorizontalAlignment = HorizontalAlignment.Center;
+			disclaimer.Size = new Vector2(viewport.X, 28);
+			disclaimer.Position = new Vector2(0, closeY).Floor();
+			overlay.AddChild(disclaimer);
+			closeY = disclaimer.Position.Y + disclaimer.Size.Y + 10f;
+		}
 
 		var close = CreateCloseButton();
-		close.Position = new Vector2(Mathf.Round((viewport.X - close.CustomMinimumSize.X) * 0.5f), disclaimer.Position.Y + disclaimer.Size.Y + 10f).Floor();
+		close.Position = new Vector2(Mathf.Round((viewport.X - close.CustomMinimumSize.X) * 0.5f), closeY).Floor();
 		close.Size = close.CustomMinimumSize;
 		overlay.AddChild(close);
 	}
@@ -764,8 +809,9 @@ public partial class Deck : Control
 			CustomMinimumSize = size,
 			Size = size,
 			Position = new Vector2(Mathf.Floor(x), 0),
-			MouseFilter = MouseFilterEnum.Ignore
+			MouseFilter = MouseFilterEnum.Stop
 		};
+		marker.GuiInput += OnDiscardMarkerGuiInput;
 
 		var style = new StyleBoxFlat
 		{
@@ -840,7 +886,7 @@ public partial class Deck : Control
 		{
 			if (!EnableInput && CanOpenDrawPile())
 			{
-				OpenDrawPileModal();
+				OpenPileModal("Draw Pile", GetRandomizedDrawPileSnapshot(), drawPile: true);
 			}
 			AcceptEvent();
 			return;
@@ -922,8 +968,11 @@ public partial class Deck : Control
 			SetHoveringPile(false);
 	}
 
+	private bool CanOpenPileModal(List<CardData> cards)
+		=> !_targetingDimmed && !Deck.IsDrawPileModalOpen && cards != null && cards.Count > 0;
+
 	private bool CanOpenDrawPile()
-		=> !_targetingDimmed && !Deck.IsDrawPileModalOpen;
+		=> CanOpenPileModal(_draw);
 
 	private bool CanPlayTopCard()
 		=> EnableInput && !_deadDimmed && !_targetingDimmed && !_turnDimmed && !_energyDimmed && !Deck.IsDrawPileModalOpen;
