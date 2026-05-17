@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 public partial class TooltipDisplay : Control
 {
-	private const int TooltipCanvasLayer = 1000;
+	private const int TooltipCanvasLayer = 2000;
 	private const int TooltipZIndex = 4096;
 	private const string TooltipLayerName = "GlobalTooltipLayer";
 	private const string TooltipRootName = "GlobalTooltipRoot";
@@ -118,7 +118,7 @@ public partial class TooltipDisplay : Control
 	private bool IsHoveringSource()
 	{
 		var source = _hoverSource ?? GetParent<Control>();
-		if (source == null || !GodotObject.IsInstanceValid(source))
+		if (source == null || !GodotObject.IsInstanceValid(source) || !source.IsVisibleInTree())
 			return false;
 
 		if (Deck.IsDrawPileModalOpen && !IsInModalScope(source))
