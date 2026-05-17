@@ -107,6 +107,8 @@ public partial class Enemy : Control, IDamageable
 		_ringTR      = _ring as TargetRing;           // <— keep a typed ref
 		_popupAnchor = GetNodeOrNull<Control>(PopupAnchorPath);
 		_deck        = GetNodeOrNull<Deck>(DeckPath);
+		EnemyDef enemyDef = Def as EnemyDef;
+		ApplyDefinition(enemyDef);
 		BuildAnimationFrames();
 
 		// We want clicks on the whole enemy rect
@@ -120,15 +122,12 @@ public partial class Enemy : Control, IDamageable
 		MouseEntered += OnMouseEntered;
 		MouseExited  += OnMouseExited;
 
-		// ------ NAME ALIGNMENT: EnemyDef.MaxHP ------
-		if (Def is EnemyDef enemyDef)
-		{
-			MaxHP = Mathf.Max(1, enemyDef.MaxHP);           // << use MaxHP (capital HP)
-			HP    = MaxHP;
-			if (!HasAnimationFrames() && enemyDef.Art != null && _sprite != null) _sprite.Texture = enemyDef.Art;
-		}
+		if (enemyDef != null)
+			ApplyDefinitionHealth(enemyDef);
 		EnsureStatusBar();
 		EnsureHudTooltip();
+		if (!HasAnimationFrames() && enemyDef?.Art != null && _sprite != null)
+			_sprite.Texture = enemyDef.Art;
 		ApplyFrame();
 		ApplyStandardLayout();
 		_hp?.Set(HP, MaxHP);
@@ -142,8 +141,9 @@ public partial class Enemy : Control, IDamageable
 		if (_deck != null)
 		{
 			_deck.Side = Deck.DeckSide.Enemy;
-			if (DeckListOverride != null)
-				_deck.RebuildFromDeckList(DeckListOverride);
+			Resource effectiveDeck = DeckListOverride ?? enemyDef?.Deck;
+			if (effectiveDeck != null)
+				_deck.RebuildFromDeckList(effectiveDeck);
 			_deck.EnableInput = false;
 			_deck.DiscardOnTopClick = false;
 			_deck.PlayRequested += OnDeckPlayRequested;
@@ -153,6 +153,52 @@ public partial class Enemy : Control, IDamageable
 
 		_combat?.RegisterEnemy(this);
 		SetTargetable(false);
+	}
+
+	private void ApplyDefinition(EnemyDef enemyDef)
+	{
+		if (enemyDef == null)
+			return;
+
+		ApplyDefinitionHealth(enemyDef);
+
+		if (SpriteSheet == null && enemyDef.SpriteSheet != null)
+		{
+			SpriteSheet = enemyDef.SpriteSheet;
+			FrameSize = enemyDef.FrameSize;
+			IdleFrameCount = enemyDef.IdleFrameCount;
+		}
+
+		if (IdleSpriteSheet == null && enemyDef.IdleSpriteSheet != null)
+		{
+			IdleSpriteSheet = enemyDef.IdleSpriteSheet;
+			IdleFrameSize = enemyDef.IdleFrameSize;
+			IdleSpriteFrameCount = enemyDef.IdleSpriteFrameCount;
+		}
+
+		if (AttackSpriteSheet == null && enemyDef.AttackSpriteSheet != null)
+		{
+			AttackSpriteSheet = enemyDef.AttackSpriteSheet;
+			AttackFrameSize = enemyDef.AttackFrameSize;
+			AttackFrameCount = enemyDef.AttackFrameCount;
+		}
+
+		if (HitSpriteSheet == null && enemyDef.HitSpriteSheet != null)
+		{
+			HitSpriteSheet = enemyDef.HitSpriteSheet;
+			HitFrameSize = enemyDef.HitFrameSize;
+			HitFrameCount = enemyDef.HitFrameCount;
+		}
+
+		IdleFrameSeconds = enemyDef.IdleFrameSeconds;
+		ActionFrameSeconds = enemyDef.ActionFrameSeconds;
+		FaceLeft = enemyDef.FaceLeft;
+	}
+
+	private void ApplyDefinitionHealth(EnemyDef enemyDef)
+	{
+		MaxHP = Mathf.Max(1, enemyDef.MaxHP);
+		HP = MaxHP;
 	}
 
 	public override void _Process(double delta)

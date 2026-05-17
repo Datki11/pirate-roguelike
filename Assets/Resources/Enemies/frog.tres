@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="EnemyDef" load_steps=6 format=3]
+
+[ext_resource type="Script" uid="uid://dx3m62wyoviov" path="res://Assets/Scripts/EnemyDef.cs" id="1_def"]
+[ext_resource type="Resource" path="res://Assets/Resources/DeckLists/FrogDeckList.tres" id="2_deck"]
+[ext_resource type="Texture2D" uid="uid://4a52782soxuh" path="res://Assets/Sprites/Enemies/Frogger/frogger_idle.png" id="3_idle"]
+[ext_resource type="Texture2D" uid="uid://cqcopxqovlokv" path="res://Assets/Sprites/Enemies/Frogger/frogger_spit.png" id="4_attack"]
+[ext_resource type="Texture2D" uid="uid://cw501sylaufpu" path="res://Assets/Sprites/Enemies/Frogger/frogger_hurt.png" id="5_hit"]
+
+[resource]
+script = ExtResource("1_def")
+Id = "frog"
+Name = "Frog"
+MaxHP = 40
+Deck = ExtResource("2_deck")
+IdleSpriteSheet = ExtResource("3_idle")
+IdleFrameSize = Vector2i(128, 128)
+AttackSpriteSheet = ExtResource("4_attack")
+AttackFrameSize = Vector2i(128, 128)
+HitSpriteSheet = ExtResource("5_hit")
+HitFrameSize = Vector2i(128, 128)
+ActionFrameSeconds = 0.025
+metadata/_custom_type_script = "uid://dx3m62wyoviov"

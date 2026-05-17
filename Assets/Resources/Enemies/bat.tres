@@ -1,10 +1,14 @@
-[gd_resource type="Resource" script_class="EnemyDef" load_steps=2 format=3 uid="uid://b7vho1whohwnk"]
+[gd_resource type="Resource" script_class="EnemyDef" load_steps=4 format=3 uid="uid://b7vho1whohwnk"]
 
 [ext_resource type="Script" uid="uid://dx3m62wyoviov" path="res://Assets/Scripts/EnemyDef.cs" id="1_clt2x"]
+[ext_resource type="Texture2D" path="res://Assets/Sprites/Enemies/bat_32x32_left.png" id="2_art"]
+[ext_resource type="Resource" uid="uid://ewl7fgxohm3l" path="res://Assets/Resources/DeckLists/BatDeckList.tres" id="3_deck"]
 
 [resource]
 script = ExtResource("1_clt2x")
 Id = "bat"
 Name = "Bat"
+Art = ExtResource("2_art")
 MaxHP = 40
+Deck = ExtResource("3_deck")
 metadata/_custom_type_script = "uid://dx3m62wyoviov"

@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="EnemyDef" load_steps=6 format=3]
+
+[ext_resource type="Script" uid="uid://dx3m62wyoviov" path="res://Assets/Scripts/EnemyDef.cs" id="1_def"]
+[ext_resource type="Resource" path="res://Assets/Resources/DeckLists/FirewormDeckList.tres" id="2_deck"]
+[ext_resource type="Texture2D" uid="uid://d2va1r7sn6dy6" path="res://Assets/Sprites/Enemies/Fire Worm/Sprites/Worm/Idle.png" id="3_idle"]
+[ext_resource type="Texture2D" uid="uid://shunmu3agjv4" path="res://Assets/Sprites/Enemies/Fire Worm/Sprites/Worm/Attack.png" id="4_attack"]
+[ext_resource type="Texture2D" uid="uid://cr6o048d1fbdg" path="res://Assets/Sprites/Enemies/Fire Worm/Sprites/Worm/Get Hit.png" id="5_hit"]
+
+[resource]
+script = ExtResource("1_def")
+Id = "fireworm"
+Name = "Fireworm"
+MaxHP = 40
+Deck = ExtResource("2_deck")
+IdleSpriteSheet = ExtResource("3_idle")
+IdleFrameSize = Vector2i(90, 90)
+AttackSpriteSheet = ExtResource("4_attack")
+AttackFrameSize = Vector2i(90, 90)
+HitSpriteSheet = ExtResource("5_hit")
+HitFrameSize = Vector2i(90, 90)
+ActionFrameSeconds = 0.04
+metadata/_custom_type_script = "uid://dx3m62wyoviov"

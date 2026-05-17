@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://dalw1nj8vun0c"]
+[gd_scene load_steps=11 format=3 uid="uid://dalw1nj8vun0c"]
 
 [ext_resource type="Script" uid="uid://bpyombue3awvk" path="res://Assets/Scripts/SmallCard.cs" id="1_gnlkw"]
 [ext_resource type="Texture2D" uid="uid://0b1v85wpr3kf" path="res://Assets/Sprites/Cards/attack-art/64x64/Swordtember2025 by tjtrewin.itch.io - Week 1/03-automaton__tjtrewin-itch-io.png" id="2_j0vee"]
@@ -7,6 +7,7 @@
 [ext_resource type="Texture2D" uid="uid://c75wfghfvo23j" path="res://Assets/Sprites/Icons/Target Icons/multiple-enemies-target-icon.png" id="5_gnlkw"]
 [ext_resource type="Script" uid="uid://c0d1xtooltips" path="res://Assets/Scripts/TooltipDisplay.cs" id="6_tooltip"]
 [ext_resource type="FontFile" uid="uid://b4dw7y3ang4m3" path="res://Assets/Fonts/upheaval/upheavtt.ttf" id="7_upheaval"]
+[ext_resource type="FontFile" uid="uid://10yyhslqknyn" path="res://Assets/Fonts/superstar_2/superstar_memesbruh03.ttf" id="8_superstar"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_frame"]
 content_margin_left = 0.0
@@ -94,8 +95,8 @@ offset_bottom = -6.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_colors/font_color = Color(0, 0, 0, 1)
-theme_override_fonts/font = ExtResource("7_upheaval")
-theme_override_font_sizes/font_size = 20
+theme_override_fonts/font = ExtResource("8_superstar")
+theme_override_font_sizes/font_size = 16
 text = "Card"
 horizontal_alignment = 1
 vertical_alignment = 1
