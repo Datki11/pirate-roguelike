@@ -2,9 +2,9 @@
 
 [ext_resource type="Script" uid="uid://bdeskaf8f380h" path="res://Assets/Scripts/PlayerUnit.cs" id="1_player"]
 [ext_resource type="Script" uid="uid://dghg25xqhrcyh" path="res://Assets/Scripts/HPBar.cs" id="2_hpbar"]
-[ext_resource type="FontFile" uid="uid://b6nooaoreg886" path="res://Assets/Fonts/Minecraft.ttf" id="3_font"]
 [ext_resource type="PackedScene" uid="uid://bcc2tig505c7l" path="res://Assets/Components/deck.tscn" id="4_deck"]
 [ext_resource type="Texture2D" uid="uid://xadv7ohuvyqj" path="res://Assets/Sprites/pirate-placeholder-sprites/Sprites/2-Enemy-Bald Pirate/1-Idle/1.png" id="5_preview"]
+[ext_resource type="FontFile" uid="uid://b4dw7y3ang4m3" path="res://Assets/Fonts/upheaval/upheavtt.ttf" id="6_upheaval"]
 
 [node name="PlayerUnit" type="Node2D"]
 z_as_relative = false
@@ -22,7 +22,7 @@ layout_mode = 3
 anchors_preset = 0
 script = ExtResource("2_hpbar")
 Fill = Color(0.1, 0.72, 0.18, 1)
-PixelFont = ExtResource("3_font")
+PixelFont = ExtResource("6_upheaval")
 
 [node name="Deck" parent="." instance=ExtResource("4_deck")]
 z_as_relative = false

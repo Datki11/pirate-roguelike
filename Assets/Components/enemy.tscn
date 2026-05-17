@@ -3,10 +3,10 @@
 [ext_resource type="Script" uid="uid://dynv03gjgjc8x" path="res://Assets/Scripts/Enemy.cs" id="1_t6tus"]
 [ext_resource type="Script" uid="uid://dghg25xqhrcyh" path="res://Assets/Scripts/HPBar.cs" id="4_sdvpo"]
 [ext_resource type="Script" uid="uid://dliotwwlwl71h" path="res://Assets/Scripts/TargetRing.cs" id="5_dcwce"]
-[ext_resource type="FontFile" uid="uid://b6nooaoreg886" path="res://Assets/Fonts/Minecraft.ttf" id="5_ylgap"]
 [ext_resource type="PackedScene" uid="uid://bcc2tig505c7l" path="res://Assets/Components/deck.tscn" id="7_qtvry"]
 [ext_resource type="Texture2D" uid="uid://ba3slgxp2y02k" path="res://Assets/Sprites/Cards/card_back_red_24x36.png" id="8_8sbev"]
 [ext_resource type="Resource" uid="uid://ewl7fgxohm3l" path="res://Assets/Resources/DeckLists/BatDeckList.tres" id="8_nn7m1"]
+[ext_resource type="FontFile" uid="uid://b4dw7y3ang4m3" path="res://Assets/Fonts/upheaval/upheavtt.ttf" id="9_upheaval"]
 
 [node name="Enemy" type="Control"]
 layout_mode = 3
@@ -37,7 +37,7 @@ grow_horizontal = 2
 grow_vertical = 0
 script = ExtResource("4_sdvpo")
 Fill = Color(0.759394, 0, 0.140071, 1)
-PixelFont = ExtResource("5_ylgap")
+PixelFont = ExtResource("9_upheaval")
 
 [node name="Ring" type="Control" parent="."]
 visible = false

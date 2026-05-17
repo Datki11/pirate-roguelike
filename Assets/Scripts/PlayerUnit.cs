@@ -719,6 +719,7 @@ public partial class PlayerUnit : Node2D, IDamageable
 	private void RefreshStatusBar()
 	{
 		_hpBar?.SetBlock(Block);
+		_hpBar?.SetBleed(GetStatusAmount("bleed"));
 		_statusBar?.SetStatuses(_statuses, Block);
 		_hudTooltip?.SetEntries(UnitStatusTooltips.Build(_statuses, Block));
 		ApplyStandardLayout();

@@ -795,6 +795,7 @@ public partial class Enemy : Control, IDamageable
 	private void RefreshStatusBar()
 	{
 		_hp?.SetBlock(Block);
+		_hp?.SetBleed(GetStatusAmount("bleed"));
 		_statusBar?.SetStatuses(_statuses, Block);
 		_hudTooltip?.SetEntries(UnitStatusTooltips.Build(_statuses, Block));
 		ApplyStandardLayout();

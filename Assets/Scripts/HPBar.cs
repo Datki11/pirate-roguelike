@@ -5,9 +5,12 @@ public partial class HPBar : Control
 	[Export] public int Max = 10;
 	[Export] public int Value = 10;
 	[Export] public int Block = 0;
+	[Export] public int Bleed = 0;
 	[Export] public Color Back = new Color(0,0,0,1);
 	[Export] public Color Fill = new Color(0.1f,0.8f,0.1f,1);
 	[Export] public Color BlockFill = new Color(0.1f, 0.42f, 0.95f, 1);
+	[Export] public Color BleedDarkFill = new Color(0.16f, 0f, 0f, 1);
+	[Export] public Color BleedBrightFill = new Color(1f, 0.02f, 0.02f, 1);
 
 	// Text config
 	[Export] public bool ShowText = true;
@@ -16,7 +19,7 @@ public partial class HPBar : Control
 
 	// Exported font takes priority; leave null to use the theme default.
 	[Export] public FontFile PixelFont;
-	[Export] public int PixelFontSize = 16;
+	[Export] public int PixelFontSize = 20;
 	[Export] public Texture2D BlockIcon;
 
 	private const int IconSize = 16;
@@ -24,12 +27,23 @@ public partial class HPBar : Control
 	private const int IconGap = 2;
 	private const int BlockRightPadding = 2;
 	private const int BlockGap = 4;
+	private float _bleedFlashTime;
 
 	public override void _Ready()
 	{
-		PixelFont ??= ResourceLoader.Load<FontFile>("res://Assets/Fonts/Minecraft.ttf");
+		PixelFont ??= ResourceLoader.Load<FontFile>("res://Assets/Fonts/upheaval/upheavtt.ttf");
 		BlockIcon ??= ResourceLoader.Load<Texture2D>("res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/shield_padded.png");
 		ConfigurePixelFont(PixelFont);
+		SetProcess(Bleed > 0);
+	}
+
+	public override void _Process(double delta)
+	{
+		if (Bleed <= 0)
+			return;
+
+		_bleedFlashTime += (float)delta;
+		QueueRedraw();
 	}
 
 	public void Set(int value, int max)
@@ -45,6 +59,15 @@ public partial class HPBar : Control
 		QueueRedraw();
 	}
 
+	public void SetBleed(int bleed)
+	{
+		Bleed = Mathf.Max(0, bleed);
+		if (Bleed <= 0)
+			_bleedFlashTime = 0f;
+		SetProcess(Bleed > 0);
+		QueueRedraw();
+	}
+
 	public override void _Draw()
 	{
 		var size = Size;
@@ -55,6 +78,7 @@ public partial class HPBar : Control
 		float t = (float)Value / Mathf.Max(1, Max);
 		int w = (int)Mathf.Round(size.X * t);
 		DrawRect(new Rect2(Vector2.Zero, new Vector2(w, size.Y)), Block > 0 ? BlockFill : Fill, true);
+		DrawBleedPreview(size, w);
 		DrawRect(rect, Colors.Black, false, 1);
 
 		if (!ShowText) return;
@@ -107,6 +131,22 @@ public partial class HPBar : Control
 
 		float textWidth = font.GetStringSize(Block.ToString(), HorizontalAlignment.Left, -1, fs).X;
 		return BlockGap + BlockRightPadding + (BlockIcon != null ? IconSize + IconGap : 0) + textWidth + BlockRightPadding;
+	}
+
+	private void DrawBleedPreview(Vector2 size, int healthWidth)
+	{
+		if (Bleed <= 0 || Value <= 0 || healthWidth <= 0)
+			return;
+
+		int pendingLoss = Mathf.Clamp(Bleed, 0, Value);
+		float bleedWidth = Mathf.Min(healthWidth, size.X * ((float)pendingLoss / Mathf.Max(1, Max)));
+		if (bleedWidth <= 0f)
+			return;
+
+		float pulse = (Mathf.Sin(_bleedFlashTime * 8.5f) + 1f) * 0.5f;
+		Color flashColor = BleedDarkFill.Lerp(BleedBrightFill, pulse);
+		float x = Mathf.Round(healthWidth - bleedWidth);
+		DrawRect(new Rect2(new Vector2(x, 0), new Vector2(Mathf.Ceil(bleedWidth), size.Y)), flashColor, true);
 	}
 
 	private void ConfigurePixelFont(Font font)
