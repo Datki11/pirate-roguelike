@@ -31,9 +31,9 @@ public partial class Deck : Control
 	[Export] public int DrawForwardOffset { get; set; } = 18;
 	[Export] public int DiscardBehindOffset { get; set; } = 44;
 	[Export] public int PileVerticalOffset { get; set; } = 16;
-	[Export] public float PlayMoveDurationSec { get; set; } = 0.16f;
-	[Export] public float PlayHoldDurationSec { get; set; } = 0.20f;
-	[Export] public float PlayFadeDurationSec { get; set; } = 0.18f;
+	[Export] public float PlayMoveDurationSec { get; set; } = 0.64f;
+	[Export] public float PlayHoldDurationSec { get; set; } = 0.40f;
+	[Export] public float PlayFadeDurationSec { get; set; } = 0.36f;
 
 	private Control _pile, _top;
 	private Vector2 _origTopPos;
@@ -416,6 +416,14 @@ public partial class Deck : Control
 			rect = rect.Merge(GetControlCanvasRect(_hoverPreviewCard));
 
 		return rect;
+	}
+
+	public Rect2 GetPlayedCardCanvasRect()
+	{
+		if (_playedCard == null || !GodotObject.IsInstanceValid(_playedCard))
+			return GetTopCardCanvasRect();
+
+		return GetControlCanvasRect(_playedCard);
 	}
 
 	public Rect2 GetLocalContentRect()

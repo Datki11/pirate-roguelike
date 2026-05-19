@@ -60,7 +60,6 @@ offset_right = 31.0
 offset_bottom = -8.0
 
 [node name="Deck" parent="." instance=ExtResource("7_qtvry")]
-z_as_relative = false
 offset_left = 77.0
 offset_top = -96.0
 offset_right = 189.0

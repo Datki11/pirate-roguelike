@@ -245,6 +245,9 @@ public partial class PlayerUnit : Node2D, IDamageable
 	public int GetStatusAmount(string id)
 		=> !string.IsNullOrWhiteSpace(id) && _statuses.TryGetValue(id, out int amount) ? amount : 0;
 
+	public void PlayStatusPulse(string id, bool negative)
+		=> _statusBar?.PlayStatusPulse(id, negative);
+
 	public Vector2 GetPopupAnchorGlobal()
 	{
 		if (AutoLayoutAttachments && TryGetSpriteRect(out Rect2 spriteRect))
@@ -362,6 +365,9 @@ public partial class PlayerUnit : Node2D, IDamageable
 	}
 
 	public void SetIntentTargetPreview(bool on)
+		=> SetIntentTargetPreview(on, false);
+
+	public void SetIntentTargetPreview(bool on, bool friendly)
 	{
 		EnsureFriendlyTargetRing();
 		if (_targetRing == null)
@@ -381,7 +387,7 @@ public partial class PlayerUnit : Node2D, IDamageable
 
 		_groupTargetingHighlight = false;
 		_intentTargetPreviewActive = true;
-		ApplyIntentTargetRingStyle();
+		ApplyIntentTargetRingStyle(friendly);
 		if (TryGetSpriteRect(out Rect2 spriteRect))
 			ApplyFriendlyTargetRingLayout(spriteRect);
 		_targetRing.Visible = true;
@@ -721,14 +727,14 @@ public partial class PlayerUnit : Node2D, IDamageable
 		_targetRing.QueueRedraw();
 	}
 
-	private void ApplyIntentTargetRingStyle()
+	private void ApplyIntentTargetRingStyle(bool friendly)
 	{
 		if (_targetRing == null)
 			return;
 
-		_targetRing.BaseColor = new Color(0.9f, 0.08f, 0.06f, 1f);
-		_targetRing.FillColor = new Color(0.9f, 0.08f, 0.06f, 0.25f);
-		_targetRing.ShadowColor = new Color(0.18f, 0f, 0f, 0.9f);
+		_targetRing.BaseColor = friendly ? new Color(0.22f, 0.68f, 1f, 1f) : new Color(0.9f, 0.08f, 0.06f, 1f);
+		_targetRing.FillColor = friendly ? new Color(0.22f, 0.68f, 1f, 0.25f) : new Color(0.9f, 0.08f, 0.06f, 0.25f);
+		_targetRing.ShadowColor = friendly ? new Color(0f, 0.05f, 0.14f, 0.9f) : new Color(0.18f, 0f, 0f, 0.9f);
 		_targetRing.Thickness = 2;
 		_targetRing.Pulse = true;
 		_targetRing.HoverFill = true;

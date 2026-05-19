@@ -84,6 +84,7 @@ public partial class Enemy : Control, IDamageable
 	private bool _deathPresentationRunning;
 	private bool _unitHovering;
 	private bool _groupTargetingHighlight;
+	private bool _intentTargetPreviewActive;
 	private readonly Dictionary<string, int> _statuses = new();
 
 	// --- Signals (ADD THIS BACK) ---
@@ -399,6 +400,9 @@ public partial class Enemy : Control, IDamageable
 	public int GetStatusAmount(string id)
 		=> !string.IsNullOrWhiteSpace(id) && _statuses.TryGetValue(id, out int amount) ? amount : 0;
 
+	public void PlayStatusPulse(string id, bool negative)
+		=> _statusBar?.PlayStatusPulse(id, negative);
+
 	public Vector2 GetPopupAnchorGlobal()
 	{
 		if (AutoLayoutAttachments && TryGetSpriteRect(out Rect2 spriteRect))
@@ -414,6 +418,7 @@ public partial class Enemy : Control, IDamageable
 
 	public void SetTargetable(bool on)
 	{
+		_intentTargetPreviewActive = false;
 		_groupTargetingHighlight = false;
 		ApplyTargetRingStyle(groupHighlight: false);
 		if (_ring != null) _ring.Visible = on;
@@ -425,6 +430,7 @@ public partial class Enemy : Control, IDamageable
 		if (_ring == null)
 			return;
 
+		_intentTargetPreviewActive = false;
 		if (_groupTargetingHighlight == on && _ring.Visible == on)
 			return;
 
@@ -432,6 +438,31 @@ public partial class Enemy : Control, IDamageable
 		ApplyTargetRingStyle(groupHighlight: false);
 		_ring.Visible = on;
 		_ringTR?.SetHover(on);
+		_ring.QueueRedraw();
+	}
+
+	public void SetIntentTargetPreview(bool on, bool friendly)
+	{
+		if (_ring == null)
+			return;
+
+		if (!on)
+		{
+			if (!_intentTargetPreviewActive)
+				return;
+
+			_intentTargetPreviewActive = false;
+			_ringTR?.SetHover(false);
+			_ring.Visible = false;
+			ApplyTargetRingStyle(groupHighlight: false);
+			return;
+		}
+
+		_groupTargetingHighlight = false;
+		_intentTargetPreviewActive = true;
+		ApplyIntentTargetRingStyle(friendly);
+		_ring.Visible = true;
+		_ringTR?.SetHover(true);
 		_ring.QueueRedraw();
 	}
 
@@ -455,6 +486,20 @@ public partial class Enemy : Control, IDamageable
 		_ringTR.ShadowColor = new Color(0.15f, 0.05f, 0.05f, 0.9f);
 		_ringTR.FillColor = new Color(0.9f, 0.2f, 0.2f, 0.25f);
 		_ringTR.Thickness = 1;
+		_ringTR.Pulse = true;
+		_ringTR.HoverFill = true;
+		_ringTR.QueueRedraw();
+	}
+
+	private void ApplyIntentTargetRingStyle(bool friendly)
+	{
+		if (_ringTR == null)
+			return;
+
+		_ringTR.BaseColor = friendly ? new Color(0.22f, 0.68f, 1f, 1f) : new Color(0.9f, 0.08f, 0.06f, 1f);
+		_ringTR.FillColor = friendly ? new Color(0.22f, 0.68f, 1f, 0.25f) : new Color(0.9f, 0.08f, 0.06f, 0.25f);
+		_ringTR.ShadowColor = friendly ? new Color(0f, 0.05f, 0.14f, 0.9f) : new Color(0.18f, 0f, 0f, 0.9f);
+		_ringTR.Thickness = 2;
 		_ringTR.Pulse = true;
 		_ringTR.HoverFill = true;
 		_ringTR.QueueRedraw();

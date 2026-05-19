@@ -282,9 +282,9 @@ public partial class SmallCard : BaseCardView
 			"attack" => "Damage dealt to a target.",
 			"block" => "Prevents incoming damage.",
 			"heal" => "Restores HP, up to maximum HP.",
-			"bleed" => "At the end of your turn, take bleed damage.",
-			"weak" => "Deal 50% less damage. At the end of your turn, lose 1 weak.",
-			"regen" => "At the end of your turn, gain HP equal to regen, then lose 1 regen.",
+			"bleed" => "At the start of your turn, take bleed damage.",
+			"weak" => "Deal 50% less damage. At the start of your turn, lose 1 weak.",
+			"regen" => "At the start of your turn, gain HP equal to regen, then lose 1 regen.",
 			"play_top_cards" => "An ally plays cards from the top of their deck.",
 			_ => string.IsNullOrWhiteSpace(effect.LongFormat) ? effect.DisplayName : effect.LongFormat
 		};

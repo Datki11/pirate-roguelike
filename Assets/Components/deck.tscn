@@ -60,6 +60,8 @@ texture = ExtResource("4_likt0")
 stretch_mode = 3
 
 [node name="Top Card" type="Control" parent="."]
+z_index = 1800
+z_as_relative = false
 custom_minimum_size = Vector2(140, 210)
 layout_mode = 1
 anchors_preset = 0

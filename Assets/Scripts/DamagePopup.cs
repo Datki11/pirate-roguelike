@@ -44,12 +44,12 @@ public partial class DamagePopup : Control
 		StartTween();
 	}
 
-	public void ShowIconValue(int amount, Texture2D icon, Color color)
+	public void ShowIconValue(int amount, Texture2D icon, Color color, bool positive = true)
 	{
 		int value = amount < 0 ? -amount : amount;
-		_leadingText = "";
-		_valueText = $"+{value}";
-		_use = Colors.White;
+		_leadingText = positive ? "+" : "-";
+		_valueText = value.ToString();
+		_use = color;
 		_icon = icon;
 		_tintIcon = false;
 		StartTween();

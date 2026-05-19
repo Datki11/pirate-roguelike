@@ -20,7 +20,9 @@ public partial class CombatManager : Node
 	[Export] public NodePath PlayersRootPath { get; set; }
 	[Export] public NodePath EnergyPath { get; set; }
 	[Export] public float EnemyTurnStartDelaySec { get; set; } = 0.35f;
-	[Export] public float EndOfTurnStatusEffectDelaySec { get; set; } = 0.9f;
+	[Export] public float StartOfTurnStatusEffectDelaySec { get; set; } = 0.9f;
+	[Export] public float EnemyIntentArrowDurationSec { get; set; } = 0.44f;
+	[Export] public float EnemyIntentTargetHoldSec { get; set; } = 0.24f;
 
 	private Node _vfx;
 	private CanvasLayer _popupLayer;
@@ -30,6 +32,7 @@ public partial class CombatManager : Node
 	private EnergyManager _energy;
 	private CombatTargeting _targeting;
 	private bool _enemyTurnRunning;
+	private bool _suppressEnemyHoverIntents;
 	private readonly HashSet<Enemy> _enemiesPlayedThisTurn = new();
 
 	private readonly List<Enemy> _enemies = new();
@@ -42,6 +45,7 @@ public partial class CombatManager : Node
 	private readonly Dictionary<string, Texture2D> _popupIcons = new();
 	private static readonly Color PopupBuffColor = new(0f, 1f, 1f);
 	private static readonly Color PopupCurseColor = new(1f, 0f, 1f);
+	private static readonly Color PopupBlockLossColor = new(0.52f, 0.84f, 1f);
 	private static readonly Dictionary<string, string> PopupIconPaths = new()
 	{
 		["block"] = "res://Assets/Sprites/Icons/Generated/block_32x36.png",
@@ -185,8 +189,6 @@ public partial class CombatManager : Node
 		_enemiesPlayedThisTurn.Clear();
 		ClearEnemyIntents();
 		ApplyTurnDeckStates();
-		foreach (var player in AlivePlayers().ToList())
-			await ApplyEndOfTurnStatusesAsync(player);
 
 		await ToSignal(GetTree().CreateTimer(EnemyTurnStartDelaySec), "timeout");
 		foreach (var enemy in _enemies.ToList())
@@ -196,12 +198,21 @@ public partial class CombatManager : Node
 			if (!AlivePlayers().Any())
 				break;
 
+			await ApplyStartOfTurnStatusesAsync(enemy);
+			if (enemy == null || !GodotObject.IsInstanceValid(enemy) || !enemy.Alive)
+			{
+				_enemiesPlayedThisTurn.Add(enemy);
+				ApplyTurnDeckStates();
+				continue;
+			}
+
 			await enemy.PlayTurnAsync();
-			if (enemy != null && GodotObject.IsInstanceValid(enemy) && enemy.Alive)
-				await ApplyEndOfTurnStatusesAsync(enemy);
 			_enemiesPlayedThisTurn.Add(enemy);
 			ApplyTurnDeckStates();
 		}
+
+		foreach (var player in AlivePlayers().ToList())
+			await ApplyStartOfTurnStatusesAsync(player);
 
 		_enemyTurnRunning = false;
 		_energy?.StartPlayerTurn();
@@ -274,102 +285,116 @@ public partial class CombatManager : Node
 	{
 		if (deck == null || card == null) return;
 		source ??= deck.GetParent() as IDamageable;
-		if (source is PlayerUnit playerUnit) playerUnit.PlayCardAnimation();
-		await deck.BeginCardPlayPresentation(card);
+		bool previousSuppressEnemyHoverIntents = _suppressEnemyHoverIntents;
+		_suppressEnemyHoverIntents = true;
+		UpdateIntentOverlayVisibility();
 
-		bool targetsEnemies = side == Deck.DeckSide.Player;
-		var opponents = targetsEnemies ? AliveEnemies().ToList() : AlivePlayers().ToList();
-		var allies = targetsEnemies ? AlivePlayers().ToList() : AliveEnemies().ToList();
-
-		var targetId = (card.TargetDef as TargetDef)?.Id ?? "single";   // "single" | "all" (or "multiple")
-		IDamageable singleOpponent = chosenTarget != null && chosenTarget.Alive ? chosenTarget : GetPlannedEnemyTarget(source, card, targetId, opponents);
-		bool lethal = false;
-		bool pierced = false;
-
-		if (card.Effects != null)
+		try
 		{
-			foreach (var effect in card.Effects)
-			{
-				if (effect?.Def == null || effect.Amount <= 0)
-					continue;
+			if (source is PlayerUnit playerUnit) playerUnit.PlayCardAnimation();
+			await deck.BeginCardPlayPresentation(card);
 
-				string effectId = effect.Def.Id;
-				switch (effectId)
+			bool targetsEnemies = side == Deck.DeckSide.Player;
+			var opponents = targetsEnemies ? AliveEnemies().ToList() : AlivePlayers().ToList();
+			var allies = targetsEnemies ? AlivePlayers().ToList() : AliveEnemies().ToList();
+
+			var targetId = (card.TargetDef as TargetDef)?.Id ?? "single";   // "single" | "all" (or "multiple")
+			IDamageable singleOpponent = chosenTarget != null && chosenTarget.Alive ? chosenTarget : GetPlannedEnemyTarget(source, card, targetId, opponents);
+			bool lethal = false;
+			bool pierced = false;
+
+			await PresentCardIntentAsync(deck, card, source, opponents, allies, singleOpponent, chosenTarget, targetId);
+
+			if (card.Effects != null)
+			{
+				foreach (var effect in card.Effects)
 				{
-					case "attack":
+					if (effect?.Def == null || effect.Amount <= 0)
+						continue;
+
+					string effectId = effect.Def.Id;
+					switch (effectId)
 					{
-						int attack = GetAttackAmountAfterWeak(source, effect.Amount);
-						foreach (var target in ResolveAttackTargets(targetId, opponents, singleOpponent))
+						case "attack":
 						{
-							lethal |= DealAttackDamage(target, attack, out bool unblocked);
-							pierced |= unblocked;
+							int attack = GetAttackAmountAfterWeak(source, effect.Amount, pulse: true);
+							foreach (var target in ResolveAttackTargets(targetId, opponents, singleOpponent))
+							{
+								lethal |= DealAttackDamage(target, attack, out bool unblocked);
+								pierced |= unblocked;
+							}
+							break;
 						}
-						break;
-					}
-					case "body_slam":
-					{
-						int attack = GetAttackAmountAfterWeak(source, source?.Block ?? 0);
-						foreach (var target in ResolveAttackTargets(targetId, opponents, singleOpponent))
+						case "body_slam":
 						{
-							lethal |= DealAttackDamage(target, attack, out bool unblocked);
-							pierced |= unblocked;
+							int attack = GetAttackAmountAfterWeak(source, source?.Block ?? 0, pulse: true);
+							foreach (var target in ResolveAttackTargets(targetId, opponents, singleOpponent))
+							{
+								lethal |= DealAttackDamage(target, attack, out bool unblocked);
+								pierced |= unblocked;
+							}
+							break;
 						}
-						break;
-					}
-					case "block":
-					{
-						foreach (var target in ResolveBeneficialTargets(targetId, allies, source))
-							GainBlockWithPopup(target, effect.Amount);
-						break;
-					}
-					case "heal":
-					{
-						foreach (var target in ResolveBeneficialTargets(targetId, allies, source))
-							HealWithPopup(target, effect.Amount);
-						break;
-					}
-					case "regen":
-					{
-						foreach (var target in ResolveBeneficialTargets(targetId, allies, source))
-							ApplyStatusWithPopup(target, "regen", effect.Amount);
-						break;
-					}
-					case "protect":
-					{
-						foreach (var target in ResolveBeneficialTargets(targetId, allies, source))
-							ApplyStatusWithPopup(target, "protector", effect.Amount);
-						break;
-					}
-					case "bleed":
-					case "weak":
-					{
-						foreach (var target in ResolveHarmfulTargets(targetId, opponents, singleOpponent))
-							ApplyStatusWithPopup(target, effectId, effect.Amount);
-						break;
-					}
-					case "play_top_cards":
-					{
-						await PlayAllyTopCards(source, chosenTarget, allies, targetId, effect.Amount);
-						break;
+						case "block":
+						{
+							foreach (var target in ResolveBeneficialTargets(targetId, allies, source))
+								GainBlockWithPopup(target, effect.Amount);
+							break;
+						}
+						case "heal":
+						{
+							foreach (var target in ResolveBeneficialTargets(targetId, allies, source))
+								HealWithPopup(target, effect.Amount);
+							break;
+						}
+						case "regen":
+						{
+							foreach (var target in ResolveBeneficialTargets(targetId, allies, source))
+								ApplyStatusWithPopup(target, "regen", effect.Amount);
+							break;
+						}
+						case "protect":
+						{
+							foreach (var target in ResolveBeneficialTargets(targetId, allies, source))
+								ApplyStatusWithPopup(target, "protector", effect.Amount);
+							break;
+						}
+						case "bleed":
+						case "weak":
+						{
+							foreach (var target in ResolveHarmfulTargets(targetId, opponents, singleOpponent))
+								ApplyStatusWithPopup(target, effectId, effect.Amount);
+							break;
+						}
+						case "play_top_cards":
+						{
+							await PlayAllyTopCards(source, chosenTarget, allies, targetId, effect.Amount);
+							break;
+						}
 					}
 				}
 			}
+
+			if (pierced && card.Trigger == CardTrigger.Pierce && card.PierceHealAmount > 0 && source != null && source.Alive)
+				HealWithPopup(source, card.PierceHealAmount);
+
+			if (lethal && card.LethalHealAmount > 0 && source != null && source.Alive)
+				HealWithPopup(source, card.LethalHealAmount);
+
+			if (lethal && card.ReturnToDrawOnLethal)
+			{
+				await deck.FinishCardPlayPresentationWithoutDiscard();
+				deck.EnsureTop();
+			}
+			else
+			{
+				await deck.AdvanceTopToDiscardWithPresentation(card);
+			}
 		}
-
-		if (pierced && card.Trigger == CardTrigger.Pierce && card.PierceHealAmount > 0 && source != null && source.Alive)
-			HealWithPopup(source, card.PierceHealAmount);
-
-		if (lethal && card.LethalHealAmount > 0 && source != null && source.Alive)
-			HealWithPopup(source, card.LethalHealAmount);
-
-		if (lethal && card.ReturnToDrawOnLethal)
+		finally
 		{
-			await deck.FinishCardPlayPresentationWithoutDiscard();
-			deck.EnsureTop();
-		}
-		else
-		{
-			await deck.AdvanceTopToDiscardWithPresentation(card);
+			_suppressEnemyHoverIntents = previousSuppressEnemyHoverIntents;
+			UpdateIntentOverlayVisibility();
 		}
 	}
 
@@ -419,7 +444,17 @@ public partial class CombatManager : Node
 
 			string targetId = (card.TargetDef as TargetDef)?.Id ?? "single";
 			IDamageable singleOpponent = GetPlannedEnemyTarget(enemy, card, targetId, opponents);
-			AddIntentLinesForCard(enemy, card, opponents, singleOpponent, targetId);
+			_enemyIntentLines.AddRange(BuildIntentLinesForCard(
+				enemy,
+				enemy,
+				enemy.GetIntentSourceAnchorCanvas(),
+				card,
+				opponents,
+				AliveEnemies().ToList(),
+				singleOpponent,
+				chosenTarget: null,
+				targetId,
+				includePositive: false));
 		}
 
 		UpdateIntentOverlayVisibility();
@@ -433,10 +468,19 @@ public partial class CombatManager : Node
 		_intentOverlay?.QueueRedraw();
 	}
 
-	private void AddIntentLinesForCard(Enemy enemy, CardData card, List<IDamageable> opponents, IDamageable singleOpponent, string targetId)
+	private List<CombatIntentLine> BuildIntentLinesForCard(
+		IDamageable source,
+		Enemy sourceEnemy,
+		Vector2 sourcePoint,
+		CardData card,
+		List<IDamageable> opponents,
+		List<IDamageable> allies,
+		IDamageable singleOpponent,
+		IDamageable chosenTarget,
+		string targetId,
+		bool includePositive)
 	{
-		var byTarget = new Dictionary<IDamageable, CombatIntentLine>();
-		Vector2 source = enemy.GetIntentSourceAnchorCanvas();
+		var byTarget = new Dictionary<(IDamageable Unit, bool Friendly), CombatIntentLine>();
 
 		foreach (var effect in card.Effects ?? new Godot.Collections.Array<EffectEntry>())
 		{
@@ -448,54 +492,146 @@ public partial class CombatManager : Node
 			{
 				case "attack":
 				{
-					int attack = GetAttackAmountAfterWeak(enemy, effect.Amount);
+					int attack = GetAttackAmountAfterWeak(source, effect.Amount);
 					foreach (var target in ResolveAttackTargets(targetId, opponents, singleOpponent))
-						GetOrCreateIntent(byTarget, enemy, source, target).AttackAmount += attack;
+						GetOrCreateIntent(byTarget, sourceEnemy, sourcePoint, target, friendly: false).AttackAmount += attack;
 					break;
 				}
 				case "body_slam":
 				{
-					int attack = GetAttackAmountAfterWeak(enemy, enemy.Block);
+					int attack = GetAttackAmountAfterWeak(source, source?.Block ?? 0);
 					foreach (var target in ResolveAttackTargets(targetId, opponents, singleOpponent))
-						GetOrCreateIntent(byTarget, enemy, source, target).AttackAmount += attack;
+						GetOrCreateIntent(byTarget, sourceEnemy, sourcePoint, target, friendly: false).AttackAmount += attack;
 					break;
 				}
 				case "bleed":
 				{
 					foreach (var target in ResolveHarmfulTargets(targetId, opponents, singleOpponent))
-						GetOrCreateIntent(byTarget, enemy, source, target).BleedAmount += effect.Amount;
+						GetOrCreateIntent(byTarget, sourceEnemy, sourcePoint, target, friendly: false).BleedAmount += effect.Amount;
 					break;
 				}
 				case "weak":
 				{
 					foreach (var target in ResolveHarmfulTargets(targetId, opponents, singleOpponent))
-						GetOrCreateIntent(byTarget, enemy, source, target).WeakAmount += effect.Amount;
+						GetOrCreateIntent(byTarget, sourceEnemy, sourcePoint, target, friendly: false).WeakAmount += effect.Amount;
+					break;
+				}
+				case "block":
+				case "heal":
+				case "regen":
+				case "protect":
+				{
+					if (!includePositive)
+						break;
+
+					foreach (var target in ResolveBeneficialTargets(targetId, allies, source))
+						GetOrCreateIntent(byTarget, sourceEnemy, sourcePoint, target, friendly: true);
+					break;
+				}
+				case "play_top_cards":
+				{
+					if (!includePositive)
+						break;
+
+					foreach (var target in ResolvePlayTopCardsIntentTargets(source, chosenTarget, allies, targetId))
+						GetOrCreateIntent(byTarget, sourceEnemy, sourcePoint, target, friendly: true);
 					break;
 				}
 			}
 		}
 
-		_enemyIntentLines.AddRange(byTarget.Values.Where(line => line.AttackAmount > 0 || line.BleedAmount > 0 || line.WeakAmount > 0));
+		return byTarget.Values
+			.Where(line => includePositive || line.AttackAmount > 0 || line.BleedAmount > 0 || line.WeakAmount > 0)
+			.ToList();
 	}
 
-	private CombatIntentLine GetOrCreateIntent(Dictionary<IDamageable, CombatIntentLine> byTarget, Enemy sourceEnemy, Vector2 source, IDamageable target)
+	private async Task PresentCardIntentAsync(
+		Deck deck,
+		CardData card,
+		IDamageable source,
+		List<IDamageable> opponents,
+		List<IDamageable> allies,
+		IDamageable singleOpponent,
+		IDamageable chosenTarget,
+		string targetId)
+	{
+		if (deck == null || card == null || source == null)
+			return;
+
+		Rect2 cardRect = deck.GetPlayedCardCanvasRect();
+		Vector2 sourcePoint = (cardRect.Position + cardRect.Size * 0.5f).Floor();
+		var lines = BuildIntentLinesForCard(
+			source,
+			source as Enemy,
+			sourcePoint,
+			card,
+			opponents,
+			allies,
+			singleOpponent,
+			chosenTarget,
+			targetId,
+			includePositive: true);
+		if (lines.Count == 0)
+			return;
+
+		var overlay = EnsureIntentOverlay();
+		if (overlay == null)
+			return;
+
+		overlay.Visible = true;
+		if (!overlay.IsInsideTree())
+			await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+		float duration = Mathf.Max(0.01f, EnemyIntentArrowDurationSec);
+		ulong startMsec = Time.GetTicksMsec();
+		while (GodotObject.IsInstanceValid(overlay) && overlay.IsInsideTree())
+		{
+			float elapsed = (Time.GetTicksMsec() - startMsec) / 1000f;
+			float progress = Mathf.Clamp(elapsed / duration, 0f, 1f);
+			overlay.SetPresentationLines(lines, EaseOutCubic(progress));
+			if (progress >= 1f)
+				break;
+			await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+		}
+
+		if (GodotObject.IsInstanceValid(overlay))
+		{
+			overlay.SetPresentationLines(lines, 1f);
+			if (EnemyIntentTargetHoldSec > 0f)
+				await ToSignal(GetTree().CreateTimer(EnemyIntentTargetHoldSec), "timeout");
+			overlay.ClearPresentationLines();
+			UpdateIntentOverlayVisibility();
+		}
+	}
+
+	private static float EaseOutCubic(float t)
+	{
+		t = Mathf.Clamp(t, 0f, 1f);
+		float inv = 1f - t;
+		return 1f - inv * inv * inv;
+	}
+
+	private CombatIntentLine GetOrCreateIntent(Dictionary<(IDamageable Unit, bool Friendly), CombatIntentLine> byTarget, Enemy sourceEnemy, Vector2 source, IDamageable target, bool friendly)
 	{
 		if (target == null || !target.Alive)
 			return new CombatIntentLine();
 
-		if (byTarget.TryGetValue(target, out var line))
+		var key = (target, friendly);
+		if (byTarget.TryGetValue(key, out var line))
 			return line;
 
 		line = new CombatIntentLine
 		{
 			SourceEnemy = sourceEnemy,
+			TargetUnit = target,
 			TargetPlayer = target as PlayerUnit,
 			Source = source,
 			Target = GetUnitAnchorCanvas(target),
 			TargetMarker = GetUnitTargetMarkerCanvas(target),
-			TargetRect = GetUnitTargetRectCanvas(target)
+			TargetRect = GetUnitTargetRectCanvas(target),
+			Friendly = friendly
 		};
-		byTarget[target] = line;
+		byTarget[key] = line;
 		return line;
 	}
 
@@ -558,7 +694,7 @@ public partial class CombatManager : Node
 		if (overlay == null)
 			return;
 
-		bool visible = _enemyIntentLines.Count > 0;
+		bool visible = !_suppressEnemyHoverIntents && _enemyIntentLines.Count > 0;
 		if (!visible)
 			overlay.ClearIntentTargetPreviews();
 		overlay.Visible = visible;
@@ -589,6 +725,7 @@ public partial class CombatManager : Node
 		else
 		{
 			_intentOverlay.Combat = this;
+			_intentOverlay.TopLevel = true;
 			_intentOverlay.ZAsRelative = false;
 			_intentOverlay.ZIndex = IntentZIndex;
 		}
@@ -633,8 +770,12 @@ public partial class CombatManager : Node
 		GD.Print($"CombatManager.DealAttackDamage -> {amount} on {target?.GetType().Name}");
 		if (target == null || !target.Alive || amount <= 0) return false;
 
+		int beforeBlock = target.Block;
 		int hpDamage = target.TakeAttackDamage(amount);
+		int blockedDamage = beforeBlock - target.Block;
 		unblocked = hpDamage > 0;
+		if (blockedDamage > 0)
+			SpawnIconPopupAt(target, blockedDamage, "block", PopupBlockLossColor, positive: false);
 		if (hpDamage > 0)
 			SpawnDamagePopupAt(target, hpDamage, isHeal: false);
 		return !target.Alive;
@@ -673,12 +814,27 @@ public partial class CombatManager : Node
 		SpawnIconPopupAt(target, amount, id, buff ? PopupBuffColor : PopupCurseColor);
 	}
 
-	private int GetAttackAmountAfterWeak(IDamageable source, int amount)
+	private int GetAttackAmountAfterWeak(IDamageable source, int amount, bool pulse = false)
 	{
 		if (source == null || source.GetStatusAmount("weak") <= 0)
 			return amount;
 
+		if (pulse)
+			PlayStatusPulse(source, "weak", negative: true);
 		return Mathf.Max(1, Mathf.CeilToInt(amount * 0.5f));
+	}
+
+	private void PlayStatusPulse(IDamageable unit, string id, bool negative)
+	{
+		switch (unit)
+		{
+			case PlayerUnit player when GodotObject.IsInstanceValid(player):
+				player.PlayStatusPulse(id, negative);
+				break;
+			case Enemy enemy when GodotObject.IsInstanceValid(enemy):
+				enemy.PlayStatusPulse(id, negative);
+				break;
+		}
 	}
 
 	private List<IDamageable> ResolveHarmfulTargets(string targetId, List<IDamageable> opponents, IDamageable singleOpponent)
@@ -710,6 +866,21 @@ public partial class CombatManager : Node
 			return new List<IDamageable> { source };
 
 		return new List<IDamageable>();
+	}
+
+	private List<IDamageable> ResolvePlayTopCardsIntentTargets(IDamageable source, IDamageable chosenTarget, List<IDamageable> allies, string targetId)
+	{
+		var validAllies = allies
+			.Where(unit => unit != null && unit.Alive && unit != source)
+			.ToList();
+
+		if (IsAllTarget(targetId))
+			return validAllies;
+
+		if (chosenTarget != null && chosenTarget.Alive && chosenTarget != source && validAllies.Contains(chosenTarget))
+			return new List<IDamageable> { chosenTarget };
+
+		return validAllies.Count > 0 ? new List<IDamageable> { validAllies[0] } : new List<IDamageable>();
 	}
 
 	private bool IsAllTarget(string targetId)
@@ -750,7 +921,7 @@ public partial class CombatManager : Node
 		}
 	}
 
-	private async Task ApplyEndOfTurnStatusesAsync(IDamageable unit)
+	private async Task ApplyStartOfTurnStatusesAsync(IDamageable unit)
 	{
 		if (unit == null || !unit.Alive)
 			return;
@@ -758,6 +929,7 @@ public partial class CombatManager : Node
 		int bleed = unit.GetStatusAmount("bleed");
 		if (bleed > 0)
 		{
+			PlayStatusPulse(unit, "bleed", negative: true);
 			DealDirectDamage(unit, bleed);
 			await WaitForStatusEffectPresentation();
 		}
@@ -768,6 +940,7 @@ public partial class CombatManager : Node
 		int regen = unit.GetStatusAmount("regen");
 		if (regen > 0)
 		{
+			PlayStatusPulse(unit, "regen", negative: false);
 			HealWithPopup(unit, regen);
 			unit.ReduceStatus("regen", 1);
 			await WaitForStatusEffectPresentation();
@@ -779,10 +952,10 @@ public partial class CombatManager : Node
 
 	private async Task WaitForStatusEffectPresentation()
 	{
-		if (EndOfTurnStatusEffectDelaySec <= 0f)
+		if (StartOfTurnStatusEffectDelaySec <= 0f)
 			return;
 
-		await ToSignal(GetTree().CreateTimer(EndOfTurnStatusEffectDelaySec), "timeout");
+		await ToSignal(GetTree().CreateTimer(StartOfTurnStatusEffectDelaySec), "timeout");
 	}
 
 	private void SpawnDamagePopupAt(IDamageable target, int amount, bool isHeal)
@@ -811,7 +984,7 @@ public partial class CombatManager : Node
 		popup.ShowNumber(amount, isHeal);
 	}
 
-	private void SpawnIconPopupAt(IDamageable target, int amount, string iconId, Color color)
+	private void SpawnIconPopupAt(IDamageable target, int amount, string iconId, Color color, bool positive = true)
 	{
 		if (DamagePopupScene == null) { GD.PushWarning("DamagePopupScene not set."); return; }
 		var node = target as Node;
@@ -832,7 +1005,7 @@ public partial class CombatManager : Node
 		var anchor = GetPopupAnchorCanvas(target, node);
 		var pos = (anchor - new Vector2(popup.Size.X * 0.5f, popup.Size.Y) + GetPopupSlotOffset(node, popup.Size.Y)).Floor();
 		popup.GlobalPosition = pos;
-		popup.ShowIconValue(amount, GetPopupIcon(iconId), color);
+		popup.ShowIconValue(amount, GetPopupIcon(iconId), color, positive);
 	}
 
 	private Node GetPopupParent()

@@ -25,7 +25,6 @@ Fill = Color(0.1, 0.72, 0.18, 1)
 PixelFont = ExtResource("6_upheaval")
 
 [node name="Deck" parent="." instance=ExtResource("4_deck")]
-z_as_relative = false
 offset_left = -3.0
 offset_top = -118.0
 offset_right = 109.0
