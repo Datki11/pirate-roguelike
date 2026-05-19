@@ -88,6 +88,21 @@ public partial class Deck : Control
 	private static Texture2D _discardPilePromptIcon;
 	public static bool IsDrawPileModalOpen => _openDrawPileModalCount > 0;
 
+	private sealed class PileModalSnapshot
+	{
+		public string Title { get; }
+		public List<CardData> OrderedCards { get; }
+		public List<CardData> UnorderedCards { get; }
+		public int Count => OrderedCards.Count + UnorderedCards.Count;
+
+		public PileModalSnapshot(string title, List<CardData> orderedCards, List<CardData> unorderedCards = null)
+		{
+			Title = title;
+			OrderedCards = orderedCards ?? new List<CardData>();
+			UnorderedCards = unorderedCards ?? new List<CardData>();
+		}
+	}
+
 	[Signal] public delegate void TopChangedEventHandler(CardData newTop);
 	[Signal] public delegate void TopClickedEventHandler();
 	[Signal] public delegate void PlayRequestedEventHandler(Deck deck, CardData card);
@@ -168,7 +183,7 @@ public partial class Deck : Control
 
 		if (CanOpenPileModal(_discard) && GetDiscardMarkerCanvasRect().HasPoint(mb.Position))
 		{
-			OpenPileModal("Discard Pile", new List<CardData>(_discard), drawPile: false);
+			OpenPileModal(new PileModalSnapshot("Discard Pile", new List<CardData>(_discard)));
 			GetViewport().SetInputAsHandled();
 			return;
 		}
@@ -227,13 +242,13 @@ public partial class Deck : Control
 	public void OpenDrawPileModal()
 	{
 		if (CanOpenPileModal(_draw))
-			OpenPileModal("Draw Pile", GetRandomizedDrawPileSnapshot(), drawPile: true);
+			OpenPileModal(CreateDrawPileModalSnapshot());
 	}
 
 	public void OpenDiscardPileModal()
 	{
 		if (CanOpenPileModal(_discard))
-			OpenPileModal("Discard Pile", new List<CardData>(_discard), drawPile: false);
+			OpenPileModal(new PileModalSnapshot("Discard Pile", new List<CardData>(_discard)));
 	}
 
 	public void CloseOpenPileModal()
@@ -695,7 +710,7 @@ public partial class Deck : Control
 			return;
 		}
 
-		OpenPileModal("Draw Pile", GetRandomizedDrawPileSnapshot(), drawPile: true);
+		OpenPileModal(CreateDrawPileModalSnapshot());
 		AcceptEvent();
 	}
 
@@ -705,7 +720,7 @@ public partial class Deck : Control
 			return;
 
 		if (CanOpenPileModal(_discard))
-			OpenPileModal("Discard Pile", new List<CardData>(_discard), drawPile: false);
+			OpenPileModal(new PileModalSnapshot("Discard Pile", new List<CardData>(_discard)));
 
 		AcceptEvent();
 	}
@@ -727,9 +742,9 @@ public partial class Deck : Control
 		return new Rect2(a, Vector2.Zero).Expand(b).Expand(c).Expand(d);
 	}
 
-	private void OpenPileModal(string title, List<CardData> cards, bool drawPile)
+	private void OpenPileModal(PileModalSnapshot snapshot)
 	{
-		if (!IsInsideTree() || CardViewScene == null)
+		if (!IsInsideTree() || CardViewScene == null || snapshot == null || snapshot.Count <= 0)
 			return;
 
 		CloseDrawPileModal();
@@ -758,29 +773,32 @@ public partial class Deck : Control
 
 		_drawPileModalLayer.AddChild(overlay);
 		(GetTree().CurrentScene as Node ?? GetTree().Root).AddChild(_drawPileModalLayer);
-		LayoutPileModal(overlay, title, cards, drawPile);
+		LayoutPileModal(overlay, snapshot);
 		TooltipDisplay.ModalTooltipScope = overlay;
 	}
 
-	private void LayoutPileModal(Control overlay, string title, List<CardData> cards, bool drawPile)
+	private void LayoutPileModal(Control overlay, PileModalSnapshot snapshot)
 	{
 		Vector2 viewport = GetViewportRect().Size;
 		const float cardGap = 12f;
 		const float modalGap = 16f;
 		Vector2 cardSize = GetCardViewSize();
-		float rowWidth = cards.Count * cardSize.X + Mathf.Max(0, cards.Count - 1) * cardGap;
+		int cardCount = snapshot.Count;
+		int orderedCount = snapshot.OrderedCards.Count;
+		int unorderedCount = snapshot.UnorderedCards.Count;
+		float rowWidth = cardCount * cardSize.X + Mathf.Max(0, cardCount - 1) * cardGap;
 		float startX = Mathf.Round((viewport.X - rowWidth) * 0.5f);
 		float cardY = Mathf.Round((viewport.Y - cardSize.Y) * 0.5f - 24f);
 
-		var heading = CreateModalLabel($"{title} ({cards.Count})", 20);
+		var heading = CreateModalLabel($"{snapshot.Title} ({cardCount})", 20);
 		heading.HorizontalAlignment = HorizontalAlignment.Center;
 		heading.Size = new Vector2(viewport.X, 28);
 		heading.Position = new Vector2(0, cardY - heading.Size.Y - modalGap).Floor();
 		overlay.AddChild(heading);
 
-		for (int i = 0; i < cards.Count; i++)
+		for (int i = 0; i < snapshot.OrderedCards.Count; i++)
 		{
-			var cardView = CreateCardView(cards[i]);
+			var cardView = CreateCardView(snapshot.OrderedCards[i]);
 			if (cardView == null)
 				continue;
 
@@ -789,15 +807,25 @@ public partial class Deck : Control
 			overlay.AddChild(cardView);
 		}
 
-		float closeY = cardY + cardSize.Y + modalGap;
-		if (drawPile)
+		for (int i = 0; i < snapshot.UnorderedCards.Count; i++)
 		{
-			var disclaimer = CreateModalLabel("Cards are not shown in any particular order", 20);
-			disclaimer.HorizontalAlignment = HorizontalAlignment.Center;
-			disclaimer.Size = new Vector2(viewport.X, 28);
-			disclaimer.Position = new Vector2(0, closeY).Floor();
-			overlay.AddChild(disclaimer);
-			closeY = disclaimer.Position.Y + disclaimer.Size.Y + 10f;
+			int cardIndex = orderedCount + i;
+			var cardView = CreateCardView(snapshot.UnorderedCards[i]);
+			if (cardView == null)
+				continue;
+
+			cardView.MouseFilter = MouseFilterEnum.Pass;
+			cardView.Position = new Vector2(startX + cardIndex * (cardSize.X + cardGap), cardY).Floor();
+			overlay.AddChild(cardView);
+		}
+
+		float closeY = cardY + cardSize.Y + modalGap;
+		if (unorderedCount > 0)
+		{
+			float unorderedStartX = startX + orderedCount * (cardSize.X + cardGap);
+			float unorderedWidth = unorderedCount * cardSize.X + Mathf.Max(0, unorderedCount - 1) * cardGap;
+			AddUnorderedMarker(overlay, unorderedStartX, closeY, unorderedWidth);
+			closeY += 40f;
 		}
 
 		var close = CreateCloseButton();
@@ -816,9 +844,25 @@ public partial class Deck : Control
 		return size;
 	}
 
-	private List<CardData> GetRandomizedDrawPileSnapshot()
+	private PileModalSnapshot CreateDrawPileModalSnapshot()
 	{
-		var cards = new List<CardData>(_draw);
+		EnsureVisibleTopCards(refresh: false);
+
+		int orderedCount = Mathf.Clamp(GetVisibleTopCardCount(), 1, _draw.Count);
+		var orderedCards = new List<CardData>(orderedCount);
+		for (int i = 0; i < orderedCount; i++)
+			orderedCards.Add(_draw[_draw.Count - 1 - i]);
+
+		var unorderedCards = new List<CardData>();
+		for (int i = 0; i < _draw.Count - orderedCount; i++)
+			unorderedCards.Add(_draw[i]);
+
+		ShuffleDisplayCards(unorderedCards);
+		return new PileModalSnapshot("Draw Pile", orderedCards, unorderedCards);
+	}
+
+	private void ShuffleDisplayCards(List<CardData> cards)
+	{
 		var displayRng = new RandomNumberGenerator();
 		displayRng.Randomize();
 
@@ -827,8 +871,45 @@ public partial class Deck : Control
 			int j = (int)displayRng.RandiRange(0, i);
 			(cards[i], cards[j]) = (cards[j], cards[i]);
 		}
+	}
 
-		return cards;
+	private void AddUnorderedMarker(Control overlay, float x, float y, float width)
+	{
+		var bracketColor = new Color(1f, 0.86f, 0.12f);
+		const float lineThickness = 2f;
+		const float tipHeight = 8f;
+		var line = new ColorRect
+		{
+			Color = bracketColor,
+			MouseFilter = MouseFilterEnum.Ignore,
+			Position = new Vector2(Mathf.Round(x), Mathf.Round(y)).Floor(),
+			Size = new Vector2(Mathf.Max(lineThickness, width), lineThickness)
+		};
+		overlay.AddChild(line);
+
+		var leftTip = new ColorRect
+		{
+			Color = bracketColor,
+			MouseFilter = MouseFilterEnum.Ignore,
+			Position = new Vector2(line.Position.X, line.Position.Y - tipHeight + lineThickness).Floor(),
+			Size = new Vector2(lineThickness, tipHeight)
+		};
+		overlay.AddChild(leftTip);
+
+		var rightTip = new ColorRect
+		{
+			Color = bracketColor,
+			MouseFilter = MouseFilterEnum.Ignore,
+			Position = new Vector2(line.Position.X + line.Size.X - lineThickness, line.Position.Y - tipHeight + lineThickness).Floor(),
+			Size = new Vector2(lineThickness, tipHeight)
+		};
+		overlay.AddChild(rightTip);
+
+		var label = CreateModalLabel("Unordered", 20);
+		label.HorizontalAlignment = HorizontalAlignment.Center;
+		label.Size = new Vector2(Mathf.Max(96f, width), 28);
+		label.Position = new Vector2(Mathf.Round(x + (width - label.Size.X) * 0.5f), y + tipHeight + 4f).Floor();
+		overlay.AddChild(label);
 	}
 
 	private Label CreateModalLabel(string text, int fontSize)
@@ -1067,7 +1148,7 @@ public partial class Deck : Control
 		{
 			if (!EnableInput && CanOpenDrawPile())
 			{
-				OpenPileModal("Draw Pile", GetRandomizedDrawPileSnapshot(), drawPile: true);
+				OpenPileModal(CreateDrawPileModalSnapshot());
 			}
 			AcceptEvent();
 			return;
