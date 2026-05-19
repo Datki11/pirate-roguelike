@@ -150,6 +150,7 @@ public partial class Enemy : Control, IDamageable
 			_deck.DiscardOnTopClick = false;
 			_deck.PlayRequested += OnDeckPlayRequested;
 			_deck.Shuffled += OnDeckShuffled;
+			_deck.TopChanged += OnDeckTopChanged;
 			_deck.ActiveHoverChanged += OnDeckActiveHoverChanged;
 		}
 
@@ -238,6 +239,7 @@ public partial class Enemy : Control, IDamageable
 		{
 			_deck.PlayRequested -= OnDeckPlayRequested;
 			_deck.Shuffled -= OnDeckShuffled;
+			_deck.TopChanged -= OnDeckTopChanged;
 			_deck.ActiveHoverChanged -= OnDeckActiveHoverChanged;
 		}
 		_combat?.UnregisterEnemy(this);
@@ -265,11 +267,17 @@ public partial class Enemy : Control, IDamageable
 
 	private async void OnDeckShuffled(Deck deck, CardData newTop)
 	{
+		_combat?.RefreshEnemyIntents();
 		if (!Alive || _combat == null || deck == null || newTop == null || !newTop.PlayTopCardOnShuffle)
 			return;
 
 		PlayCardAnimation();
 		await _combat.PlayCardAuto(deck, newTop, Deck.DeckSide.Enemy, this);
+	}
+
+	private void OnDeckTopChanged(CardData newTop)
+	{
+		_combat?.RefreshEnemyIntents();
 	}
 
 	public async void PlayTurn()
@@ -472,6 +480,15 @@ public partial class Enemy : Control, IDamageable
 		_deck?.SetTopCardTooltipSuppressed(suppressed);
 	}
 
+	public CardData PeekTopCard()
+	{
+		if (_deck == null)
+			return null;
+		if (_deck.Peek() == null)
+			_deck.EnsureTop();
+		return _deck.Peek();
+	}
+
 	public Vector2 GetDeckStackAnchorGlobal()
 	{
 		if (_deck != null)
@@ -483,6 +500,18 @@ public partial class Enemy : Control, IDamageable
 		Rect2 rect = GetGlobalRect();
 		return rect.Position + rect.Size * 0.5f;
 	}
+
+	public Vector2 GetIntentSourceAnchorCanvas()
+	{
+		if (TryGetSpriteRect(out Rect2 spriteRect))
+			return GetLocalRectCanvasPoint(spriteRect, new Vector2(-5f, 2f));
+
+		var rect = GetTargetingCanvasRect();
+		return new Vector2(rect.Position.X - 5f, rect.Position.Y + 2f).Floor();
+	}
+
+	public bool IsIntentHovering()
+		=> _unitHovering || (_deck?.IsActiveHover == true);
 
 	public Rect2 GetTargetingCanvasRect()
 	{
@@ -829,6 +858,11 @@ public partial class Enemy : Control, IDamageable
 			size = control.CustomMinimumSize;
 
 		return new Rect2(control.GetGlobalTransformWithCanvas().Origin, size);
+	}
+
+	private Vector2 GetLocalRectCanvasPoint(Rect2 localRect, Vector2 offset)
+	{
+		return (GetGlobalTransformWithCanvas() * (localRect.Position + offset)).Floor();
 	}
 
 	private void EnsureStatusBar()

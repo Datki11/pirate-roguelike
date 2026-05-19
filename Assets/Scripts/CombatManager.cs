@@ -9,6 +9,8 @@ public partial class CombatManager : Node
 	private const int PopupZIndex = 4096;
 	private const ulong PopupBurstWindowMsec = 250;
 	private const string PopupLayerName = "CombatPopupLayer";
+	private const int IntentZIndex = 1500;
+	private const string IntentOverlayName = "CombatIntentOverlay";
 
 	[Export] public NodePath VfxLayerPath { get; set; }          // optional CanvasLayer/Control for VFX
 	[Export] public PackedScene DamagePopupScene { get; set; }
@@ -22,14 +24,18 @@ public partial class CombatManager : Node
 
 	private Node _vfx;
 	private CanvasLayer _popupLayer;
+	private CombatIntentOverlay _intentOverlay;
 	private Node _enemiesRoot;
 	private Node _playersRoot;
 	private EnergyManager _energy;
+	private CombatTargeting _targeting;
 	private bool _enemyTurnRunning;
 	private readonly HashSet<Enemy> _enemiesPlayedThisTurn = new();
 
 	private readonly List<Enemy> _enemies = new();
 	private readonly List<IDamageable> _players = new();         // keep generic for future player units
+	private readonly Dictionary<Enemy, IDamageable> _plannedEnemyTargets = new();
+	private readonly List<CombatIntentLine> _enemyIntentLines = new();
 	private readonly Dictionary<Node, PopupBurstState> _popupBursts = new();
 
 	private readonly RandomNumberGenerator _rng = new();
@@ -73,6 +79,7 @@ public partial class CombatManager : Node
 
 		ApplyDeckStacking();
 		ApplyTurnDeckStates();
+		RefreshEnemyIntents();
 
 		GD.Print($"CombatManager ready | VFX={_vfx?.GetType().Name ?? "null"} | PopupScene={(DamagePopupScene != null)} | Enemies={_enemies.Count} | Players={_players.Count}");
 	}
@@ -96,8 +103,11 @@ public partial class CombatManager : Node
 		if (_enemiesRoot == null) return;
 		foreach (var n in _enemiesRoot.GetChildren())
 			if (n is Enemy e) _enemies.Add(e);
+		foreach (var enemy in _plannedEnemyTargets.Keys.Where(enemy => !_enemies.Contains(enemy)).ToList())
+			_plannedEnemyTargets.Remove(enemy);
 		ApplyDeckStacking();
 		ApplyTurnDeckStates();
+		RefreshEnemyIntents();
 	}
 
 	public void RegisterEnemy(Enemy e)
@@ -105,13 +115,16 @@ public partial class CombatManager : Node
 		if (e != null && !_enemies.Contains(e)) _enemies.Add(e);
 		ApplyDeckStacking();
 		ApplyTurnDeckStates();
+		RefreshEnemyIntents();
 	}
 
 	public void UnregisterEnemy(Enemy e)
 	{
 		if (e != null) _enemies.Remove(e);
+		if (e != null) _plannedEnemyTargets.Remove(e);
 		ApplyDeckStacking();
 		ApplyTurnDeckStates();
+		RefreshEnemyIntents();
 	}
 
 	public IEnumerable<IDamageable> AliveEnemies() =>
@@ -124,8 +137,11 @@ public partial class CombatManager : Node
 		if (_playersRoot == null) return;
 		foreach (var n in _playersRoot.GetChildren())
 			if (n is IDamageable d && (n as Node) != null) _players.Add(d);
+		foreach (var enemy in _plannedEnemyTargets.Where(kvp => !_players.Contains(kvp.Value)).Select(kvp => kvp.Key).ToList())
+			_plannedEnemyTargets.Remove(enemy);
 		ApplyDeckStacking();
 		ApplyTurnDeckStates();
+		RefreshEnemyIntents();
 	}
 
 	public void RegisterPlayer(IDamageable d)
@@ -133,13 +149,20 @@ public partial class CombatManager : Node
 		if (d != null && !_players.Contains(d)) _players.Add(d);
 		ApplyDeckStacking();
 		ApplyTurnDeckStates();
+		RefreshEnemyIntents();
 	}
 
 	public void UnregisterPlayer(IDamageable d)
 	{
 		if (d != null) _players.Remove(d);
+		if (d != null)
+		{
+			foreach (var enemy in _plannedEnemyTargets.Where(kvp => kvp.Value == d).Select(kvp => kvp.Key).ToList())
+				_plannedEnemyTargets.Remove(enemy);
+		}
 		ApplyDeckStacking();
 		ApplyTurnDeckStates();
+		RefreshEnemyIntents();
 	}
 
 	public IEnumerable<IDamageable> AlivePlayers() =>
@@ -152,6 +175,7 @@ public partial class CombatManager : Node
 			unit.ClearBlock();
 		ApplyDeckStacking();
 		ApplyTurnDeckStates();
+		RefreshEnemyIntents();
 	}
 
 	private async void OnPlayerTurnEnded()
@@ -159,6 +183,7 @@ public partial class CombatManager : Node
 		if (_enemyTurnRunning) return;
 		_enemyTurnRunning = true;
 		_enemiesPlayedThisTurn.Clear();
+		ClearEnemyIntents();
 		ApplyTurnDeckStates();
 		foreach (var player in AlivePlayers().ToList())
 			await ApplyEndOfTurnStatusesAsync(player);
@@ -210,6 +235,7 @@ public partial class CombatManager : Node
 	private void OnEnergyChanged(int current, int max)
 	{
 		ApplyTurnDeckStates();
+		RefreshEnemyIntents();
 	}
 
 	private void ApplyDeckStacking()
@@ -256,7 +282,7 @@ public partial class CombatManager : Node
 		var allies = targetsEnemies ? AlivePlayers().ToList() : AliveEnemies().ToList();
 
 		var targetId = (card.TargetDef as TargetDef)?.Id ?? "single";   // "single" | "all" (or "multiple")
-		IDamageable singleOpponent = chosenTarget != null && chosenTarget.Alive ? chosenTarget : PickRandom(opponents);
+		IDamageable singleOpponent = chosenTarget != null && chosenTarget.Alive ? chosenTarget : GetPlannedEnemyTarget(source, card, targetId, opponents);
 		bool lethal = false;
 		bool pierced = false;
 
@@ -358,6 +384,232 @@ public partial class CombatManager : Node
 		c?.Effects == null ? 0 :
 		c.Effects.Where(e => e?.Def?.Id == effectId)
 				 .Sum(e => e.Amount);
+
+	public IReadOnlyList<CombatIntentLine> GetEnemyIntentLines()
+		=> _enemyIntentLines;
+
+	public void RefreshEnemyIntents()
+	{
+		if (Engine.IsEditorHint())
+			return;
+
+		bool playerTurn = _energy == null || _energy.IsPlayerTurn;
+		if (!playerTurn || _enemyTurnRunning || IsPlayerTargetingActive())
+		{
+			ClearEnemyIntents();
+			return;
+		}
+
+		_enemyIntentLines.Clear();
+		var opponents = AlivePlayers().ToList();
+		if (opponents.Count == 0)
+		{
+			UpdateIntentOverlayVisibility();
+			return;
+		}
+
+		foreach (var enemy in _enemies.ToList())
+		{
+			if (enemy == null || !GodotObject.IsInstanceValid(enemy) || !enemy.Alive)
+				continue;
+
+			var card = enemy.PeekTopCard();
+			if (card == null || !HasHarmfulEffect(card))
+				continue;
+
+			string targetId = (card.TargetDef as TargetDef)?.Id ?? "single";
+			IDamageable singleOpponent = GetPlannedEnemyTarget(enemy, card, targetId, opponents);
+			AddIntentLinesForCard(enemy, card, opponents, singleOpponent, targetId);
+		}
+
+		UpdateIntentOverlayVisibility();
+		_intentOverlay?.QueueRedraw();
+	}
+
+	private void ClearEnemyIntents()
+	{
+		_enemyIntentLines.Clear();
+		UpdateIntentOverlayVisibility();
+		_intentOverlay?.QueueRedraw();
+	}
+
+	private void AddIntentLinesForCard(Enemy enemy, CardData card, List<IDamageable> opponents, IDamageable singleOpponent, string targetId)
+	{
+		var byTarget = new Dictionary<IDamageable, CombatIntentLine>();
+		Vector2 source = enemy.GetIntentSourceAnchorCanvas();
+
+		foreach (var effect in card.Effects ?? new Godot.Collections.Array<EffectEntry>())
+		{
+			if (effect?.Def == null || effect.Amount <= 0)
+				continue;
+
+			string effectId = effect.Def.Id;
+			switch (effectId)
+			{
+				case "attack":
+				{
+					int attack = GetAttackAmountAfterWeak(enemy, effect.Amount);
+					foreach (var target in ResolveAttackTargets(targetId, opponents, singleOpponent))
+						GetOrCreateIntent(byTarget, enemy, source, target).AttackAmount += attack;
+					break;
+				}
+				case "body_slam":
+				{
+					int attack = GetAttackAmountAfterWeak(enemy, enemy.Block);
+					foreach (var target in ResolveAttackTargets(targetId, opponents, singleOpponent))
+						GetOrCreateIntent(byTarget, enemy, source, target).AttackAmount += attack;
+					break;
+				}
+				case "bleed":
+				{
+					foreach (var target in ResolveHarmfulTargets(targetId, opponents, singleOpponent))
+						GetOrCreateIntent(byTarget, enemy, source, target).BleedAmount += effect.Amount;
+					break;
+				}
+				case "weak":
+				{
+					foreach (var target in ResolveHarmfulTargets(targetId, opponents, singleOpponent))
+						GetOrCreateIntent(byTarget, enemy, source, target).WeakAmount += effect.Amount;
+					break;
+				}
+			}
+		}
+
+		_enemyIntentLines.AddRange(byTarget.Values.Where(line => line.AttackAmount > 0 || line.BleedAmount > 0 || line.WeakAmount > 0));
+	}
+
+	private CombatIntentLine GetOrCreateIntent(Dictionary<IDamageable, CombatIntentLine> byTarget, Enemy sourceEnemy, Vector2 source, IDamageable target)
+	{
+		if (target == null || !target.Alive)
+			return new CombatIntentLine();
+
+		if (byTarget.TryGetValue(target, out var line))
+			return line;
+
+		line = new CombatIntentLine
+		{
+			SourceEnemy = sourceEnemy,
+			TargetPlayer = target as PlayerUnit,
+			Source = source,
+			Target = GetUnitAnchorCanvas(target),
+			TargetMarker = GetUnitTargetMarkerCanvas(target),
+			TargetRect = GetUnitTargetRectCanvas(target)
+		};
+		byTarget[target] = line;
+		return line;
+	}
+
+	private IDamageable GetPlannedEnemyTarget(IDamageable source, CardData card, string targetId, List<IDamageable> opponents)
+	{
+		if (IsAllTarget(targetId))
+			return null;
+
+		if (source is not Enemy enemy || !HasHarmfulEffect(card))
+			return PickRandom(opponents);
+
+		if (_plannedEnemyTargets.TryGetValue(enemy, out var planned) && planned != null && planned.Alive && opponents.Contains(planned))
+			return planned;
+
+		planned = PickRandom(opponents);
+		if (planned != null)
+			_plannedEnemyTargets[enemy] = planned;
+		return planned;
+	}
+
+	private bool HasHarmfulEffect(CardData card)
+		=> card?.Effects != null && card.Effects.Any(effect =>
+			effect?.Def != null
+			&& effect.Amount > 0
+			&& effect.Def.Id is "attack" or "body_slam" or "bleed" or "weak");
+
+	private Vector2 GetUnitAnchorCanvas(IDamageable unit)
+	{
+		return unit switch
+		{
+			PlayerUnit player when GodotObject.IsInstanceValid(player) => player.GetTargetingAnchorCanvas(),
+			Enemy enemy when GodotObject.IsInstanceValid(enemy) => enemy.GetTargetingAnchorCanvas(),
+			_ => GetPopupAnchorCanvas(unit, unit as Node)
+		};
+	}
+
+	private Vector2 GetUnitTargetMarkerCanvas(IDamageable unit)
+	{
+		return unit switch
+		{
+			PlayerUnit player when GodotObject.IsInstanceValid(player) => player.GetIntentTargetMarkerCanvas(),
+			Enemy enemy when GodotObject.IsInstanceValid(enemy) => enemy.GetTargetingAnchorCanvas() + new Vector2(0f, 24f),
+			_ => GetPopupAnchorCanvas(unit, unit as Node) + new Vector2(0f, 24f)
+		};
+	}
+
+	private Rect2 GetUnitTargetRectCanvas(IDamageable unit)
+	{
+		return unit switch
+		{
+			PlayerUnit player when GodotObject.IsInstanceValid(player) => player.GetTargetingCanvasRect(),
+			Enemy enemy when GodotObject.IsInstanceValid(enemy) => enemy.GetTargetingCanvasRect(),
+			_ => new Rect2(GetUnitAnchorCanvas(unit) - new Vector2(24f, 24f), new Vector2(48f, 48f))
+		};
+	}
+
+	private void UpdateIntentOverlayVisibility()
+	{
+		var overlay = EnsureIntentOverlay();
+		if (overlay == null)
+			return;
+
+		bool visible = _enemyIntentLines.Count > 0;
+		if (!visible)
+			overlay.ClearIntentTargetPreviews();
+		overlay.Visible = visible;
+	}
+
+	private bool IsPlayerTargetingActive()
+	{
+		if (_targeting == null || !GodotObject.IsInstanceValid(_targeting))
+			_targeting = GetTree()?.CurrentScene?.FindChild("CombatTargeting", true, false) as CombatTargeting
+				?? GetTree()?.Root?.FindChild("CombatTargeting", true, false) as CombatTargeting;
+
+		return _targeting?.IsTargetingActive == true;
+	}
+
+	private CombatIntentOverlay EnsureIntentOverlay()
+	{
+		if (_intentOverlay != null && GodotObject.IsInstanceValid(_intentOverlay))
+			return _intentOverlay;
+
+		var root = GetTree()?.Root;
+		Node parent = GetTree()?.CurrentScene ?? (Node)root ?? this;
+		_intentOverlay = parent.GetNodeOrNull<CombatIntentOverlay>(IntentOverlayName);
+		if (_intentOverlay == null || !GodotObject.IsInstanceValid(_intentOverlay))
+		{
+			_intentOverlay = CreateIntentOverlay();
+			parent.CallDeferred(Node.MethodName.AddChild, _intentOverlay);
+		}
+		else
+		{
+			_intentOverlay.Combat = this;
+			_intentOverlay.ZAsRelative = false;
+			_intentOverlay.ZIndex = IntentZIndex;
+		}
+
+		return _intentOverlay;
+	}
+
+	private CombatIntentOverlay CreateIntentOverlay()
+	{
+		var overlay = new CombatIntentOverlay
+		{
+			Name = IntentOverlayName,
+			Combat = this,
+			MouseFilter = Control.MouseFilterEnum.Ignore,
+			TopLevel = true,
+			ZAsRelative = false,
+			ZIndex = IntentZIndex
+		};
+		overlay.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+		return overlay;
+	}
 
 	// -------------------------------------------------------------------------
 	// Effects

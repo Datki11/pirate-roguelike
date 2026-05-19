@@ -57,6 +57,7 @@ public partial class PlayerUnit : Node2D, IDamageable
 	private bool _layoutSpriteRectValid;
 	private Rect2 _layoutSpriteRect;
 	private bool _groupTargetingHighlight;
+	private bool _intentTargetPreviewActive;
 	private readonly Dictionary<string, int> _statuses = new();
 
 	public int MaxHP { get; private set; }
@@ -328,6 +329,7 @@ public partial class PlayerUnit : Node2D, IDamageable
 		if (_targetRing == null)
 			return;
 
+		_intentTargetPreviewActive = false;
 		_groupTargetingHighlight = false;
 		ApplyFriendlyTargetRingStyle(groupHighlight: false);
 		_targetRing.Visible = on;
@@ -343,6 +345,7 @@ public partial class PlayerUnit : Node2D, IDamageable
 		if (_groupTargetingHighlight == on && _targetRing.Visible == on)
 			return;
 
+		_intentTargetPreviewActive = false;
 		_groupTargetingHighlight = on;
 		ApplyFriendlyTargetRingStyle(groupHighlight: false);
 		_targetRing.Visible = on;
@@ -356,6 +359,34 @@ public partial class PlayerUnit : Node2D, IDamageable
 			return;
 
 		_targetRing.SetHover(on);
+	}
+
+	public void SetIntentTargetPreview(bool on)
+	{
+		EnsureFriendlyTargetRing();
+		if (_targetRing == null)
+			return;
+
+		if (!on)
+		{
+			if (!_intentTargetPreviewActive)
+				return;
+
+			_intentTargetPreviewActive = false;
+			_targetRing.SetHover(false);
+			_targetRing.Visible = false;
+			ApplyFriendlyTargetRingStyle(groupHighlight: false);
+			return;
+		}
+
+		_groupTargetingHighlight = false;
+		_intentTargetPreviewActive = true;
+		ApplyIntentTargetRingStyle();
+		if (TryGetSpriteRect(out Rect2 spriteRect))
+			ApplyFriendlyTargetRingLayout(spriteRect);
+		_targetRing.Visible = true;
+		_targetRing.SetHover(true);
+		_targetRing.QueueRedraw();
 	}
 
 	public Rect2 GetTargetingCanvasRect()
@@ -378,6 +409,12 @@ public partial class PlayerUnit : Node2D, IDamageable
 	{
 		var rect = GetTargetingCanvasRect();
 		return rect.Position + rect.Size * 0.5f;
+	}
+
+	public Vector2 GetIntentTargetMarkerCanvas()
+	{
+		var rect = GetTargetingCanvasRect();
+		return new Vector2(rect.Position.X + rect.Size.X * 0.5f, rect.End.Y + 4f).Floor();
 	}
 
 	private void PlayFeedbackFlash(Color color)
@@ -678,6 +715,20 @@ public partial class PlayerUnit : Node2D, IDamageable
 		_targetRing.BaseColor = new Color(0.22f, 0.68f, 1f, 1f);
 		_targetRing.FillColor = new Color(0.22f, 0.68f, 1f, 0.25f);
 		_targetRing.ShadowColor = new Color(0f, 0.05f, 0.14f, 0.9f);
+		_targetRing.Thickness = 2;
+		_targetRing.Pulse = true;
+		_targetRing.HoverFill = true;
+		_targetRing.QueueRedraw();
+	}
+
+	private void ApplyIntentTargetRingStyle()
+	{
+		if (_targetRing == null)
+			return;
+
+		_targetRing.BaseColor = new Color(0.9f, 0.08f, 0.06f, 1f);
+		_targetRing.FillColor = new Color(0.9f, 0.08f, 0.06f, 0.25f);
+		_targetRing.ShadowColor = new Color(0.18f, 0f, 0f, 0.9f);
 		_targetRing.Thickness = 2;
 		_targetRing.Pulse = true;
 		_targetRing.HoverFill = true;

@@ -22,6 +22,7 @@ public partial class Deck : Control
 	[Export] public bool EnableInput { get; set; } = true;        // player decks true, enemy decks false
 	[Export] public bool DiscardOnTopClick { get; set; } = true;  // usually true for player
 	[Export] public int BaseDrawPriority { get; set; }
+	[Export] public int FaceUpDrawPriority { get; set; } = 1800;
 	[Export] public int HoverDrawPriority { get; set; } = 10000;
 	[Export] public Color DimmedModulate { get; set; } = new(0.46f, 0.46f, 0.46f, 0.86f);
 
@@ -1136,6 +1137,12 @@ public partial class Deck : Control
 	{
 		ZAsRelative = false;
 		ZIndex = GetEffectiveDrawPriority();
+		if (_top != null)
+		{
+			_top.ZAsRelative = false;
+			_top.ZIndex = Mathf.Max(ZIndex, FaceUpDrawPriority);
+		}
+
 		if (_drawPriorityRoot == null || !GodotObject.IsInstanceValid(_drawPriorityRoot))
 			return;
 

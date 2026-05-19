@@ -36,6 +36,7 @@ public partial class CombatTargeting : Node
 	private TargetingMode _targetingMode;
 	private bool _allEnemiesGroupTargetingActive;
 	private bool _allPlayersGroupTargetingActive;
+	public bool IsTargetingActive => _targeting;
 
 	public override void _Ready()
 	{
@@ -169,6 +170,7 @@ public partial class CombatTargeting : Node
 		GD.Print("BeginTargeting");
 		_targeting = true;
 		_targetingMode = mode;
+		_combat?.RefreshEnemyIntents();
 		_lockedTarget = null;
 		_lockedPlayerTarget = null;
 		SetAllEnemiesGroupTargeting(false);
@@ -219,6 +221,7 @@ public partial class CombatTargeting : Node
 		_pendingCard = null;
 		_pendingDeck = null;
 		_targeting = false;
+		_combat?.RefreshEnemyIntents();
 		_lockedTarget = null;
 		_lockedPlayerTarget = null;
 		_targetingArrow?.ClearArrow();
