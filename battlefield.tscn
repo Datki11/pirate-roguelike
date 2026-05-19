@@ -23,7 +23,7 @@
 position = Vector2(-194, -100)
 
 [node name="BaldPirate" parent="." instance=ExtResource("8_player_unit")]
-position = Vector2(-772, -3)
+position = Vector2(-763, -128)
 HeroName = "Duelist"
 HeroRole = "Hook-Hand Duelist"
 HeroDescription = "A quick front-line raider who chains leaps, hooks, and close-range shots."
@@ -34,7 +34,7 @@ DefaultDeckSize = Vector2(48, 72)
 SpriteRootPath = "res://Assets/Sprites/pirate-placeholder-sprites/Sprites/2-Enemy-Bald Pirate"
 
 [node name="BigGuy" parent="." instance=ExtResource("8_player_unit")]
-position = Vector2(-437, 14)
+position = Vector2(-462, 50)
 HeroName = "Brute"
 HeroRole = "Iron Brute"
 HeroDescription = "A heavy guard who builds block, protects allies, and turns defense into force."
@@ -47,7 +47,7 @@ SpriteRootPath = "res://Assets/Sprites/pirate-placeholder-sprites/Sprites/4-Enem
 ActionFolderName = "11-Throw (Bomb)"
 
 [node name="Captain" parent="." instance=ExtResource("8_player_unit")]
-position = Vector2(-605, 8)
+position = Vector2(-611, -59)
 HeroName = "Commander"
 HeroRole = "Crew Commander"
 HeroDescription = "A tactical leader who rallies the crew with cheers, battle cries, and precise cuts."
