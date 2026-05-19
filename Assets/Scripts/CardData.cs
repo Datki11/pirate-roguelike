@@ -26,6 +26,7 @@ public partial class CardData : Resource
 	[Export] public int PierceHealAmount { get; set; } = 0;
 	[Export] public bool ReturnToDrawOnLethal { get; set; } = false;
 	[Export] public bool PlayTopCardOnShuffle { get; set; } = false;
+	[Export] public bool Exhaust { get; set; } = false;
 
 	public virtual bool CanAppearInCardRewards()
 		=> Class is CardClass.Common or CardClass.Uncommon or CardClass.Rare;

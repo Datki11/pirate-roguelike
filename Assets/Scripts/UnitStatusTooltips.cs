@@ -10,7 +10,8 @@ public static class UnitStatusTooltips
 		["protector"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/shield_padded.png",
 		["bleed"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/bleed_padded.png",
 		["weak"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/weak_padded.png",
-		["regen"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/regen_padded.png"
+		["regen"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/regen_padded.png",
+		["strategist"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/book_04a.png"
 	};
 
 	private static readonly Dictionary<string, Texture2D> Icons = new();
@@ -26,6 +27,7 @@ public static class UnitStatusTooltips
 		AddStatus(entries, statuses, "bleed", "Bleed", "At the start of this unit's turn, it takes damage equal to bleed.");
 		AddStatus(entries, statuses, "weak", "Weak", "This unit deals 50% less damage. At the start of its turn, it loses 1 weak.");
 		AddStatus(entries, statuses, "regen", "Regen", "At the start of this unit's turn, it gains HP equal to regen, then loses 1 regen.");
+		AddStatus(entries, statuses, "strategist", "Strategist", "This unit can see and play this many extra cards from the top of its draw pile.");
 		return entries;
 	}
 

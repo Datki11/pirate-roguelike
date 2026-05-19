@@ -185,6 +185,13 @@ public partial class SmallCard : BaseCardView
 		{
 			if (hasContent) _body.Newline();
 			_body.AppendText($"[color=#d98600]{Data.Trigger}:[/color] {Data.TriggerText}");
+			hasContent = true;
+		}
+
+		if (Data.Exhaust)
+		{
+			if (hasContent) _body.Newline();
+			_body.AppendText("[color=#d98600]Exhaust[/color]");
 		}
 	}
 
@@ -201,6 +208,7 @@ public partial class SmallCard : BaseCardView
 			"regen" => "Gain",
 			"bleed" => "Apply",
 			"weak" => "Apply",
+			"strategist" => "Gain",
 			"play_top_cards" => "Play",
 			"protect" => "Apply",
 			"body_slam" => "Deal",
@@ -226,7 +234,7 @@ public partial class SmallCard : BaseCardView
 	private string BuildTargetSuffix(EffectDef effect)
 	{
 		string targetId = (Data.TargetDef as TargetDef)?.Id?.ToLowerInvariant() ?? "";
-		bool beneficial = effect.Id is "block" or "heal" or "regen" or "protect" or "play_top_cards";
+		bool beneficial = effect.Id is "block" or "heal" or "regen" or "protect" or "play_top_cards" or "strategist";
 
 		return targetId switch
 		{
@@ -288,6 +296,8 @@ public partial class SmallCard : BaseCardView
 
 		if (Data.Trigger != CardTrigger.None)
 			entries.Add(new TooltipEntry(Data.Trigger.ToString(), GetTriggerTooltip(Data.Trigger), null, TriggerColor));
+		if (Data.Exhaust)
+			entries.Add(new TooltipEntry("Exhaust", "Removed from this unit's deck for the rest of combat after it is played.", null, TriggerColor));
 
 		return entries;
 	}
@@ -301,6 +311,7 @@ public partial class SmallCard : BaseCardView
 			"bleed" => "At the start of your turn, take bleed damage.",
 			"weak" => "Deal 50% less damage. At the start of your turn, lose 1 weak.",
 			"regen" => "At the start of your turn, gain HP equal to regen, then lose 1 regen.",
+			"strategist" => "See and play that many extra cards from the top of this unit's draw pile.",
 			"play_top_cards" => "An ally plays cards from the top of their deck.",
 			_ => string.IsNullOrWhiteSpace(effect.LongFormat) ? effect.DisplayName : effect.LongFormat
 		};

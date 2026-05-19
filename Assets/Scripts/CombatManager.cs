@@ -363,6 +363,12 @@ public partial class CombatManager : Node
 								ApplyStatusWithPopup(target, "protector", effect.Amount);
 							break;
 						}
+						case "strategist":
+						{
+							foreach (var target in ResolveBeneficialTargets(targetId, allies, source))
+								ApplyStatusWithPopup(target, "strategist", effect.Amount);
+							break;
+						}
 						case "bleed":
 						case "weak":
 						{
@@ -524,6 +530,7 @@ public partial class CombatManager : Node
 				case "heal":
 				case "regen":
 				case "protect":
+				case "strategist":
 				{
 					if (!includePositive)
 						break;

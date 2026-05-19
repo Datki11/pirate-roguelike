@@ -190,7 +190,7 @@ public partial class CombatTargeting : Node
 	}
 
 	private bool HasBeneficialEffect(CardData c)
-		=> c?.Effects != null && c.Effects.Any(e => e?.Def?.Id is "block" or "heal" or "regen" or "protect" or "play_top_cards");
+		=> c?.Effects != null && c.Effects.Any(e => e?.Def?.Id is "block" or "heal" or "regen" or "protect" or "play_top_cards" or "strategist");
 
 	private bool HasHarmfulEffect(CardData c)
 		=> c?.Effects != null && c.Effects.Any(e => e?.Def?.Id is "attack" or "body_slam" or "bleed" or "weak");
@@ -264,6 +264,12 @@ public partial class CombatTargeting : Node
 		_lockedTarget = null;
 		_lockedPlayerTarget = null;
 		_targetingArrow?.ClearArrow();
+	}
+
+	private void CancelTargeting()
+	{
+		_pendingDeck?.ClearPendingVisibleCardSelection();
+		EndTargeting();
 	}
 
 	private async void OnEnemyClicked(Enemy who)
@@ -604,7 +610,7 @@ public partial class CombatTargeting : Node
 
 		if (mb.ButtonIndex == MouseButton.Right)
 		{
-			EndTargeting();
+			CancelTargeting();
 			GetViewport().SetInputAsHandled();
 			return;
 		}
@@ -647,7 +653,7 @@ public partial class CombatTargeting : Node
 			return;
 		}
 
-		EndTargeting();
+		CancelTargeting();
 		GetViewport().SetInputAsHandled();
 	}
 
@@ -668,7 +674,7 @@ public partial class CombatTargeting : Node
 
 		if (_targeting && e.IsActionPressed("ui_cancel"))
 		{
-			EndTargeting(); // cancel: keep top card
+			CancelTargeting(); // cancel: keep top card
 			GetViewport().SetInputAsHandled();
 			return;
 		}
@@ -697,7 +703,7 @@ public partial class CombatTargeting : Node
 
 			if (IsControllerCancelPressed(e))
 			{
-				EndTargeting();
+				CancelTargeting();
 				GetViewport().SetInputAsHandled();
 				return;
 			}
@@ -711,6 +717,13 @@ public partial class CombatTargeting : Node
 		if (TryGetControllerHorizontalMove(e, out int direction))
 		{
 			MoveControllerCardFocus(direction);
+			GetViewport().SetInputAsHandled();
+			return;
+		}
+
+		if (TryGetControllerVerticalMove(e, out int cardDirection))
+		{
+			GetFocusedControllerDeck()?.TryMoveControllerCardSelection(cardDirection);
 			GetViewport().SetInputAsHandled();
 			return;
 		}
@@ -985,6 +998,30 @@ public partial class CombatTargeting : Node
 				direction = 1;
 		}
 		else if (e is InputEventJoypadMotion motion && motion.Axis == JoyAxis.LeftX && Mathf.Abs(motion.AxisValue) >= ControllerAxisThreshold)
+		{
+			ulong now = Time.GetTicksMsec();
+			if (now < _nextControllerMoveAtMs)
+				return false;
+
+			_nextControllerMoveAtMs = now + ControllerMoveCooldownMs;
+			direction = motion.AxisValue < 0f ? -1 : 1;
+		}
+
+		return direction != 0;
+	}
+
+	private bool TryGetControllerVerticalMove(InputEvent e, out int direction)
+	{
+		direction = 0;
+
+		if (e is InputEventJoypadButton button && button.Pressed)
+		{
+			if (button.ButtonIndex == JoyButton.DpadUp)
+				direction = -1;
+			else if (button.ButtonIndex == JoyButton.DpadDown)
+				direction = 1;
+		}
+		else if (e is InputEventJoypadMotion motion && motion.Axis == JoyAxis.LeftY && Mathf.Abs(motion.AxisValue) >= ControllerAxisThreshold)
 		{
 			ulong now = Time.GetTicksMsec();
 			if (now < _nextControllerMoveAtMs)

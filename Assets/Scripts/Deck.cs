@@ -32,6 +32,9 @@ public partial class Deck : Control
 	[Export] public int DrawForwardOffset { get; set; } = 18;
 	[Export] public int DiscardBehindOffset { get; set; } = 44;
 	[Export] public int PileVerticalOffset { get; set; } = 16;
+	[Export] public int VisibleTopCardSpacing { get; set; } = 64;
+	[Export] public int MinVisibleTopCardSpacing { get; set; } = 24;
+	[Export] public string ExtraVisibleCardsStatusId { get; set; } = "strategist";
 	[Export] public float PlayMoveDurationSec { get; set; } = 0.265f;
 	[Export] public float PlayHoldDurationSec { get; set; } = 0.335f;
 	[Export] public float PlayFadeDurationSec { get; set; } = 0.30f;
@@ -68,6 +71,10 @@ public partial class Deck : Control
 	private bool _topCardTooltipSuppressed;
 	private bool _effectiveTooltipSuppressed;
 	private int _hoverSerial;
+	private int _hoveredVisibleCardIndex = -1;
+	private int _controllerVisibleCardIndex;
+	private int _pendingPlayCardIndex = -1;
+	private int _visibleTopCardCount = 1;
 	private Color _normalModulate = Colors.White;
 	private bool _topCardsDimmed;
 	private static int _openDrawPileModalCount;
@@ -143,6 +150,7 @@ public partial class Deck : Control
 		if (Engine.IsEditorHint())
 			return;
 
+		RefreshVisibleTopCardCount();
 		UpdateHoverStateFromMousePosition();
 		RefreshActiveHoverDeck();
 		ApplyEffectiveVisualState();
@@ -165,10 +173,10 @@ public partial class Deck : Control
 			return;
 		}
 
-		if (!CanPlayTopCard() || !GetPlayableCardRect().HasPoint(GetGlobalMousePosition()))
+		if (!CanPlayTopCard() || !TryGetVisibleCardIndexAtGlobalPosition(GetGlobalMousePosition(), out int visibleIndex))
 			return;
 
-		RequestTopCardPlay();
+		RequestVisibleCardPlay(visibleIndex);
 		GetViewport().SetInputAsHandled();
 	}
 
@@ -197,7 +205,22 @@ public partial class Deck : Control
 		if (!CanPlayTopCard())
 			return false;
 
-		RequestTopCardPlay();
+		RequestVisibleCardPlay(_controllerVisibleCardIndex);
+		return true;
+	}
+
+	public bool TryMoveControllerCardSelection(int direction)
+	{
+		if (!_controllerFocused || direction == 0)
+			return false;
+
+		int count = GetVisibleTopCardCount();
+		if (count <= 1)
+			return false;
+
+		_controllerVisibleCardIndex = PosMod(_controllerVisibleCardIndex + direction, count);
+		ApplyControllerCardFocus();
+		RefreshVisibleCardStacking();
 		return true;
 	}
 
@@ -239,6 +262,13 @@ public partial class Deck : Control
 
 	public CardData Peek() => _draw.Count > 0 ? _draw[^1] : null;
 
+	public CardData PeekVisible(int visibleIndex)
+	{
+		EnsureVisibleTopCards(refresh: false);
+		int drawIndex = GetDrawIndexForVisibleIndex(visibleIndex);
+		return drawIndex >= 0 && drawIndex < _draw.Count ? _draw[drawIndex] : null;
+	}
+
 	public new CardData Draw()
 	{
 		if (_draw.Count == 0)
@@ -263,13 +293,7 @@ public partial class Deck : Control
 
 	public bool EnsureTop()
 	{
-		if (_draw.Count == 0 && _discard.Count > 0)
-		{
-			_draw.AddRange(_discard);
-			_discard.Clear();
-			Shuffle(_draw);
-			EmitSignal(SignalName.Shuffled, this, Peek());
-		}
+		EnsureVisibleTopCards(refresh: false, minimumVisibleCards: 1);
 		RefreshView();
 		EmitSignal(SignalName.TopChanged, Peek());
 		return _draw.Count > 0;
@@ -309,13 +333,44 @@ public partial class Deck : Control
 		return c;
 	}
 
+	private CardData AdvanceVisibleCard(int visibleIndex, bool exhaust)
+	{
+		if (_draw.Count == 0)
+		{
+			if (!EnsureTop()) return null;
+			return null;
+		}
+
+		int drawIndex = GetDrawIndexForVisibleIndex(visibleIndex);
+		if (drawIndex < 0 || drawIndex >= _draw.Count)
+			drawIndex = _draw.Count - 1;
+
+		var c = _draw[drawIndex];
+		_draw.RemoveAt(drawIndex);
+		if (!exhaust)
+			_discard.Add(c);
+
+		_pendingPlayCardIndex = -1;
+		ClampControllerVisibleCardIndex();
+		if (_draw.Count == 0)
+			EnsureTop();
+		else
+		{
+			RefreshView();
+			EmitSignal(SignalName.TopChanged, Peek());
+		}
+
+		return c;
+	}
+
 	public async Task BeginCardPlayPresentation(CardData card)
 	{
 		if (card == null || CardViewScene == null || _top == null || !IsInsideTree())
 			return;
 
 		_playPresentationRunning = true;
-		SetTopCardVisible(false);
+		int presentationIndex = GetPresentationCardIndex(card);
+		SetVisibleCardVisible(presentationIndex, false);
 
 		_playedCard?.QueueFree();
 		_playedCard = CreateCardView(card);
@@ -327,7 +382,8 @@ public partial class Deck : Control
 		_playedCard.ZAsRelative = false;
 		_playedCard.ZIndex = 1000;
 		_playedCard.MouseFilter = MouseFilterEnum.Ignore;
-		_playedCard.GlobalPosition = _top.GetGlobalTransformWithCanvas().Origin.Floor();
+		var sourceControl = GetVisibleCardControl(presentationIndex);
+		_playedCard.GlobalPosition = (sourceControl?.GetGlobalTransformWithCanvas().Origin ?? _top.GetGlobalTransformWithCanvas().Origin).Floor();
 
 		var viewportSize = GetViewportRect().Size;
 		var target = ((viewportSize - _playedCard.Size) * 0.5f).Floor();
@@ -351,7 +407,7 @@ public partial class Deck : Control
 		await FadePlayedCard();
 
 		_playPresentationRunning = false;
-		AdvanceTopToDiscard();
+		AdvanceVisibleCard(GetPresentationCardIndex(card), card?.Exhaust == true);
 	}
 
 	public async Task FinishCardPlayPresentationWithoutDiscard()
@@ -374,8 +430,16 @@ public partial class Deck : Control
 
 	public void SetTopCardTargetingFocus(bool focused)
 	{
+		int focusedIndex = GetFocusedPlayableVisibleIndex();
 		foreach (var card in GetTopCardViews())
-			card.SetTargetingFocus(focused);
+			card.SetTargetingFocus(focused && GetVisibleIndexForCardControl(card) == focusedIndex);
+		RefreshVisibleCardStacking();
+	}
+
+	public void ClearPendingVisibleCardSelection()
+	{
+		_pendingPlayCardIndex = -1;
+		RefreshVisibleCardStacking();
 	}
 
 	public void SetControllerFocus(bool focused)
@@ -384,8 +448,10 @@ public partial class Deck : Control
 			return;
 
 		_controllerFocused = focused;
-		foreach (var card in GetTopCardViews())
-			card.SetControllerFocus(focused);
+		if (focused)
+			ClampControllerVisibleCardIndex();
+		ApplyControllerCardFocus();
+		RefreshVisibleCardStacking();
 		UpdateControllerPilePrompts();
 		ApplyEffectiveVisualState();
 	}
@@ -527,6 +593,7 @@ public partial class Deck : Control
 	private void RefreshView()
 	{
 		if (_pile == null || _top == null) return;
+		EnsureVisibleTopCards(refresh: false);
 
 		// discard placeholder and backs
 		foreach (var n in _pile.GetChildren()) n.QueueFree();
@@ -548,31 +615,51 @@ public partial class Deck : Control
 			_pile.AddChild(tr);
 		}
 
-		// top face-up
+		// visible face-up draw-pile cards
 		if (_hoveringTopCard)
 			SetHoveringTopCard(false);
+		_hoveredVisibleCardIndex = -1;
 		ClearHoverPreviewCard();
 		foreach (var n in _top.GetChildren()) n.QueueFree();
-		var top = Peek();
-		if (top != null && CardViewScene != null)
+		int visibleCount = GetVisibleTopCardCount();
+		ClampControllerVisibleCardIndex();
+		if (visibleCount > 0 && CardViewScene != null)
 		{
-			var node = CardViewScene.Instantiate<Control>();
-			if (node is BaseCardView view) view.SetData(top);
-			else GD.PushError("CardViewScene must inherit BaseCardView.");
-			if (node is BaseCardView topCardView)
-				topCardView.SetTooltipSuppressed(_topCardTooltipSuppressed);
+			Vector2 faceSize = Vector2.Zero;
+			for (int i = visibleCount - 1; i >= 0; i--)
+			{
+				int visibleIndex = i;
+				var card = PeekVisible(i);
+				if (card == null)
+					continue;
 
-			Vector2 faceSize = GetControlSize(node);
-			node.Size = faceSize;
-			_top.CustomMinimumSize = faceSize;
-			_top.Size = faceSize;
+				var node = CardViewScene.Instantiate<Control>();
+				if (node is BaseCardView view) view.SetData(card);
+				else GD.PushError("CardViewScene must inherit BaseCardView.");
+				if (node is BaseCardView topCardView)
+					topCardView.SetTooltipSuppressed(_topCardTooltipSuppressed);
 
-			_top.AddChild(node);
-			node.MouseEntered += OnTopCardMouseEntered;
-			node.MouseExited += OnTopCardMouseExited;
-			node.MouseFilter = MouseFilterEnum.Stop;
-			node.GuiInput += OnTopGuiInput;
+				faceSize = GetControlSize(node);
+				node.Size = faceSize;
+				node.Position = GetVisibleCardLocalPosition(visibleIndex).Floor();
+				node.SetMeta("visible_index", visibleIndex);
+				node.ZAsRelative = true;
+
+				_top.AddChild(node);
+				node.MouseEntered += () => OnTopCardMouseEntered(visibleIndex);
+				node.MouseExited += OnTopCardMouseExited;
+				node.MouseFilter = MouseFilterEnum.Stop;
+				node.GuiInput += input => OnVisibleCardGuiInput(input, visibleIndex);
+			}
+
+			Vector2 holderSize = new(
+				faceSize.X + Mathf.Max(0, visibleCount - 1) * GetVisibleCardSpacing(),
+				faceSize.Y);
+			_top.CustomMinimumSize = holderSize;
+			_top.Size = holderSize;
 			ApplyTopCardModulate(force: true);
+			ApplyControllerCardFocus();
+			RefreshVisibleCardStacking();
 
 			if (AutoPlaceTop)
 			{
@@ -923,6 +1010,13 @@ public partial class Deck : Control
 			_hoverPreviewCard.Visible = visible;
 	}
 
+	private void SetVisibleCardVisible(int visibleIndex, bool visible)
+	{
+		var control = GetVisibleCardControl(visibleIndex);
+		if (control is CanvasItem item)
+			item.Visible = visible;
+	}
+
 	private void DrawEditorPreview()
 	{
 		if (_pile == null || _top == null) return;
@@ -955,8 +1049,19 @@ public partial class Deck : Control
 
 	private void OnTopGuiInput(InputEvent e)
 	{
+		OnVisibleCardGuiInput(e, 0);
+	}
+
+	private void OnVisibleCardGuiInput(InputEvent e, int visibleIndex)
+	{
 		if (e is not InputEventMouseButton mb || !mb.Pressed || mb.ButtonIndex != MouseButton.Left)
 			return;
+
+		if (TryGetVisibleCardIndexAtGlobalPosition(GetGlobalMousePosition(), out int interactiveIndex) && interactiveIndex != visibleIndex)
+		{
+			AcceptEvent();
+			return;
+		}
 
 		if (!CanPlayTopCard())
 		{
@@ -968,19 +1073,33 @@ public partial class Deck : Control
 			return;
 		}
 
-		RequestTopCardPlay();
+		RequestVisibleCardPlay(visibleIndex);
 		AcceptEvent();
 	}
 
 	private void RequestTopCardPlay()
 	{
-		EmitSignal(SignalName.PlayRequested, this, Peek());
+		RequestVisibleCardPlay(0);
+	}
+
+	private void RequestVisibleCardPlay(int visibleIndex)
+	{
+		EnsureVisibleTopCards(refresh: false);
+		visibleIndex = Mathf.Clamp(visibleIndex, 0, Mathf.Max(0, GetVisibleTopCardCount() - 1));
+		_pendingPlayCardIndex = visibleIndex;
+		EmitSignal(SignalName.PlayRequested, this, PeekVisible(visibleIndex));
 		if (DiscardOnTopClick) AdvanceTopToDiscard();
 	}
 
-	private void OnTopCardMouseEntered()
+	private void OnTopCardMouseEntered(int visibleIndex)
 	{
+		if (TryGetVisibleCardIndexAtGlobalPosition(GetGlobalMousePosition(), out int interactiveIndex))
+			_hoveredVisibleCardIndex = interactiveIndex;
+		else
+			_hoveredVisibleCardIndex = visibleIndex;
 		SetHoveringTopCard(true);
+		RefreshVisibleCardStacking();
+		ApplyEffectiveTooltipSuppression(force: true);
 	}
 
 	private void OnTopCardMouseExited()
@@ -990,7 +1109,11 @@ public partial class Deck : Control
 
 	private void RefreshTopCardHoverAfterExit()
 	{
-		SetHoveringTopCard(IsMouseOverTopCard());
+		bool hovering = TryGetVisibleCardIndexAtGlobalPosition(GetGlobalMousePosition(), out int hoveredIndex);
+		_hoveredVisibleCardIndex = hovering ? hoveredIndex : -1;
+		SetHoveringTopCard(hovering);
+		RefreshVisibleCardStacking();
+		ApplyEffectiveTooltipSuppression(force: true);
 	}
 
 	private void OnPileMouseEntered()
@@ -1037,8 +1160,25 @@ public partial class Deck : Control
 			return;
 		}
 
-		if (_hoveringTopCard && !IsMouseOverTopCard())
-			SetHoveringTopCard(false);
+		if (_hoveringTopCard)
+		{
+			if (TryGetVisibleCardIndexAtGlobalPosition(GetGlobalMousePosition(), out int hoveredIndex))
+			{
+				if (_hoveredVisibleCardIndex != hoveredIndex)
+				{
+					_hoveredVisibleCardIndex = hoveredIndex;
+					RefreshVisibleCardStacking();
+					ApplyEffectiveTooltipSuppression(force: true);
+				}
+			}
+			else
+			{
+				_hoveredVisibleCardIndex = -1;
+				SetHoveringTopCard(false);
+				RefreshVisibleCardStacking();
+				ApplyEffectiveTooltipSuppression(force: true);
+			}
+		}
 
 		if (_hoveringPile && (_pile == null || !_pile.Visible || !_pile.GetGlobalRect().HasPoint(GetGlobalMousePosition())))
 			SetHoveringPile(false);
@@ -1130,6 +1270,154 @@ public partial class Deck : Control
 
 	private static Texture2D LoadDiscardPilePromptIcon()
 		=> _discardPilePromptIcon ??= ResourceLoader.Load<Texture2D>("res://Assets/Sprites/Icons/ui_buttons_20x16/xbox-RT-16.png");
+
+	private void RefreshVisibleTopCardCount()
+	{
+		EnsureVisibleTopCards(refresh: false);
+		int next = GetVisibleTopCardCount();
+		if (next == _visibleTopCardCount)
+			return;
+
+		_visibleTopCardCount = next;
+		ClampControllerVisibleCardIndex();
+		RefreshView();
+	}
+
+	private int GetVisibleTopCardCount()
+		=> Mathf.Clamp(1 + GetExtraVisibleCardsAmount(), 0, _draw.Count);
+
+	private int GetDesiredVisibleTopCardCount(int minimumVisibleCards = 0)
+		=> Mathf.Max(minimumVisibleCards, 1 + GetExtraVisibleCardsAmount());
+
+	private int GetExtraVisibleCardsAmount()
+		=> GetParent() is IDamageable owner ? Mathf.Max(0, owner.GetStatusAmount(ExtraVisibleCardsStatusId)) : 0;
+
+	private bool EnsureVisibleTopCards(bool refresh = true, int minimumVisibleCards = 0)
+	{
+		int desired = GetDesiredVisibleTopCardCount(minimumVisibleCards);
+		if (_draw.Count >= desired || _discard.Count == 0)
+			return _draw.Count > 0;
+
+		bool topWillChange = _draw.Count == 0;
+		var recycled = new List<CardData>(_discard);
+		_discard.Clear();
+		Shuffle(recycled);
+		if (_draw.Count == 0)
+			_draw.AddRange(recycled);
+		else
+			_draw.InsertRange(0, recycled);
+
+		if (topWillChange)
+			EmitSignal(SignalName.Shuffled, this, Peek());
+		if (refresh)
+		{
+			RefreshView();
+			EmitSignal(SignalName.TopChanged, Peek());
+		}
+
+		return _draw.Count > 0;
+	}
+
+	private int GetDrawIndexForVisibleIndex(int visibleIndex)
+		=> _draw.Count - 1 - Mathf.Max(0, visibleIndex);
+
+	private int GetPresentationCardIndex(CardData card)
+	{
+		if (_pendingPlayCardIndex >= 0 && PeekVisible(_pendingPlayCardIndex) == card)
+			return _pendingPlayCardIndex;
+
+		for (int i = 0; i < GetVisibleTopCardCount(); i++)
+			if (PeekVisible(i) == card)
+				return i;
+
+		return 0;
+	}
+
+	private int GetFocusedPlayableVisibleIndex()
+	{
+		if (_pendingPlayCardIndex >= 0)
+			return Mathf.Clamp(_pendingPlayCardIndex, 0, Mathf.Max(0, GetVisibleTopCardCount() - 1));
+
+		return _controllerFocused ? _controllerVisibleCardIndex : Mathf.Max(0, _hoveredVisibleCardIndex);
+	}
+
+	private Vector2 GetVisibleCardLocalPosition(int visibleIndex)
+		=> new(Mathf.Max(0, visibleIndex) * GetVisibleCardSpacing(), 0f);
+
+	private int GetVisibleCardSpacing()
+	{
+		int extraCards = Mathf.Max(0, GetVisibleTopCardCount() - 1);
+		if (extraCards <= 1)
+			return Mathf.Max(1, VisibleTopCardSpacing);
+
+		int squeezed = Mathf.RoundToInt(96f / (extraCards + 1));
+		return Mathf.Max(Mathf.Max(1, MinVisibleTopCardSpacing), squeezed);
+	}
+
+	private int GetVisibleIndexForCardControl(Control control)
+	{
+		if (control != null && control.HasMeta("visible_index"))
+			return control.GetMeta("visible_index").AsInt32();
+
+		return 0;
+	}
+
+	private bool TryGetVisibleCardIndexAtGlobalPosition(Vector2 globalPosition, out int visibleIndex)
+	{
+		visibleIndex = -1;
+		if (_top == null)
+			return false;
+
+		for (int i = _top.GetChildCount() - 1; i >= 0; i--)
+		{
+			if (_top.GetChild(i) is not Control control || !control.Visible)
+				continue;
+
+			if (!control.GetGlobalRect().HasPoint(globalPosition))
+				continue;
+
+			visibleIndex = GetVisibleIndexForCardControl(control);
+			return true;
+		}
+
+		return false;
+	}
+
+	private void ClampControllerVisibleCardIndex()
+	{
+		int count = GetVisibleTopCardCount();
+		_controllerVisibleCardIndex = count <= 0 ? 0 : Mathf.Clamp(_controllerVisibleCardIndex, 0, count - 1);
+	}
+
+	private void ApplyControllerCardFocus()
+	{
+		foreach (var card in GetTopCardViews())
+			card.SetControllerFocus(_controllerFocused && GetVisibleIndexForCardControl(card) == _controllerVisibleCardIndex);
+	}
+
+	private void RefreshVisibleCardStacking()
+	{
+		if (_top == null)
+			return;
+
+		int visibleCount = GetVisibleTopCardCount();
+		foreach (Node child in _top.GetChildren())
+		{
+			if (child is not Control control)
+				continue;
+
+			int visibleIndex = GetVisibleIndexForCardControl(control);
+			bool raised = visibleIndex == _pendingPlayCardIndex
+				|| visibleIndex == _hoveredVisibleCardIndex
+				|| (_controllerFocused && visibleIndex == _controllerVisibleCardIndex);
+			control.ZIndex = raised
+				? visibleCount + 100
+				: visibleCount - visibleIndex;
+		}
+	}
+
+	private int PosMod(int value, int length)
+		=> length <= 0 ? 0 : ((value % length) + length) % length;
 
 	private bool CanPlayTopCard()
 		=> EnableInput && !_deadDimmed && !_targetingDimmed && !_turnDimmed && !_energyDimmed && !Deck.IsDrawPileModalOpen;
@@ -1311,24 +1599,21 @@ public partial class Deck : Control
 
 	private void ApplyTopCardDrawPriority()
 	{
-		if (_isActiveHover)
-		{
-			ShowHoverPreviewCard();
-			return;
-		}
-
 		ClearHoverPreviewCard();
+		RefreshVisibleCardStacking();
 	}
 
 	private void ShowHoverPreviewCard()
 	{
-		var source = GetCurrentTopCardControl();
-		if (source == null || !GodotObject.IsInstanceValid(source) || Peek() == null || CardViewScene == null)
+		int visibleIndex = Mathf.Max(0, _hoveredVisibleCardIndex);
+		var source = GetVisibleCardControl(visibleIndex);
+		var card = PeekVisible(visibleIndex);
+		if (source == null || !GodotObject.IsInstanceValid(source) || card == null || CardViewScene == null)
 			return;
 
 		if (_hoverPreviewCard == null || !GodotObject.IsInstanceValid(_hoverPreviewCard))
 		{
-			_hoverPreviewCard = CreateCardView(Peek());
+			_hoverPreviewCard = CreateCardView(card);
 			_hoverPreviewCard.Name = "HoveredTopCardPreview";
 			_hoverPreviewCard.MouseFilter = MouseFilterEnum.Ignore;
 			_hoverPreviewCard.ZAsRelative = false;
@@ -1363,18 +1648,25 @@ public partial class Deck : Control
 
 	private bool IsMouseOverTopCard()
 	{
-		Control card = GetCurrentTopCardControl();
-		return card != null && GodotObject.IsInstanceValid(card) && card.GetGlobalRect().HasPoint(GetGlobalMousePosition());
+		return TryGetVisibleCardIndexAtGlobalPosition(GetGlobalMousePosition(), out _);
 	}
 
 	private Control GetCurrentTopCardControl()
+		=> GetVisibleCardControl(0);
+
+	private Control GetVisibleCardControl(int visibleIndex)
 	{
 		if (_top == null)
 			return null;
 
 		foreach (Node child in _top.GetChildren())
-			if (child is Control control)
+		{
+			if (child is not Control control)
+				continue;
+
+			if (GetVisibleIndexForCardControl(control) == visibleIndex)
 				return control;
+		}
 
 		return null;
 	}
@@ -1446,13 +1738,13 @@ public partial class Deck : Control
 
 	private void ApplyEffectiveTooltipSuppression(bool force = false)
 	{
-		bool suppressed = _topCardTooltipSuppressed || _activeHoverDeck != this;
+		bool suppressed = _topCardTooltipSuppressed || _activeHoverDeck != this || !_hoveringTopCard || _hoveredVisibleCardIndex < 0;
 		if (!force && _effectiveTooltipSuppressed == suppressed)
 			return;
 
 		_effectiveTooltipSuppressed = suppressed;
 		foreach (var card in GetTopCardViews())
-			card.SetTooltipSuppressed(suppressed);
+			card.SetTooltipSuppressed(suppressed || GetVisibleIndexForCardControl(card) != _hoveredVisibleCardIndex);
 	}
 
 	private IEnumerable<BaseCardView> GetTopCardViews()
@@ -1544,8 +1836,11 @@ public partial class Deck : Control
 		if (_pile == null || _top == null) return;
 
 		Vector2 faceSize = NormalizeFaceUpSize(faceSizeOverride ?? GetFaceUpCardSize());
-		_top.CustomMinimumSize = faceSize;
-		_top.Size = faceSize;
+		Vector2 holderSize = new(
+			faceSize.X + Mathf.Max(0, GetVisibleTopCardCount() - 1) * GetVisibleCardSpacing(),
+			faceSize.Y);
+		_top.CustomMinimumSize = holderSize;
+		_top.Size = holderSize;
 		_top.Position = GetFaceUpPosition(faceSize);
 	}
 
