@@ -20,35 +20,46 @@ public partial class PauseMenu : CanvasLayer
 	private VBoxContainer _settingsMenu;
 	private Control _compendiumView;
 	private Control _bestiaryView;
+	private Control _heroesView;
 	private HFlowContainer _cardFlow;
-	private HFlowContainer _enemyFlow;
+	private VBoxContainer _enemyList;
+	private VBoxContainer _heroList;
 	private LineEdit _cardSearch;
 	private OptionButton _cardSort;
 	private OptionButton _enemySort;
+	private OptionButton _heroSort;
 	private Label _compendiumCount;
 	private Label _bestiaryCount;
+	private Label _heroesCount;
+	private VBoxContainer _rarityFilterList;
 	private VBoxContainer _effectFilterList;
-	private Control _bestiaryModal;
-	private Label _bestiaryModalTitle;
-	private Label _bestiaryModalHp;
-	private HBoxContainer _bestiaryAnimationRow;
-	private HFlowContainer _bestiaryDeckFlow;
 	private OptionButton _speedSelect;
 	private float _currentSpeed = 1f;
 	private PackedScene _smallCardScene;
 	private readonly List<CardData> _allCards = new();
 	private readonly List<EnemyDef> _allEnemies = new();
 	private readonly Dictionary<string, string> _effectNames = new();
+	private readonly Dictionary<CardClass, CheckButton> _rarityFilters = new();
 	private readonly Dictionary<string, CheckButton> _effectFilters = new();
 	private readonly List<AnimationPreview> _activeAnimationPreviews = new();
 
 	private sealed class AnimationPreview
 	{
 		public TextureRect View;
+		public Label Caption;
+		public List<AnimationClip> Clips = new();
 		public List<AtlasTexture> Frames = new();
 		public float FrameSeconds = 0.12f;
 		public float Time;
 		public int Index;
+		public int ClipIndex;
+	}
+
+	private sealed class AnimationClip
+	{
+		public string Label = "";
+		public List<AtlasTexture> Frames = new();
+		public float FrameSeconds = 0.12f;
 	}
 
 	public override void _Ready()
@@ -66,7 +77,7 @@ public partial class PauseMenu : CanvasLayer
 
 	public override void _Process(double delta)
 	{
-		if (_bestiaryModal == null || !_bestiaryModal.Visible)
+		if (_activeAnimationPreviews.Count == 0)
 			return;
 
 		foreach (AnimationPreview preview in _activeAnimationPreviews)
@@ -95,9 +106,7 @@ public partial class PauseMenu : CanvasLayer
 
 		if (_root != null && _root.Visible)
 		{
-			if (_bestiaryModal != null && _bestiaryModal.Visible)
-				CloseBestiaryModal();
-			else if ((_compendiumView != null && _compendiumView.Visible) || (_bestiaryView != null && _bestiaryView.Visible) || (_settingsMenu != null && _settingsMenu.Visible))
+			if ((_compendiumView != null && _compendiumView.Visible) || (_bestiaryView != null && _bestiaryView.Visible) || (_heroesView != null && _heroesView.Visible) || (_settingsMenu != null && _settingsMenu.Visible))
 				ShowMainMenu();
 			else
 				ResumeGame();
@@ -157,6 +166,7 @@ public partial class PauseMenu : CanvasLayer
 		_mainMenu.AddChild(CreateButton("SETTINGS", ShowSettings));
 		_mainMenu.AddChild(CreateButton("COMPENDIUM", ShowCompendium));
 		_mainMenu.AddChild(CreateButton("BESTIARY", ShowBestiary));
+		_mainMenu.AddChild(CreateButton("HEROES", ShowHeroes));
 		_mainMenu.AddChild(CreateButton("QUIT", QuitGame));
 
 		_settingsMenu = CreateMenuStack();
@@ -172,6 +182,7 @@ public partial class PauseMenu : CanvasLayer
 		LoadBestiaryEnemies();
 		BuildCompendiumView();
 		BuildBestiaryView();
+		BuildHeroesView();
 	}
 
 	private VBoxContainer CreateMenuStack()
@@ -212,6 +223,15 @@ public partial class PauseMenu : CanvasLayer
 		label.AddThemeFontOverride("font", BodyFont);
 		label.AddThemeFontSizeOverride("font_size", BodyFontSize);
 		label.AddThemeColorOverride("font_color", Colors.White);
+		return label;
+	}
+
+	private Label CreateWrappedLabel(string text)
+	{
+		var label = CreateLabel(text);
+		label.HorizontalAlignment = HorizontalAlignment.Left;
+		label.VerticalAlignment = VerticalAlignment.Top;
+		label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
 		return label;
 	}
 
@@ -268,6 +288,8 @@ public partial class PauseMenu : CanvasLayer
 
 			var card = ResourceLoader.Load<CardData>($"{CardResourceDir}/{fileName}");
 			if (card == null)
+				continue;
+			if (card is MonsterCardData || card.Class == CardClass.Enemy)
 				continue;
 
 			_allCards.Add(card);
@@ -414,6 +436,13 @@ public partial class PauseMenu : CanvasLayer
 		};
 		filters.AddThemeConstantOverride("separation", 8);
 		body.AddChild(filters);
+
+		filters.AddChild(CreateLabel("Rarities"));
+		_rarityFilterList = new VBoxContainer();
+		_rarityFilterList.AddThemeConstantOverride("separation", 4);
+		filters.AddChild(_rarityFilterList);
+		BuildRarityFilters();
+
 		filters.AddChild(CreateLabel("Effects"));
 
 		_effectFilterList = new VBoxContainer();
@@ -526,52 +555,40 @@ public partial class PauseMenu : CanvasLayer
 		};
 		stack.AddChild(scroll);
 
-		_enemyFlow = new HFlowContainer
+		_enemyList = new VBoxContainer
 		{
 			SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
 			SizeFlagsVertical = Control.SizeFlags.ExpandFill
 		};
-		_enemyFlow.AddThemeConstantOverride("h_separation", 12);
-		_enemyFlow.AddThemeConstantOverride("v_separation", 12);
-		scroll.AddChild(_enemyFlow);
+		_enemyList.AddThemeConstantOverride("separation", 14);
+		scroll.AddChild(_enemyList);
 
-		BuildBestiaryModal();
 		RefreshBestiaryEnemies();
 	}
 
-	private void BuildBestiaryModal()
+	private void BuildHeroesView()
 	{
-		_bestiaryModal = new Control
+		_heroesView = new MarginContainer
 		{
-			Name = "BestiaryModal",
+			Name = "HeroesView",
 			Visible = false,
 			MouseFilter = Control.MouseFilterEnum.Stop
 		};
-		_bestiaryModal.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-		_bestiaryView.AddChild(_bestiaryModal);
-
-		var shade = new ColorRect
-		{
-			Color = new Color(0f, 0f, 0f, 0.72f),
-			MouseFilter = Control.MouseFilterEnum.Stop
-		};
-		shade.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-		_bestiaryModal.AddChild(shade);
-
-		var center = new CenterContainer
-		{
-			MouseFilter = Control.MouseFilterEnum.Ignore
-		};
-		center.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-		_bestiaryModal.AddChild(center);
+		_heroesView.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+		_heroesView.AddThemeConstantOverride("margin_left", 24);
+		_heroesView.AddThemeConstantOverride("margin_top", 24);
+		_heroesView.AddThemeConstantOverride("margin_right", 24);
+		_heroesView.AddThemeConstantOverride("margin_bottom", 24);
+		_root.AddChild(_heroesView);
 
 		var panel = new PanelContainer
 		{
-			CustomMinimumSize = new Vector2(900, 620),
-			MouseFilter = Control.MouseFilterEnum.Stop
+			MouseFilter = Control.MouseFilterEnum.Stop,
+			SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+			SizeFlagsVertical = Control.SizeFlags.ExpandFill
 		};
 		panel.AddThemeStyleboxOverride("panel", CreatePanelStyle());
-		center.AddChild(panel);
+		_heroesView.AddChild(panel);
 
 		var content = new MarginContainer
 		{
@@ -596,28 +613,35 @@ public partial class PauseMenu : CanvasLayer
 		header.AddThemeConstantOverride("separation", 12);
 		stack.AddChild(header);
 
-		_bestiaryModalTitle = CreateTitle("");
-		_bestiaryModalTitle.CustomMinimumSize = new Vector2(300, 32);
-		_bestiaryModalTitle.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-		header.AddChild(_bestiaryModalTitle);
+		var title = CreateTitle("HEROES");
+		title.CustomMinimumSize = new Vector2(240, 32);
+		title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+		header.AddChild(title);
 
-		_bestiaryModalHp = CreateLabel("");
-		_bestiaryModalHp.CustomMinimumSize = new Vector2(140, 28);
-		_bestiaryModalHp.HorizontalAlignment = HorizontalAlignment.Right;
-		header.AddChild(_bestiaryModalHp);
+		_heroesCount = CreateLabel("");
+		_heroesCount.CustomMinimumSize = new Vector2(160, 28);
+		_heroesCount.HorizontalAlignment = HorizontalAlignment.Right;
+		header.AddChild(_heroesCount);
 
-		var close = CreateButton("CLOSE", CloseBestiaryModal);
-		close.CustomMinimumSize = new Vector2(120, 38);
-		header.AddChild(close);
+		var back = CreateButton("BACK", ShowMainMenu);
+		back.CustomMinimumSize = new Vector2(120, 38);
+		header.AddChild(back);
 
-		_bestiaryAnimationRow = new HBoxContainer
+		var controls = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+		controls.AddThemeConstantOverride("separation", 10);
+		stack.AddChild(controls);
+		controls.AddChild(CreateLabel("Sort by name"));
+
+		_heroSort = new OptionButton
 		{
-			SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
+			CustomMinimumSize = new Vector2(150, 38),
+			FocusMode = Control.FocusModeEnum.None
 		};
-		_bestiaryAnimationRow.AddThemeConstantOverride("separation", 12);
-		stack.AddChild(_bestiaryAnimationRow);
-
-		stack.AddChild(CreateLabel("Deck"));
+		_heroSort.AddItem("A TO Z", 0);
+		_heroSort.AddItem("Z TO A", 1);
+		_heroSort.ItemSelected += _ => RefreshHeroes();
+		ApplyButtonTheme(_heroSort);
+		controls.AddChild(_heroSort);
 
 		var scroll = new ScrollContainer
 		{
@@ -627,14 +651,15 @@ public partial class PauseMenu : CanvasLayer
 		};
 		stack.AddChild(scroll);
 
-		_bestiaryDeckFlow = new HFlowContainer
+		_heroList = new VBoxContainer
 		{
 			SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
 			SizeFlagsVertical = Control.SizeFlags.ExpandFill
 		};
-		_bestiaryDeckFlow.AddThemeConstantOverride("h_separation", 12);
-		_bestiaryDeckFlow.AddThemeConstantOverride("v_separation", 12);
-		scroll.AddChild(_bestiaryDeckFlow);
+		_heroList.AddThemeConstantOverride("separation", 14);
+		scroll.AddChild(_heroList);
+
+		RefreshHeroes();
 	}
 
 	private void BuildEffectFilters()
@@ -652,6 +677,24 @@ public partial class PauseMenu : CanvasLayer
 			toggle.Toggled += _ => RefreshCompendiumCards();
 			_effectFilterList.AddChild(toggle);
 			_effectFilters[entry.Key] = toggle;
+		}
+	}
+
+	private void BuildRarityFilters()
+	{
+		_rarityFilters.Clear();
+		foreach (CardClass rarity in new[] { CardClass.Basic, CardClass.Common, CardClass.Uncommon, CardClass.Rare })
+		{
+			var toggle = new CheckButton
+			{
+				Text = rarity.ToString().ToUpperInvariant(),
+				FocusMode = Control.FocusModeEnum.None,
+				MouseFilter = Control.MouseFilterEnum.Stop
+			};
+			ApplyCheckButtonTheme(toggle);
+			toggle.Toggled += _ => RefreshCompendiumCards();
+			_rarityFilterList.AddChild(toggle);
+			_rarityFilters[rarity] = toggle;
 		}
 	}
 
@@ -689,10 +732,11 @@ public partial class PauseMenu : CanvasLayer
 
 	private void RefreshBestiaryEnemies()
 	{
-		if (_enemyFlow == null)
+		if (_enemyList == null)
 			return;
 
-		ClearChildren(_enemyFlow);
+		ClearChildren(_enemyList);
+		_activeAnimationPreviews.Clear();
 
 		IEnumerable<EnemyDef> enemies = _enemySort != null && _enemySort.Selected == 1
 			? _allEnemies.OrderByDescending(GetEnemyName, StringComparer.OrdinalIgnoreCase)
@@ -701,7 +745,7 @@ public partial class PauseMenu : CanvasLayer
 		int count = 0;
 		foreach (EnemyDef enemy in enemies)
 		{
-			_enemyFlow.AddChild(CreateBestiaryEnemyButton(enemy));
+			_enemyList.AddChild(CreateBestiaryEnemyPanel(enemy));
 			count++;
 		}
 
@@ -709,153 +753,217 @@ public partial class PauseMenu : CanvasLayer
 			_bestiaryCount.Text = $"{count}/{_allEnemies.Count} ENEMIES";
 	}
 
-	private Button CreateBestiaryEnemyButton(EnemyDef enemy)
+	private void RefreshHeroes()
 	{
-		var button = new Button
+		if (_heroList == null)
+			return;
+
+		ClearChildren(_heroList);
+
+		List<PlayerUnit> heroes = GetCurrentHeroes();
+		IEnumerable<PlayerUnit> sortedHeroes = _heroSort != null && _heroSort.Selected == 1
+			? heroes.OrderByDescending(h => h.GetHeroName(), StringComparer.OrdinalIgnoreCase)
+			: heroes.OrderBy(h => h.GetHeroName(), StringComparer.OrdinalIgnoreCase);
+
+		int count = 0;
+		foreach (PlayerUnit hero in sortedHeroes)
 		{
-			Text = "",
-			CustomMinimumSize = new Vector2(178, 214),
-			FocusMode = Control.FocusModeEnum.None,
-			MouseFilter = Control.MouseFilterEnum.Stop
+			_heroList.AddChild(CreateHeroInfoPanel(hero));
+			count++;
+		}
+
+		if (count == 0)
+			_heroList.AddChild(CreateLabel("No heroes found"));
+
+		if (_heroesCount != null)
+			_heroesCount.Text = $"{count} HEROES";
+	}
+
+	private PanelContainer CreateHeroInfoPanel(PlayerUnit hero)
+	{
+		DeckList deck = hero.GetHeroDeckList();
+		return CreateUnitInfoPanel(
+			hero.GetHeroName(),
+			hero.GetHeroRole(),
+			$"{Mathf.Max(0, hero.HP)}/{Mathf.Max(1, hero.MaxHP)} HP",
+			hero.HeroDescription,
+			deck,
+			summary => AddStaticPreview(summary, hero.GetHeroPreviewTexture(), new Vector2(190, 130))
+		);
+	}
+
+	private PanelContainer CreateBestiaryEnemyPanel(EnemyDef enemy)
+	{
+		return CreateUnitInfoPanel(
+			GetEnemyName(enemy),
+			"Enemy",
+			$"{Mathf.Max(1, enemy?.MaxHP ?? 1)} HP",
+			"",
+			enemy?.Deck as DeckList,
+			summary => AddEnemyPreviews(summary, enemy)
+		);
+	}
+
+	private PanelContainer CreateUnitInfoPanel(string unitName, string subtitle, string statsText, string description, DeckList deck, Action<VBoxContainer> addPreview)
+	{
+		var panel = new PanelContainer
+		{
+			MouseFilter = Control.MouseFilterEnum.Stop,
+			SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
 		};
-		ApplyButtonTheme(button);
-		button.Pressed += () => OpenBestiaryModal(enemy);
+		panel.AddThemeStyleboxOverride("panel", CreateButtonStyle(new Color(0.06f, 0.13f, 0.17f)));
 
 		var margin = new MarginContainer
 		{
+			SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
+		};
+		margin.AddThemeConstantOverride("margin_left", 12);
+		margin.AddThemeConstantOverride("margin_top", 12);
+		margin.AddThemeConstantOverride("margin_right", 12);
+		margin.AddThemeConstantOverride("margin_bottom", 12);
+		panel.AddChild(margin);
+
+		var row = new HBoxContainer
+		{
+			SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
+		};
+		row.AddThemeConstantOverride("separation", 14);
+		margin.AddChild(row);
+
+		var summary = new VBoxContainer
+		{
+			CustomMinimumSize = new Vector2(220, 0),
 			MouseFilter = Control.MouseFilterEnum.Ignore
 		};
-		margin.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-		margin.AddThemeConstantOverride("margin_left", 8);
-		margin.AddThemeConstantOverride("margin_top", 8);
-		margin.AddThemeConstantOverride("margin_right", 8);
-		margin.AddThemeConstantOverride("margin_bottom", 8);
-		button.AddChild(margin);
+		summary.AddThemeConstantOverride("separation", 6);
+		row.AddChild(summary);
 
-		var stack = new VBoxContainer
+		addPreview?.Invoke(summary);
+
+		var name = CreateTitle((unitName ?? "").ToUpperInvariant());
+		name.CustomMinimumSize = new Vector2(220, 30);
+		name.HorizontalAlignment = HorizontalAlignment.Left;
+		summary.AddChild(name);
+
+		var role = CreateLabel((subtitle ?? "").ToUpperInvariant());
+		role.CustomMinimumSize = new Vector2(220, 22);
+		role.HorizontalAlignment = HorizontalAlignment.Left;
+		summary.AddChild(role);
+
+		var stats = CreateLabel(statsText ?? "");
+		stats.CustomMinimumSize = new Vector2(220, 22);
+		stats.HorizontalAlignment = HorizontalAlignment.Left;
+		summary.AddChild(stats);
+
+		if (!string.IsNullOrWhiteSpace(description))
 		{
-			MouseFilter = Control.MouseFilterEnum.Ignore,
-			Alignment = BoxContainer.AlignmentMode.Center
+			var descriptionLabel = CreateWrappedLabel(description);
+			descriptionLabel.CustomMinimumSize = new Vector2(220, 48);
+			summary.AddChild(descriptionLabel);
+		}
+
+		var deckColumn = new VBoxContainer
+		{
+			SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+			SizeFlagsVertical = Control.SizeFlags.ExpandFill
 		};
-		stack.AddThemeConstantOverride("separation", 6);
-		margin.AddChild(stack);
+		deckColumn.AddThemeConstantOverride("separation", 8);
+		row.AddChild(deckColumn);
 
-		var preview = new TextureRect
+		int deckCount = deck?.Cards?.Count ?? 0;
+		var deckTitle = CreateLabel($"DECK - {deckCount} CARDS");
+		deckTitle.HorizontalAlignment = HorizontalAlignment.Left;
+		deckTitle.CustomMinimumSize = new Vector2(320, 24);
+		deckColumn.AddChild(deckTitle);
+
+		var cardFlow = new HFlowContainer
 		{
-			Texture = GetEnemyPreviewTexture(enemy),
-			CustomMinimumSize = new Vector2(150, 112),
-			StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-			ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-			TextureFilter = CanvasItem.TextureFilterEnum.Nearest,
-			MouseFilter = Control.MouseFilterEnum.Ignore
+			SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+			SizeFlagsVertical = Control.SizeFlags.ExpandFill
 		};
-		stack.AddChild(preview);
+		cardFlow.AddThemeConstantOverride("h_separation", 10);
+		cardFlow.AddThemeConstantOverride("v_separation", 10);
+		deckColumn.AddChild(cardFlow);
 
-		var name = CreateLabel(GetEnemyName(enemy).ToUpperInvariant());
-		name.CustomMinimumSize = new Vector2(150, 24);
-		stack.AddChild(name);
-
-		var hp = CreateLabel($"{Mathf.Max(1, enemy?.MaxHP ?? 1)} HP");
-		hp.CustomMinimumSize = new Vector2(150, 22);
-		stack.AddChild(hp);
-
-		var deck = CreateLabel($"{GetEnemyDeckCount(enemy)} CARDS");
-		deck.CustomMinimumSize = new Vector2(150, 22);
-		stack.AddChild(deck);
-
-		return button;
-	}
-
-	private void OpenBestiaryModal(EnemyDef enemy)
-	{
-		if (enemy == null || _bestiaryModal == null)
-			return;
-
-		_activeAnimationPreviews.Clear();
-		ClearChildren(_bestiaryAnimationRow);
-		ClearChildren(_bestiaryDeckFlow);
-
-		_bestiaryModalTitle.Text = GetEnemyName(enemy).ToUpperInvariant();
-		_bestiaryModalHp.Text = $"{Mathf.Max(1, enemy.MaxHP)} HP";
-
-		AddAnimationPreview(enemy, "IDLE", enemy.IdleSpriteSheet, enemy.IdleFrameSize, enemy.IdleSpriteFrameCount, enemy.IdleFrameSeconds);
-		AddAnimationPreview(enemy, "ATTACK", enemy.AttackSpriteSheet, enemy.AttackFrameSize, enemy.AttackFrameCount, enemy.ActionFrameSeconds);
-		AddAnimationPreview(enemy, "HIT", enemy.HitSpriteSheet, enemy.HitFrameSize, enemy.HitFrameCount, enemy.ActionFrameSeconds);
-
-		if (_activeAnimationPreviews.Count == 0)
-			AddStaticPreview(enemy);
-
-		if (enemy.Deck is DeckList deckList && deckList.Cards != null && deckList.Cards.Count > 0)
+		if (deck?.Cards != null && deck.Cards.Count > 0)
 		{
-			foreach (CardData card in deckList.Cards)
+			foreach (CardData card in deck.Cards)
 			{
 				var cardView = _smallCardScene?.Instantiate<SmallCard>();
 				if (cardView == null)
 					continue;
 
 				cardView.SetData(card);
-				_bestiaryDeckFlow.AddChild(cardView);
+				cardFlow.AddChild(cardView);
 			}
 		}
 		else
 		{
-			_bestiaryDeckFlow.AddChild(CreateLabel("No deck assigned"));
+			cardFlow.AddChild(CreateLabel("No deck assigned"));
 		}
 
-		_bestiaryModal.Visible = true;
+		return panel;
 	}
 
-	private void CloseBestiaryModal()
+	private void AddEnemyPreviews(VBoxContainer summary, EnemyDef enemy)
 	{
-		if (_bestiaryModal != null)
-			_bestiaryModal.Visible = false;
+		var clips = new List<AnimationClip>();
+		AddAnimationClip(clips, "IDLE", enemy?.IdleSpriteSheet, enemy?.IdleFrameSize ?? Vector2I.Zero, enemy?.IdleSpriteFrameCount ?? 0, enemy?.IdleFrameSeconds ?? 0.12f);
+		AddAnimationClip(clips, "ATTACK", enemy?.AttackSpriteSheet, enemy?.AttackFrameSize ?? Vector2I.Zero, enemy?.AttackFrameCount ?? 0, enemy?.ActionFrameSeconds ?? 0.07f);
+		AddAnimationClip(clips, "HIT", enemy?.HitSpriteSheet, enemy?.HitFrameSize ?? Vector2I.Zero, enemy?.HitFrameCount ?? 0, enemy?.ActionFrameSeconds ?? 0.07f);
 
-		_activeAnimationPreviews.Clear();
+		if (clips.Count == 0)
+		{
+			AddStaticPreview(summary, GetEnemyPreviewTexture(enemy), new Vector2(190, 130));
+			return;
+		}
+
+		AddAnimationSelector(summary, clips);
 	}
 
-	private void AddAnimationPreview(EnemyDef enemy, string label, Texture2D sheet, Vector2I frameSize, int explicitFrameCount, float frameSeconds)
+	private void AddAnimationClip(List<AnimationClip> clips, string label, Texture2D sheet, Vector2I frameSize, int explicitFrameCount, float frameSeconds)
 	{
 		List<AtlasTexture> frames = BuildHorizontalFrames(sheet, frameSize, explicitFrameCount);
 		if (frames.Count == 0)
 			return;
 
-		var column = CreateAnimationPreviewColumn(label, frames[0]);
-		var preview = column.GetNode<TextureRect>("Preview");
-		_bestiaryAnimationRow.AddChild(column);
-
-		_activeAnimationPreviews.Add(new AnimationPreview
+		clips.Add(new AnimationClip
 		{
-			View = preview,
+			Label = label,
 			Frames = frames,
 			FrameSeconds = frameSeconds
 		});
 	}
 
-	private void AddStaticPreview(EnemyDef enemy)
+	private void AddAnimationSelector(VBoxContainer parent, List<AnimationClip> clips)
 	{
-		Texture2D texture = GetEnemyPreviewTexture(enemy);
-		if (texture == null)
-			return;
+		var row = new HBoxContainer
+		{
+			CustomMinimumSize = new Vector2(220, 160),
+			MouseFilter = Control.MouseFilterEnum.Ignore,
+			Alignment = BoxContainer.AlignmentMode.Center
+		};
+		row.AddThemeConstantOverride("separation", 6);
+		parent.AddChild(row);
 
-		_bestiaryAnimationRow.AddChild(CreateAnimationPreviewColumn("PREVIEW", texture));
-	}
+		var previous = CreateButton("<", () => { });
+		previous.CustomMinimumSize = new Vector2(34, 34);
+		previous.Disabled = clips.Count <= 1;
+		row.AddChild(previous);
 
-	private VBoxContainer CreateAnimationPreviewColumn(string label, Texture2D texture)
-	{
 		var column = new VBoxContainer
 		{
-			CustomMinimumSize = new Vector2(190, 160),
-			SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+			CustomMinimumSize = new Vector2(140, 154),
 			MouseFilter = Control.MouseFilterEnum.Ignore,
 			Alignment = BoxContainer.AlignmentMode.Center
 		};
 		column.AddThemeConstantOverride("separation", 6);
+		row.AddChild(column);
 
 		var preview = new TextureRect
 		{
-			Name = "Preview",
-			Texture = texture,
-			CustomMinimumSize = new Vector2(180, 120),
+			Texture = clips[0].Frames[0],
+			CustomMinimumSize = new Vector2(140, 120),
 			StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
 			ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
 			TextureFilter = CanvasItem.TextureFilterEnum.Nearest,
@@ -863,11 +971,73 @@ public partial class PauseMenu : CanvasLayer
 		};
 		column.AddChild(preview);
 
-		var caption = CreateLabel(label);
-		caption.CustomMinimumSize = new Vector2(180, 22);
+		var caption = CreateLabel(clips[0].Label);
+		caption.CustomMinimumSize = new Vector2(140, 22);
 		column.AddChild(caption);
 
-		return column;
+		var next = CreateButton(">", () => { });
+		next.CustomMinimumSize = new Vector2(34, 34);
+		next.Disabled = clips.Count <= 1;
+		row.AddChild(next);
+
+		var animationPreview = new AnimationPreview
+		{
+			View = preview,
+			Caption = caption,
+			Clips = clips
+		};
+		ApplyAnimationClip(animationPreview, 0);
+		_activeAnimationPreviews.Add(animationPreview);
+
+		previous.Pressed += () => CycleAnimationClip(animationPreview, -1);
+		next.Pressed += () => CycleAnimationClip(animationPreview, 1);
+	}
+
+	private void CycleAnimationClip(AnimationPreview preview, int direction)
+	{
+		if (preview?.Clips == null || preview.Clips.Count == 0)
+			return;
+
+		int index = (preview.ClipIndex + direction) % preview.Clips.Count;
+		if (index < 0)
+			index += preview.Clips.Count;
+
+		ApplyAnimationClip(preview, index);
+	}
+
+	private void ApplyAnimationClip(AnimationPreview preview, int index)
+	{
+		if (preview?.Clips == null || preview.Clips.Count == 0)
+			return;
+
+		index = Mathf.Clamp(index, 0, preview.Clips.Count - 1);
+		AnimationClip clip = preview.Clips[index];
+		preview.ClipIndex = index;
+		preview.Frames = clip.Frames;
+		preview.FrameSeconds = clip.FrameSeconds;
+		preview.Time = 0f;
+		preview.Index = 0;
+		if (preview.View != null && preview.Frames.Count > 0)
+			preview.View.Texture = preview.Frames[0];
+		if (preview.Caption != null)
+			preview.Caption.Text = clip.Label;
+	}
+
+	private void AddStaticPreview(VBoxContainer parent, Texture2D texture, Vector2 size)
+	{
+		if (texture == null)
+			return;
+
+		var preview = new TextureRect
+		{
+			Texture = texture,
+			CustomMinimumSize = size,
+			StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+			ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+			TextureFilter = CanvasItem.TextureFilterEnum.Nearest,
+			MouseFilter = Control.MouseFilterEnum.Ignore
+		};
+		parent.AddChild(preview);
 	}
 
 	private Texture2D GetEnemyPreviewTexture(EnemyDef enemy)
@@ -919,6 +1089,25 @@ public partial class PauseMenu : CanvasLayer
 		return enemy?.Deck is DeckList deckList && deckList.Cards != null ? deckList.Cards.Count : 0;
 	}
 
+	private List<PlayerUnit> GetCurrentHeroes()
+	{
+		var heroes = new List<PlayerUnit>();
+		CollectHeroes(GetTree().CurrentScene, heroes);
+		return heroes;
+	}
+
+	private void CollectHeroes(Node node, List<PlayerUnit> heroes)
+	{
+		if (node == null)
+			return;
+
+		if (node is PlayerUnit hero)
+			heroes.Add(hero);
+
+		foreach (Node child in node.GetChildren())
+			CollectHeroes(child, heroes);
+	}
+
 	private void ClearChildren(Node node)
 	{
 		if (node == null)
@@ -938,6 +1127,13 @@ public partial class PauseMenu : CanvasLayer
 
 		string search = _cardSearch?.Text?.Trim() ?? "";
 		if (!string.IsNullOrWhiteSpace(search) && (card.Title ?? "").IndexOf(search, StringComparison.OrdinalIgnoreCase) < 0)
+			return false;
+
+		var selectedRarities = _rarityFilters
+			.Where(entry => entry.Value.ButtonPressed)
+			.Select(entry => entry.Key)
+			.ToArray();
+		if (selectedRarities.Length > 0 && !selectedRarities.Contains(card.Class))
 			return false;
 
 		var selectedEffects = _effectFilters
@@ -987,6 +1183,8 @@ public partial class PauseMenu : CanvasLayer
 			_cardSearch.Text = "";
 		if (_cardSort != null)
 			_cardSort.Select(0);
+		foreach (var toggle in _rarityFilters.Values)
+			toggle.ButtonPressed = false;
 		foreach (var toggle in _effectFilters.Values)
 			toggle.ButtonPressed = false;
 		RefreshCompendiumCards();
@@ -1104,7 +1302,9 @@ public partial class PauseMenu : CanvasLayer
 			_compendiumView.Visible = false;
 		if (_bestiaryView != null)
 			_bestiaryView.Visible = false;
-		CloseBestiaryModal();
+		if (_heroesView != null)
+			_heroesView.Visible = false;
+		_activeAnimationPreviews.Clear();
 	}
 
 	private void ShowSettings()
@@ -1115,7 +1315,9 @@ public partial class PauseMenu : CanvasLayer
 			_compendiumView.Visible = false;
 		if (_bestiaryView != null)
 			_bestiaryView.Visible = false;
-		CloseBestiaryModal();
+		if (_heroesView != null)
+			_heroesView.Visible = false;
+		_activeAnimationPreviews.Clear();
 	}
 
 	private void ShowCompendium()
@@ -1127,7 +1329,9 @@ public partial class PauseMenu : CanvasLayer
 			_compendiumView.Visible = true;
 		if (_bestiaryView != null)
 			_bestiaryView.Visible = false;
-		CloseBestiaryModal();
+		if (_heroesView != null)
+			_heroesView.Visible = false;
+		_activeAnimationPreviews.Clear();
 		RefreshCompendiumCards();
 	}
 
@@ -1140,7 +1344,24 @@ public partial class PauseMenu : CanvasLayer
 			_compendiumView.Visible = false;
 		if (_bestiaryView != null)
 			_bestiaryView.Visible = true;
+		if (_heroesView != null)
+			_heroesView.Visible = false;
 		RefreshBestiaryEnemies();
+	}
+
+	private void ShowHeroes()
+	{
+		_mainMenu.Visible = false;
+		if (_settingsMenu != null)
+			_settingsMenu.Visible = false;
+		if (_compendiumView != null)
+			_compendiumView.Visible = false;
+		if (_bestiaryView != null)
+			_bestiaryView.Visible = false;
+		if (_heroesView != null)
+			_heroesView.Visible = true;
+		_activeAnimationPreviews.Clear();
+		RefreshHeroes();
 	}
 
 	private void QuitGame()

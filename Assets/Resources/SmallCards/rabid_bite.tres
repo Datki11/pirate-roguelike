@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="CardData" load_steps=9 format=3 uid="uid://b24popqerxm6x"]
+[gd_resource type="Resource" script_class="MonsterCardData" load_steps=9 format=3 uid="uid://dkl2buy8d24ck"]
 
-[ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_card"]
+[ext_resource type="Script" uid="uid://bwbfyl3aq4kgr" path="res://Assets/Scripts/MonsterCardData.cs" id="1_card"]
 [ext_resource type="Texture2D" uid="uid://c1gany7iuugrw" path="res://Assets/Sprites/Cards/attack-art/64x64/Swordtember2025 by tjtrewin.itch.io - Week 1/06--fossil__tjtrewin-itch-io.png" id="2_art"]
 [ext_resource type="Script" uid="uid://d2ueo4m1lbc51" path="res://Assets/Scripts/EffectEntry.cs" id="3_entry"]
 [ext_resource type="Resource" uid="uid://c1a0m3ei8u4oj" path="res://Assets/Resources/Effects/attack.tres" id="4_attack"]
@@ -24,9 +24,9 @@ Description = "Draw blood."
 RulesText = ""
 Art = ExtResource("2_art")
 ManaCost = 0
-Rarity = 0
+Class = 1
 TargetDef = ExtResource("6_target")
-Effects = [SubResource("Effect_rabid_attack"), SubResource("Effect_rabid_bleed")]
+Effects = Array[ExtResource("3_entry")]([SubResource("Effect_rabid_attack"), SubResource("Effect_rabid_bleed")])
 Trigger = 0
 TriggerText = ""
 LethalHealAmount = 0

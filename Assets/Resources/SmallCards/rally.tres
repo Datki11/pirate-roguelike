@@ -1,12 +1,12 @@
-[gd_resource type="Resource" script_class="CardData" load_steps=7 format=3 uid="uid://b76mnc7ktvend"]
+[gd_resource type="Resource" script_class="CardData" load_steps=7 format=3 uid="uid://b1wmy8b8r3c8o"]
 
 [ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_card"]
 [ext_resource type="Texture2D" uid="uid://4urtiikxxumr" path="res://Assets/Sprites/Cards/attack-art/64x64/rpg-items-all/book.png" id="2_art"]
 [ext_resource type="Script" uid="uid://d2ueo4m1lbc51" path="res://Assets/Scripts/EffectEntry.cs" id="3_entry"]
 [ext_resource type="Resource" uid="uid://euroqap1x1mh" path="res://Assets/Resources/Effects/block.tres" id="4_block"]
-[ext_resource type="Resource" path="res://Assets/Resources/Targets/all.tres" id="5_target"]
+[ext_resource type="Resource" path="res://Assets/Resources/Targets/all_allies.tres" id="5_target"]
 
-[sub_resource type="Resource" id="Effect_rally_block"]
+[sub_resource type="Resource" id="Effect_rally_block_1"]
 script = ExtResource("3_entry")
 Def = ExtResource("4_block")
 Amount = 3
@@ -18,9 +18,9 @@ Description = "Hold the line."
 RulesText = ""
 Art = ExtResource("2_art")
 ManaCost = 0
-Rarity = 0
+Class = 0
 TargetDef = ExtResource("5_target")
-Effects = [SubResource("Effect_rally_block")]
+Effects = [SubResource("Effect_rally_block_1")]
 Trigger = 0
 TriggerText = ""
 LethalHealAmount = 0

@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="CardData" load_steps=7 format=3 uid="uid://rukluintcm6u"]
+[gd_resource type="Resource" script_class="MonsterCardData" load_steps=7 format=3 uid="uid://dyv7gi3mnbicw"]
 
-[ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_card"]
+[ext_resource type="Script" uid="uid://bwbfyl3aq4kgr" path="res://Assets/Scripts/MonsterCardData.cs" id="1_card"]
 [ext_resource type="Texture2D" uid="uid://dn7ug2ohaom7w" path="res://Assets/Sprites/Cards/attack-art/64x64/rpg-items-all/glass vial with mercury.png" id="2_art"]
 [ext_resource type="Script" uid="uid://d2ueo4m1lbc51" path="res://Assets/Scripts/EffectEntry.cs" id="3_entry"]
 [ext_resource type="Resource" uid="uid://c1a0m3ei8u4oj" path="res://Assets/Resources/Effects/attack.tres" id="4_attack"]
@@ -18,9 +18,9 @@ Description = "Pierce and drain."
 RulesText = ""
 Art = ExtResource("2_art")
 ManaCost = 0
-Rarity = 1
+Class = 1
 TargetDef = ExtResource("5_target")
-Effects = [SubResource("Effect_soul_attack")]
+Effects = Array[ExtResource("3_entry")]([SubResource("Effect_soul_attack")])
 Trigger = 4
 TriggerText = "Gain 2 HP."
 LethalHealAmount = 0

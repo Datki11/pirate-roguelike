@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="CardData" load_steps=9 format=3 uid="uid://d8tk5k6typ2p"]
+[gd_resource type="Resource" script_class="CardData" load_steps=9 format=3 uid="uid://brnj36oh4234b"]
 
 [ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_card"]
 [ext_resource type="Texture2D" uid="uid://dxoh8hc6yx23r" path="res://Assets/Sprites/Cards/attack-art/64x64/Swordtember2025 by tjtrewin.itch.io - Week 1/04-scale__tjtrewin-itch-io.png" id="2_art"]
@@ -7,15 +7,15 @@
 [ext_resource type="Resource" uid="uid://euroqap1x1mh" path="res://Assets/Resources/Effects/block.tres" id="5_block"]
 [ext_resource type="Resource" uid="uid://bieypex2q2gcy" path="res://Assets/Resources/Targets/single.tres" id="6_target"]
 
-[sub_resource type="Resource" id="Effect_iron_wave_attack"]
+[sub_resource type="Resource" id="Effect_iron_wave_attack_1"]
 script = ExtResource("3_entry")
 Def = ExtResource("4_attack")
-Amount = 7
+Amount = 5
 
-[sub_resource type="Resource" id="Effect_iron_wave_block"]
+[sub_resource type="Resource" id="Effect_iron_wave_block_2"]
 script = ExtResource("3_entry")
 Def = ExtResource("5_block")
-Amount = 7
+Amount = 3
 
 [resource]
 script = ExtResource("1_card")
@@ -24,9 +24,9 @@ Description = "Strike and brace."
 RulesText = ""
 Art = ExtResource("2_art")
 ManaCost = 0
-Rarity = 1
+Class = 0
 TargetDef = ExtResource("6_target")
-Effects = [SubResource("Effect_iron_wave_attack"), SubResource("Effect_iron_wave_block")]
+Effects = [SubResource("Effect_iron_wave_attack_1"), SubResource("Effect_iron_wave_block_2")]
 Trigger = 0
 TriggerText = ""
 LethalHealAmount = 0

@@ -5,7 +5,7 @@
 [ext_resource type="Script" uid="uid://dliotwwlwl71h" path="res://Assets/Scripts/TargetRing.cs" id="5_dcwce"]
 [ext_resource type="PackedScene" uid="uid://bcc2tig505c7l" path="res://Assets/Components/deck.tscn" id="7_qtvry"]
 [ext_resource type="Texture2D" uid="uid://ba3slgxp2y02k" path="res://Assets/Sprites/Cards/card_back_red_24x36.png" id="8_8sbev"]
-[ext_resource type="Resource" uid="uid://ewl7fgxohm3l" path="res://Assets/Resources/DeckLists/BatDeckList.tres" id="8_nn7m1"]
+[ext_resource type="Resource" uid="uid://xyvcm5u2s601" path="res://Assets/Resources/DeckLists/BatDeckList.tres" id="8_nn7m1"]
 [ext_resource type="FontFile" uid="uid://b4dw7y3ang4m3" path="res://Assets/Fonts/upheaval/upheavtt.ttf" id="9_upheaval"]
 
 [node name="Enemy" type="Control"]

@@ -1,7 +1,7 @@
-[gd_resource type="Resource" script_class="EnemyDef" load_steps=6 format=3]
+[gd_resource type="Resource" script_class="EnemyDef" load_steps=6 format=3 uid="uid://csn7oey1ow1u2"]
 
 [ext_resource type="Script" uid="uid://dx3m62wyoviov" path="res://Assets/Scripts/EnemyDef.cs" id="1_def"]
-[ext_resource type="Resource" path="res://Assets/Resources/DeckLists/StoneGolemDeckList.tres" id="2_deck"]
+[ext_resource type="Resource" uid="uid://bueb2d7u1gfia" path="res://Assets/Resources/DeckLists/StoneGolemDeckList.tres" id="2_deck"]
 [ext_resource type="Texture2D" uid="uid://xon806a2samu" path="res://Assets/Sprites/Enemies/Gollux/gollux_idle.png" id="3_idle"]
 [ext_resource type="Texture2D" uid="uid://dd3n2opsjgcyo" path="res://Assets/Sprites/Enemies/Gollux/gollux_attack_A.png" id="4_attack"]
 [ext_resource type="Texture2D" uid="uid://bup12yptvtvvn" path="res://Assets/Sprites/Enemies/Gollux/gollux_hit.png" id="5_hit"]
@@ -10,13 +10,21 @@
 script = ExtResource("1_def")
 Id = "stone_golem"
 Name = "Stone Golem"
-MaxHP = 40
+MinHP = 31
+MaxHP = 37
 Deck = ExtResource("2_deck")
+FrameSize = Vector2i(150, 150)
+IdleFrameCount = 3
 IdleSpriteSheet = ExtResource("3_idle")
 IdleFrameSize = Vector2i(128, 128)
+IdleSpriteFrameCount = 0
 AttackSpriteSheet = ExtResource("4_attack")
 AttackFrameSize = Vector2i(128, 128)
+AttackFrameCount = 0
 HitSpriteSheet = ExtResource("5_hit")
 HitFrameSize = Vector2i(128, 128)
+HitFrameCount = 0
+IdleFrameSeconds = 0.12
 ActionFrameSeconds = 0.025
+FaceLeft = true
 metadata/_custom_type_script = "uid://dx3m62wyoviov"

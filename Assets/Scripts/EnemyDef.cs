@@ -6,9 +6,17 @@ public partial class EnemyDef : Resource
 	[Export] public string Id = "bat";
 	[Export] public string Name = "Bat";
 	[Export] public Texture2D Art;
+	[Export] public int MinHP = 0;
 	[Export] public int MaxHP = 30;
 
 	[Export] public Resource Deck;
+
+	public int RollMaxHP(RandomNumberGenerator rng)
+	{
+		int maxHp = Mathf.Max(1, MaxHP);
+		int minHp = MinHP > 0 ? Mathf.Clamp(MinHP, 1, maxHp) : maxHp;
+		return rng != null ? (int)rng.RandiRange(minHp, maxHp) : maxHp;
+	}
 
 	[ExportGroup("Legacy Sprite Sheet")]
 	[Export] public Texture2D SpriteSheet;

@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="CardData" load_steps=9 format=3 uid="uid://4ofqq160x5n0"]
+[gd_resource type="Resource" script_class="CardData" load_steps=9 format=3 uid="uid://cgy7vf3boucn1"]
 
 [ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_card"]
 [ext_resource type="Texture2D" uid="uid://dxvqeyx6rswxi" path="res://Assets/Sprites/Cards/attack-art/pirate_hookhand_card_art_128x64.png" id="2_art"]
@@ -7,12 +7,12 @@
 [ext_resource type="Resource" uid="uid://dftmisupkolto" path="res://Assets/Resources/Effects/bleed.tres" id="5_bleed"]
 [ext_resource type="Resource" uid="uid://bieypex2q2gcy" path="res://Assets/Resources/Targets/single.tres" id="6_target"]
 
-[sub_resource type="Resource" id="Effect_hook_attack"]
+[sub_resource type="Resource" id="Effect_hook_hand_attack_1"]
 script = ExtResource("3_entry")
 Def = ExtResource("4_attack")
-Amount = 7
+Amount = 5
 
-[sub_resource type="Resource" id="Effect_hook_bleed"]
+[sub_resource type="Resource" id="Effect_hook_hand_bleed_2"]
 script = ExtResource("3_entry")
 Def = ExtResource("5_bleed")
 Amount = 1
@@ -24,9 +24,9 @@ Description = "Snag and slash."
 RulesText = ""
 Art = ExtResource("2_art")
 ManaCost = 0
-Rarity = 0
+Class = 0
 TargetDef = ExtResource("6_target")
-Effects = [SubResource("Effect_hook_attack"), SubResource("Effect_hook_bleed")]
+Effects = [SubResource("Effect_hook_hand_attack_1"), SubResource("Effect_hook_hand_bleed_2")]
 Trigger = 0
 TriggerText = ""
 LethalHealAmount = 0

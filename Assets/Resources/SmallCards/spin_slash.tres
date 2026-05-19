@@ -1,26 +1,26 @@
-[gd_resource type="Resource" script_class="CardData" load_steps=7 format=3 uid="uid://bbmlea1k3cutm"]
+[gd_resource type="Resource" script_class="CardData" load_steps=7 format=3 uid="uid://ovnu3cyijsje"]
 
 [ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_card"]
-[ext_resource type="Texture2D" uid="uid://0b1v85wpr3kf" path="res://Assets/Sprites/Cards/attack-art/64x64/Swordtember2025 by tjtrewin.itch.io - Week 1/03-automaton__tjtrewin-itch-io.png" id="2_art"]
+[ext_resource type="Texture2D" uid="uid://dxoh8hc6yx23r" path="res://Assets/Sprites/Cards/attack-art/64x64/Swordtember2025 by tjtrewin.itch.io - Week 1/04-scale__tjtrewin-itch-io.png" id="2_art"]
 [ext_resource type="Script" uid="uid://d2ueo4m1lbc51" path="res://Assets/Scripts/EffectEntry.cs" id="3_entry"]
 [ext_resource type="Resource" uid="uid://c1a0m3ei8u4oj" path="res://Assets/Resources/Effects/attack.tres" id="4_attack"]
-[ext_resource type="Resource" uid="uid://bieypex2q2gcy" path="res://Assets/Resources/Targets/single.tres" id="5_target"]
+[ext_resource type="Resource" uid="uid://bcduw272yqold" path="res://Assets/Resources/Targets/multiple.tres" id="5_target"]
 
-[sub_resource type="Resource" id="Effect_rapier_attack"]
+[sub_resource type="Resource" id="Effect_spin_slash_attack_1"]
 script = ExtResource("3_entry")
 Def = ExtResource("4_attack")
-Amount = 8
+Amount = 3
 
 [resource]
 script = ExtResource("1_card")
-Title = "Rapier"
-Description = "Precise strike."
+Title = "Spin Slash"
+Description = "Cut through the whole line."
 RulesText = ""
 Art = ExtResource("2_art")
 ManaCost = 0
-Rarity = 0
+Class = 0
 TargetDef = ExtResource("5_target")
-Effects = [SubResource("Effect_rapier_attack")]
+Effects = [SubResource("Effect_spin_slash_attack_1")]
 Trigger = 0
 TriggerText = ""
 LethalHealAmount = 0

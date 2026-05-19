@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="CardData" load_steps=7 format=3 uid="uid://bd2uae8ypl4fx"]
+[gd_resource type="Resource" script_class="CardData" load_steps=7 format=3 uid="uid://cjdpr2jpwdvav"]
 
 [ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_card"]
 [ext_resource type="Texture2D" uid="uid://4urtiikxxumr" path="res://Assets/Sprites/Cards/attack-art/64x64/rpg-items-all/book.png" id="2_art"]
@@ -6,7 +6,7 @@
 [ext_resource type="Resource" path="res://Assets/Resources/Effects/protect.tres" id="4_protect"]
 [ext_resource type="Resource" uid="uid://dc0aw28r20f5m" path="res://Assets/Resources/Targets/self.tres" id="5_target"]
 
-[sub_resource type="Resource" id="Effect_protector"]
+[sub_resource type="Resource" id="Effect_protector_protect_1"]
 script = ExtResource("3_entry")
 Def = ExtResource("4_protect")
 Amount = 3
@@ -18,9 +18,9 @@ Description = "Guard the crew."
 RulesText = "Single-target damage is redirected to this unit for 3 turns."
 Art = ExtResource("2_art")
 ManaCost = 0
-Rarity = 1
+Class = 1
 TargetDef = ExtResource("5_target")
-Effects = [SubResource("Effect_protector")]
+Effects = [SubResource("Effect_protector_protect_1")]
 Trigger = 0
 TriggerText = ""
 LethalHealAmount = 0

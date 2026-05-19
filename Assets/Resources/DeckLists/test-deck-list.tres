@@ -1,16 +1,16 @@
-[gd_resource type="Resource" script_class="DeckList" load_steps=10 format=3 uid="uid://b2k8mwmepw5xv"]
+[gd_resource type="Resource" script_class="DeckList" load_steps=10 format=3 uid="uid://bthojxtb31a8n"]
 
 [ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_card"]
 [ext_resource type="Script" uid="uid://osm0e1rmrshh" path="res://Assets/Scripts/DeckList.cs" id="2_deck"]
-[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/rally.tres" id="3_rally"]
-[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/whirlwind.tres" id="4_whirlwind"]
-[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/brick_up.tres" id="5_brick"]
-[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/rapier.tres" id="6_rapier"]
-[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/miracle.tres" id="7_miracle"]
-[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/meditate.tres" id="8_meditate"]
-[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/believe.tres" id="9_believe"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/guard.tres" id="3_guard"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/hook_hand.tres" id="4_hook_hand"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/iron_wave.tres" id="5_iron_wave"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/leap.tres" id="6_leap"]
+[ext_resource type="Resource" uid="uid://b1wmy8b8r3c8o" path="res://Assets/Resources/SmallCards/rally.tres" id="7_rally"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/slash.tres" id="8_slash"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/spin_slash.tres" id="9_spin_slash"]
 
 [resource]
 script = ExtResource("2_deck")
-Cards = Array[ExtResource("1_card")]([ExtResource("3_rally"), ExtResource("4_whirlwind"), ExtResource("5_brick"), ExtResource("6_rapier"), ExtResource("7_miracle"), ExtResource("8_meditate"), ExtResource("9_believe")])
+Cards = Array[ExtResource("1_card")]([ExtResource("8_slash"), ExtResource("3_guard"), ExtResource("7_rally"), ExtResource("6_leap"), ExtResource("9_spin_slash"), ExtResource("4_hook_hand"), ExtResource("5_iron_wave")])
 metadata/_custom_type_script = "uid://osm0e1rmrshh"

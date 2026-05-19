@@ -1,7 +1,7 @@
-[gd_resource type="Resource" script_class="EnemyDef" load_steps=6 format=3]
+[gd_resource type="Resource" script_class="EnemyDef" load_steps=6 format=3 uid="uid://c7kplcfkif772"]
 
 [ext_resource type="Script" uid="uid://dx3m62wyoviov" path="res://Assets/Scripts/EnemyDef.cs" id="1_def"]
-[ext_resource type="Resource" path="res://Assets/Resources/DeckLists/FrogDeckList.tres" id="2_deck"]
+[ext_resource type="Resource" uid="uid://b3qyu0cbgxnn" path="res://Assets/Resources/DeckLists/FrogDeckList.tres" id="2_deck"]
 [ext_resource type="Texture2D" uid="uid://4a52782soxuh" path="res://Assets/Sprites/Enemies/Frogger/frogger_idle.png" id="3_idle"]
 [ext_resource type="Texture2D" uid="uid://cqcopxqovlokv" path="res://Assets/Sprites/Enemies/Frogger/frogger_spit.png" id="4_attack"]
 [ext_resource type="Texture2D" uid="uid://cw501sylaufpu" path="res://Assets/Sprites/Enemies/Frogger/frogger_hurt.png" id="5_hit"]
@@ -10,13 +10,21 @@
 script = ExtResource("1_def")
 Id = "frog"
 Name = "Frog"
-MaxHP = 40
+MinHP = 22
+MaxHP = 26
 Deck = ExtResource("2_deck")
+FrameSize = Vector2i(150, 150)
+IdleFrameCount = 3
 IdleSpriteSheet = ExtResource("3_idle")
 IdleFrameSize = Vector2i(128, 128)
+IdleSpriteFrameCount = 0
 AttackSpriteSheet = ExtResource("4_attack")
 AttackFrameSize = Vector2i(128, 128)
+AttackFrameCount = 0
 HitSpriteSheet = ExtResource("5_hit")
 HitFrameSize = Vector2i(128, 128)
+HitFrameCount = 0
+IdleFrameSeconds = 0.12
 ActionFrameSeconds = 0.025
+FaceLeft = true
 metadata/_custom_type_script = "uid://dx3m62wyoviov"

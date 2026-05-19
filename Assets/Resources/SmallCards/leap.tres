@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="CardData" load_steps=7 format=3 uid="uid://df8cvh4i5mgfr"]
+[gd_resource type="Resource" script_class="CardData" load_steps=7 format=3 uid="uid://d1kwo7hccl55e"]
 
 [ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_card"]
 [ext_resource type="Texture2D" uid="uid://bm6kbahyhbbh0" path="res://Assets/Sprites/Cards/attack-art/64x64/rpg-items-all/stone.png" id="2_art"]
@@ -6,10 +6,10 @@
 [ext_resource type="Resource" uid="uid://euroqap1x1mh" path="res://Assets/Resources/Effects/block.tres" id="4_block"]
 [ext_resource type="Resource" uid="uid://dc0aw28r20f5m" path="res://Assets/Resources/Targets/self.tres" id="5_target"]
 
-[sub_resource type="Resource" id="Effect_leap_block"]
+[sub_resource type="Resource" id="Effect_leap_block_1"]
 script = ExtResource("3_entry")
 Def = ExtResource("4_block")
-Amount = 8
+Amount = 7
 
 [resource]
 script = ExtResource("1_card")
@@ -18,9 +18,9 @@ Description = "Spring clear."
 RulesText = ""
 Art = ExtResource("2_art")
 ManaCost = 0
-Rarity = 0
+Class = 0
 TargetDef = ExtResource("5_target")
-Effects = [SubResource("Effect_leap_block")]
+Effects = [SubResource("Effect_leap_block_1")]
 Trigger = 0
 TriggerText = ""
 LethalHealAmount = 0

@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="CardData" load_steps=7 format=3 uid="uid://0auk007t8dyo"]
+[gd_resource type="Resource" script_class="MonsterCardData" load_steps=7 format=3 uid="uid://cx1ahq38u6pe"]
 
-[ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_card"]
+[ext_resource type="Script" uid="uid://bwbfyl3aq4kgr" path="res://Assets/Scripts/MonsterCardData.cs" id="1_card"]
 [ext_resource type="Texture2D" uid="uid://bm6kbahyhbbh0" path="res://Assets/Sprites/Cards/attack-art/64x64/rpg-items-all/stone.png" id="2_art"]
 [ext_resource type="Script" uid="uid://d2ueo4m1lbc51" path="res://Assets/Scripts/EffectEntry.cs" id="3_entry"]
 [ext_resource type="Resource" uid="uid://c1a0m3ei8u4oj" path="res://Assets/Resources/Effects/attack.tres" id="4_attack"]
@@ -18,9 +18,9 @@ Description = "Falling stone."
 RulesText = ""
 Art = ExtResource("2_art")
 ManaCost = 0
-Rarity = 1
+Class = 1
 TargetDef = ExtResource("5_target")
-Effects = [SubResource("Effect_rockslide_attack")]
+Effects = Array[ExtResource("3_entry")]([SubResource("Effect_rockslide_attack")])
 Trigger = 0
 TriggerText = ""
 LethalHealAmount = 0

@@ -1,11 +1,11 @@
-[gd_resource type="Resource" script_class="DeckList" load_steps=6 format=3]
+[gd_resource type="Resource" script_class="DeckList" load_steps=6 format=3 uid="uid://bueb2d7u1gfia"]
 
 [ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_card"]
-[ext_resource type="Script" uid="uid://osm0e1rmrshh" path="res://Assets/Scripts/DeckList.cs" id="1_deck"]
-[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/rockslide.tres" id="2_rockslide"]
-[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/boulder.tres" id="3_boulder"]
-[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/earthquake.tres" id="4_earthquake"]
+[ext_resource type="Script" uid="uid://osm0e1rmrshh" path="res://Assets/Scripts/DeckList.cs" id="2_deck"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/rockslide.tres" id="3_rockslide"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/boulder.tres" id="4_boulder"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/earthquake.tres" id="5_earthquake"]
 
 [resource]
-script = ExtResource("1_deck")
-Cards = Array[ExtResource("1_card")]([ExtResource("2_rockslide"), ExtResource("2_rockslide"), ExtResource("3_boulder"), ExtResource("3_boulder"), ExtResource("4_earthquake")])
+script = ExtResource("2_deck")
+Cards = Array[ExtResource("1_card")]([ExtResource("3_rockslide"), ExtResource("3_rockslide"), ExtResource("4_boulder"), ExtResource("4_boulder"), ExtResource("5_earthquake")])

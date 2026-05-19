@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="DeckList" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://Assets/Scripts/CardData.cs" id="1_card"]
+[ext_resource type="Script" path="res://Assets/Scripts/DeckList.cs" id="2_deck"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/battle_cry.tres" id="3_battle_cry"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/inspire.tres" id="4_inspire"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/rally.tres" id="5_rally"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/slash.tres" id="6_slash"]
+
+[resource]
+script = ExtResource("2_deck")
+Cards = Array[ExtResource("1_card")]([ExtResource("6_slash"), ExtResource("6_slash"), ExtResource("5_rally"), ExtResource("5_rally"), ExtResource("3_battle_cry"), ExtResource("4_inspire")])

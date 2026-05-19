@@ -1,11 +1,11 @@
-[gd_resource type="Resource" script_class="DeckList" load_steps=6 format=3]
+[gd_resource type="Resource" script_class="DeckList" load_steps=6 format=3 uid="uid://bxmfudfykwbuv"]
 
 [ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_card"]
-[ext_resource type="Script" uid="uid://osm0e1rmrshh" path="res://Assets/Scripts/DeckList.cs" id="1_deck"]
-[ext_resource type="Resource" uid="uid://bdax52dieedcy" path="res://Assets/Resources/SmallCards/inspire.tres" id="2_inspire"]
-[ext_resource type="Resource" uid="uid://rukluintcm6u" path="res://Assets/Resources/SmallCards/soul_steal.tres" id="3_soul"]
-[ext_resource type="Resource" uid="uid://blcgsi8nasar7" path="res://Assets/Resources/SmallCards/enemy_claw_swipe.tres" id="4_claw"]
+[ext_resource type="Script" uid="uid://osm0e1rmrshh" path="res://Assets/Scripts/DeckList.cs" id="2_deck"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/shriek.tres" id="3_shriek"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/soul_steal.tres" id="4_soul"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/enemy_claw_swipe.tres" id="5_claw"]
 
 [resource]
-script = ExtResource("1_deck")
-Cards = Array[ExtResource("1_card")]([ExtResource("2_inspire"), ExtResource("3_soul"), ExtResource("3_soul"), ExtResource("4_claw"), ExtResource("4_claw")])
+script = ExtResource("2_deck")
+Cards = Array[ExtResource("1_card")]([ExtResource("3_shriek"), ExtResource("4_soul"), ExtResource("4_soul"), ExtResource("5_claw"), ExtResource("5_claw")])

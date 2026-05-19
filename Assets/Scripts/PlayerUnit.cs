@@ -5,6 +5,11 @@ using System.Linq;
 [Tool]
 public partial class PlayerUnit : Node2D, IDamageable
 {
+	[ExportGroup("Hero Info")]
+	[Export] public string HeroName { get; set; } = "";
+	[Export] public string HeroRole { get; set; } = "";
+	[Export(PropertyHint.MultilineText)] public string HeroDescription { get; set; } = "";
+	[ExportGroup("")]
 	[Export] public int StartingMaxHP { get; set; } = 30;
 	[Export] public Vector2 PopupAnchorOffset { get; set; } = new(0, -96);
 	[Export] public NodePath SpritePath { get; set; } = "Sprite";
@@ -62,6 +67,28 @@ public partial class PlayerUnit : Node2D, IDamageable
 	[Signal] public delegate void DamagedEventHandler(int amount);
 	[Signal] public delegate void HealedEventHandler(int amount);
 	[Signal] public delegate void DiedEventHandler();
+
+	public string GetHeroName()
+		=> string.IsNullOrWhiteSpace(HeroName) ? Name.ToString() : HeroName;
+
+	public string GetHeroRole()
+		=> string.IsNullOrWhiteSpace(HeroRole) ? "Hero" : HeroRole;
+
+	public DeckList GetHeroDeckList()
+	{
+		if (DeckListOverride is DeckList overrideDeck)
+			return overrideDeck;
+
+		return _deck?.DeckList as DeckList;
+	}
+
+	public Texture2D GetHeroPreviewTexture()
+	{
+		if (_idleFrames.Count > 0)
+			return _idleFrames[0];
+
+		return _sprite?.Texture;
+	}
 
 	public override void _EnterTree()
 	{

@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="CardData" load_steps=9 format=3 uid="uid://cs0se02g4a7lj"]
+[gd_resource type="Resource" script_class="CardData" load_steps=9 format=3 uid="uid://b1hl4rhihsvc4"]
 
 [ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_card"]
 [ext_resource type="Texture2D" uid="uid://0b1v85wpr3kf" path="res://Assets/Sprites/Cards/attack-art/64x64/Swordtember2025 by tjtrewin.itch.io - Week 1/03-automaton__tjtrewin-itch-io.png" id="2_art"]
@@ -7,12 +7,12 @@
 [ext_resource type="Resource" uid="uid://dftmisupkolto" path="res://Assets/Resources/Effects/bleed.tres" id="5_bleed"]
 [ext_resource type="Resource" uid="uid://bcduw272yqold" path="res://Assets/Resources/Targets/multiple.tres" id="6_target"]
 
-[sub_resource type="Resource" id="Effect_grapeshot_attack"]
+[sub_resource type="Resource" id="Effect_grapeshot_attack_1"]
 script = ExtResource("3_entry")
 Def = ExtResource("4_attack")
 Amount = 5
 
-[sub_resource type="Resource" id="Effect_grapeshot_bleed"]
+[sub_resource type="Resource" id="Effect_grapeshot_bleed_2"]
 script = ExtResource("3_entry")
 Def = ExtResource("5_bleed")
 Amount = 1
@@ -24,9 +24,9 @@ Description = "Scatter shot."
 RulesText = ""
 Art = ExtResource("2_art")
 ManaCost = 0
-Rarity = 1
+Class = 1
 TargetDef = ExtResource("6_target")
-Effects = [SubResource("Effect_grapeshot_attack"), SubResource("Effect_grapeshot_bleed")]
+Effects = [SubResource("Effect_grapeshot_attack_1"), SubResource("Effect_grapeshot_bleed_2")]
 Trigger = 0
 TriggerText = ""
 LethalHealAmount = 0

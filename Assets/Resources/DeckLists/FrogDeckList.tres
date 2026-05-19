@@ -1,11 +1,11 @@
-[gd_resource type="Resource" script_class="DeckList" load_steps=6 format=3]
+[gd_resource type="Resource" script_class="DeckList" load_steps=6 format=3 uid="uid://b3qyu0cbgxnn"]
 
 [ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_card"]
-[ext_resource type="Script" uid="uid://osm0e1rmrshh" path="res://Assets/Scripts/DeckList.cs" id="1_deck"]
-[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/poison_lick.tres" id="2_lick"]
-[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/poison_burst.tres" id="3_burst"]
-[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/poison_spit.tres" id="4_spit"]
+[ext_resource type="Script" uid="uid://osm0e1rmrshh" path="res://Assets/Scripts/DeckList.cs" id="2_deck"]
+[ext_resource type="Resource" uid="uid://bll3eisfamov6" path="res://Assets/Resources/SmallCards/poison_burst.tres" id="3_poison_burst"]
+[ext_resource type="Resource" uid="uid://n3hng3aagl1o" path="res://Assets/Resources/SmallCards/poison_lick.tres" id="4_poison_lick"]
+[ext_resource type="Resource" uid="uid://bxdkcuvred0ma" path="res://Assets/Resources/SmallCards/poison_spit.tres" id="5_poison_spit"]
 
 [resource]
-script = ExtResource("1_deck")
-Cards = Array[ExtResource("1_card")]([ExtResource("2_lick"), ExtResource("2_lick"), ExtResource("3_burst"), ExtResource("4_spit"), ExtResource("4_spit")])
+script = ExtResource("2_deck")
+Cards = Array[ExtResource("1_card")]([ExtResource("4_poison_lick"), ExtResource("4_poison_lick"), ExtResource("5_poison_spit"), ExtResource("3_poison_burst")])

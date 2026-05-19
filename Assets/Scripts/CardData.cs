@@ -1,7 +1,7 @@
 using Godot;
 using Godot.Collections;
 
-public enum Rarity { Common, Uncommon, Rare, Legendary }
+public enum CardClass { Basic, Common, Uncommon, Rare, Enemy }
 public enum CardTrigger { None, Lethal, Revenge, Shuffle, Pierce }
 
 [GlobalClass] // so it shows up in "New Resource"
@@ -12,7 +12,7 @@ public partial class CardData : Resource
 	[Export(PropertyHint.MultilineText)] public string RulesText { get; set; } = "";
 	[Export] public Texture2D Art { get; set; }
 	[Export] public int ManaCost { get; set; } = 0;
-	[Export] public Rarity Rarity { get; set; } = Rarity.Common;
+	[Export] public CardClass Class { get; set; } = CardClass.Common;
 	// Targeting without an enum? See TargetDef below. For now keep it simple:
 	[Export] public Resource TargetDef { get; set; }      // Option B below (icon-based)
 	// Or keep your old enum for logic and map to an icon elsewhere.
@@ -26,4 +26,7 @@ public partial class CardData : Resource
 	[Export] public int PierceHealAmount { get; set; } = 0;
 	[Export] public bool ReturnToDrawOnLethal { get; set; } = false;
 	[Export] public bool PlayTopCardOnShuffle { get; set; } = false;
+
+	public virtual bool CanAppearInCardRewards()
+		=> Class is CardClass.Common or CardClass.Uncommon or CardClass.Rare;
 }

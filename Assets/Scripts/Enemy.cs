@@ -74,6 +74,7 @@ public partial class Enemy : Control, IDamageable
 	private readonly List<AtlasTexture> _attackFrames = new();
 	private readonly List<AtlasTexture> _hitFrames = new();
 	private readonly List<AtlasTexture> _legacyFrames = new();
+	private readonly RandomNumberGenerator _rng = new();
 	private List<AtlasTexture> _currentFrames;
 	private float _frameTime;
 	private int _frameIndex;
@@ -107,6 +108,7 @@ public partial class Enemy : Control, IDamageable
 		_ringTR      = _ring as TargetRing;           // <— keep a typed ref
 		_popupAnchor = GetNodeOrNull<Control>(PopupAnchorPath);
 		_deck        = GetNodeOrNull<Deck>(DeckPath);
+		_rng.Randomize();
 		EnemyDef enemyDef = Def as EnemyDef;
 		ApplyDefinition(enemyDef);
 		BuildAnimationFrames();
@@ -197,7 +199,7 @@ public partial class Enemy : Control, IDamageable
 
 	private void ApplyDefinitionHealth(EnemyDef enemyDef)
 	{
-		MaxHP = Mathf.Max(1, enemyDef.MaxHP);
+		MaxHP = enemyDef.RollMaxHP(_rng);
 		HP = MaxHP;
 	}
 

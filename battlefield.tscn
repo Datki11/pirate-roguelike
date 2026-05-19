@@ -10,12 +10,12 @@
 [ext_resource type="FontFile" uid="uid://b6nooaoreg886" path="res://Assets/Fonts/Minecraft.ttf" id="12_font"]
 [ext_resource type="Script" uid="uid://cmylq545442uv" path="res://Assets/Scripts/PauseMenu.cs" id="13_pause"]
 [ext_resource type="FontFile" uid="uid://b4dw7y3ang4m3" path="res://Assets/Fonts/upheaval/upheavtt.ttf" id="13_upheaval"]
-[ext_resource type="Resource" path="res://Assets/Resources/DeckLists/DechkandDeckList.tres" id="25_dechkand_deck"]
-[ext_resource type="Resource" path="res://Assets/Resources/DeckLists/BruteDeckList.tres" id="26_brute_deck"]
-[ext_resource type="Resource" path="res://Assets/Resources/DeckLists/CaptainDeckList.tres" id="27_captain_deck"]
-[ext_resource type="Resource" path="res://Assets/Resources/Enemies/stone_golem.tres" id="28_stone_golem"]
-[ext_resource type="Resource" path="res://Assets/Resources/Enemies/frog.tres" id="29_frog"]
-[ext_resource type="Resource" path="res://Assets/Resources/Enemies/fireworm.tres" id="30_fireworm"]
+[ext_resource type="Resource" path="res://Assets/Resources/DeckLists/DuelistDeckList.tres" id="25_dechkand_deck"]
+[ext_resource type="Resource" uid="uid://dnk7jcyyhn8jj" path="res://Assets/Resources/DeckLists/BruteDeckList.tres" id="26_brute_deck"]
+[ext_resource type="Resource" path="res://Assets/Resources/DeckLists/CommanderDeckList.tres" id="27_captain_deck"]
+[ext_resource type="Resource" uid="uid://csn7oey1ow1u2" path="res://Assets/Resources/Enemies/stone_golem.tres" id="28_stone_golem"]
+[ext_resource type="Resource" uid="uid://c7kplcfkif772" path="res://Assets/Resources/Enemies/frog.tres" id="29_frog"]
+[ext_resource type="Resource" uid="uid://dtygjhfihr8mw" path="res://Assets/Resources/Enemies/fireworm.tres" id="30_fireworm"]
 
 [node name="Battlefield" type="Node2D"]
 
@@ -24,6 +24,9 @@ position = Vector2(-194, -100)
 
 [node name="BaldPirate" parent="." instance=ExtResource("8_player_unit")]
 position = Vector2(-772, -3)
+HeroName = "Duelist"
+HeroRole = "Hook-Hand Duelist"
+HeroDescription = "A quick front-line raider who chains leaps, hooks, and close-range shots."
 PopupAnchorOffset = Vector2(0, -95)
 DeckListOverride = ExtResource("25_dechkand_deck")
 DeckGap = Vector2(8, 8)
@@ -32,7 +35,10 @@ SpriteRootPath = "res://Assets/Sprites/pirate-placeholder-sprites/Sprites/2-Enem
 
 [node name="BigGuy" parent="." instance=ExtResource("8_player_unit")]
 position = Vector2(-437, 14)
-StartingMaxHP = 45
+HeroName = "Brute"
+HeroRole = "Iron Brute"
+HeroDescription = "A heavy guard who builds block, protects allies, and turns defense into force."
+StartingMaxHP = 35
 PopupAnchorOffset = Vector2(0, -105)
 DeckListOverride = ExtResource("26_brute_deck")
 DeckGap = Vector2(8, 8)
@@ -42,6 +48,9 @@ ActionFolderName = "11-Throw (Bomb)"
 
 [node name="Captain" parent="." instance=ExtResource("8_player_unit")]
 position = Vector2(-605, 8)
+HeroName = "Commander"
+HeroRole = "Crew Commander"
+HeroDescription = "A tactical leader who rallies the crew with cheers, battle cries, and precise cuts."
 StartingMaxHP = 25
 PopupAnchorOffset = Vector2(0, -100)
 DeckListOverride = ExtResource("27_captain_deck")
