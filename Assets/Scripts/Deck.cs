@@ -25,6 +25,7 @@ public partial class Deck : Control
 	[Export] public int FaceUpDrawPriority { get; set; } = 1800;
 	[Export] public int HoverDrawPriority { get; set; } = 10000;
 	[Export] public Color DimmedModulate { get; set; } = new(0.46f, 0.46f, 0.46f, 0.86f);
+	[Export] public Color ControllerUnfocusedModulate { get; set; } = new(0.68f, 0.68f, 0.68f, 0.95f);
 
 	// Auto place the top card next to the pile
 	[Export] public bool AutoPlaceTop { get; set; } = true;
@@ -36,6 +37,7 @@ public partial class Deck : Control
 	[Export] public float PlayFadeDurationSec { get; set; } = 0.30f;
 
 	private Control _pile, _top;
+	private Control _controllerPromptRoot;
 	private Vector2 _origTopPos;
 	private CanvasItem _drawPriorityRoot;
 	private int _rootNormalZIndex;
@@ -57,6 +59,8 @@ public partial class Deck : Control
 	private bool _turnDimmed;
 	private bool _energyDimmed;
 	private bool _deadDimmed;
+	private bool _controllerFocused;
+	private bool _controllerUnfocused;
 	private bool _isActiveHover;
 	private bool _ownerHovering;
 	private bool _hoveringTopCard;
@@ -71,6 +75,8 @@ public partial class Deck : Control
 	private static readonly List<Deck> _hoverDecks = new();
 	private static Deck _activeHoverDeck;
 	private static CanvasLayer _hoverCardLayer;
+	private static Texture2D _drawPilePromptIcon;
+	private static Texture2D _discardPilePromptIcon;
 	public static bool IsDrawPileModalOpen => _openDrawPileModalCount > 0;
 
 	[Signal] public delegate void TopChangedEventHandler(CardData newTop);
@@ -174,6 +180,38 @@ public partial class Deck : Control
 	public void RequestPlay()
 	{
 		EmitSignal(SignalName.PlayRequested, this, Peek());
+	}
+
+	public bool CanControllerFocus()
+		=> EnableInput && !_deadDimmed && !_turnDimmed && !_targetingDimmed && Peek() != null && !Deck.IsDrawPileModalOpen;
+
+	public bool CanControllerInspect()
+		=> !_deadDimmed && !_targetingDimmed && Peek() != null && !Deck.IsDrawPileModalOpen;
+
+	public bool TryRequestControllerPlay()
+	{
+		if (!CanPlayTopCard())
+			return false;
+
+		RequestTopCardPlay();
+		return true;
+	}
+
+	public void OpenDrawPileModal()
+	{
+		if (CanOpenPileModal(_draw))
+			OpenPileModal("Draw Pile", GetRandomizedDrawPileSnapshot(), drawPile: true);
+	}
+
+	public void OpenDiscardPileModal()
+	{
+		if (CanOpenPileModal(_discard))
+			OpenPileModal("Discard Pile", new List<CardData>(_discard), drawPile: false);
+	}
+
+	public void CloseOpenPileModal()
+	{
+		CloseDrawPileModal();
 	}
 
 	// ---------- Build / shuffle ----------
@@ -336,6 +374,27 @@ public partial class Deck : Control
 			card.SetTargetingFocus(focused);
 	}
 
+	public void SetControllerFocus(bool focused)
+	{
+		if (_controllerFocused == focused)
+			return;
+
+		_controllerFocused = focused;
+		foreach (var card in GetTopCardViews())
+			card.SetControllerFocus(focused);
+		UpdateControllerPilePrompts();
+		ApplyEffectiveVisualState();
+	}
+
+	public void SetControllerUnfocused(bool unfocused)
+	{
+		if (_controllerUnfocused == unfocused)
+			return;
+
+		_controllerUnfocused = unfocused;
+		ApplyEffectiveVisualState();
+	}
+
 	public void SetTargetingDimmed(bool dimmed)
 	{
 		if (_targetingDimmed == dimmed)
@@ -456,6 +515,8 @@ public partial class Deck : Control
 		}
 		ClearHoverPreviewCard();
 		CloseDrawPileModal();
+		_controllerPromptRoot?.QueueFree();
+		_controllerPromptRoot = null;
 	}
 
 	// ---------- View ----------
@@ -516,6 +577,8 @@ public partial class Deck : Control
 
 			ApplyEffectiveTooltipSuppression(force: true);
 		}
+
+		UpdateControllerPilePrompts();
 	}
 
 	private Control CreateCardView(CardData card)
@@ -983,6 +1046,87 @@ public partial class Deck : Control
 	private bool CanOpenDrawPile()
 		=> CanOpenPileModal(_draw);
 
+	private void UpdateControllerPilePrompts()
+	{
+		if (Engine.IsEditorHint() || !IsInsideTree())
+			return;
+
+		bool show = _controllerFocused && !_targetingDimmed && !Deck.IsDrawPileModalOpen && IsVisibleInTree();
+		bool showDraw = show && _draw.Count > 0;
+		bool showDiscard = show && _discard.Count > 0;
+		if (!showDraw && !showDiscard)
+		{
+			ClearControllerPilePrompts();
+			return;
+		}
+
+		_controllerPromptRoot ??= new Control
+		{
+			Name = "ControllerPilePrompts",
+			MouseFilter = MouseFilterEnum.Ignore,
+			ZAsRelative = false,
+			ZIndex = HoverDrawPriority + 10
+		};
+		if (_controllerPromptRoot.GetParent() == null)
+			AddChild(_controllerPromptRoot);
+
+		foreach (var child in _controllerPromptRoot.GetChildren())
+			child.QueueFree();
+
+		if (showDraw)
+			_controllerPromptRoot.AddChild(CreateControllerPrompt(LoadDrawPilePromptIcon(), GetDrawPilePromptPosition()));
+		if (showDiscard)
+			_controllerPromptRoot.AddChild(CreateControllerPrompt(LoadDiscardPilePromptIcon(), GetDiscardPilePromptPosition()));
+	}
+
+	private void ClearControllerPilePrompts()
+	{
+		if (_controllerPromptRoot == null)
+			return;
+
+		foreach (var child in _controllerPromptRoot.GetChildren())
+			child.QueueFree();
+	}
+
+	private TextureRect CreateControllerPrompt(Texture2D icon, Vector2 position)
+	{
+		Vector2 size = icon?.GetSize() ?? new Vector2(20, 16);
+		return new TextureRect
+		{
+			Texture = icon,
+			StretchMode = TextureRect.StretchModeEnum.Keep,
+			ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+			CustomMinimumSize = size,
+			Size = size,
+			Position = position.Floor(),
+			MouseFilter = MouseFilterEnum.Ignore
+		};
+	}
+
+	private Vector2 GetDrawPilePromptPosition()
+	{
+		Vector2 iconSize = LoadDrawPilePromptIcon()?.GetSize() ?? new Vector2(20, 16);
+		Vector2 pileSize = CardBack?.GetSize() ?? new Vector2(48, 72);
+		Vector2 pilePos = _pile?.Position ?? Vector2.Zero;
+		return pilePos + new Vector2(pileSize.X - iconSize.X, pileSize.Y - iconSize.Y);
+	}
+
+	private Vector2 GetDiscardPilePromptPosition()
+	{
+		Vector2 iconSize = LoadDiscardPilePromptIcon()?.GetSize() ?? new Vector2(20, 16);
+		Vector2 cardSize = CardBack?.GetSize() ?? new Vector2(48, 72);
+		Vector2 discardPos = _pile?.Position ?? Vector2.Zero;
+		int facing = FacingSign();
+		float x = -facing * (Mathf.Max(0, DiscardBehindOffset) + Mathf.Max(0, DrawForwardOffset));
+		return discardPos + new Vector2(Mathf.Floor(x) + cardSize.X - iconSize.X, cardSize.Y - iconSize.Y);
+	}
+
+	private static Texture2D LoadDrawPilePromptIcon()
+		=> _drawPilePromptIcon ??= ResourceLoader.Load<Texture2D>("res://Assets/Sprites/Icons/ui_buttons_20x16/xbox-LT-16.png");
+
+	private static Texture2D LoadDiscardPilePromptIcon()
+		=> _discardPilePromptIcon ??= ResourceLoader.Load<Texture2D>("res://Assets/Sprites/Icons/ui_buttons_20x16/xbox-RT-16.png");
+
 	private bool CanPlayTopCard()
 		=> EnableInput && !_deadDimmed && !_targetingDimmed && !_turnDimmed && !_energyDimmed && !Deck.IsDrawPileModalOpen;
 
@@ -1118,16 +1262,19 @@ public partial class Deck : Control
 		ApplyDrawPriority();
 		ApplyTopCardDrawPriority();
 		ApplyEffectiveTooltipSuppression();
+		UpdateControllerPilePrompts();
 	}
 
 	private void ApplyTopCardModulate(bool force = false)
 	{
-		bool topCardsDimmed = _deadDimmed || (_energyDimmed && !_targetingDimmed && !_turnDimmed);
+		bool topCardsDimmed = _deadDimmed || (_energyDimmed && !_targetingDimmed && !_turnDimmed) || (_controllerUnfocused && !_controllerFocused && !_targetingDimmed);
 		if (!force && _topCardsDimmed == topCardsDimmed)
 			return;
 
 		_topCardsDimmed = topCardsDimmed;
-		Color topModulate = topCardsDimmed ? DimmedModulate : _normalModulate;
+		Color topModulate = _controllerUnfocused && !_controllerFocused && !_deadDimmed && !_energyDimmed && !_targetingDimmed
+			? ControllerUnfocusedModulate
+			: topCardsDimmed ? DimmedModulate : _normalModulate;
 		if (_top != null)
 		{
 			foreach (Node child in _top.GetChildren())
@@ -1189,7 +1336,7 @@ public partial class Deck : Control
 
 		_hoverPreviewCard.Size = source.Size;
 		_hoverPreviewCard.Position = source.GetGlobalTransformWithCanvas().Origin.Floor();
-		_hoverPreviewCard.Modulate = _topCardsDimmed ? DimmedModulate : _normalModulate;
+		_hoverPreviewCard.Modulate = _topCardsDimmed ? (_controllerUnfocused && !_controllerFocused ? ControllerUnfocusedModulate : DimmedModulate) : _normalModulate;
 		_hoverPreviewCard.Visible = true;
 		if (_hoverPreviewCard.GetParent() is Node parent)
 			parent.MoveChild(_hoverPreviewCard, parent.GetChildCount() - 1);

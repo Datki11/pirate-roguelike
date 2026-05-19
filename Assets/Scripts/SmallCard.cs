@@ -26,6 +26,7 @@ public partial class SmallCard : BaseCardView
 	private StyleBoxFlat _normalFrameStyle;
 	private StyleBoxFlat _focusFrameStyle;
 	private bool _targetingFocus;
+	private bool _controllerFocus;
 	private float _targetingFocusTime;
 	
 	public override void SetData(CardData data)
@@ -72,6 +73,21 @@ public partial class SmallCard : BaseCardView
 
 		_targetingFocus = focused;
 		_targetingFocusTime = 0f;
+		ApplyFocusStyle();
+	}
+
+	public override void SetControllerFocus(bool focused)
+	{
+		if (_controllerFocus == focused)
+			return;
+
+		_controllerFocus = focused;
+		ApplyFocusStyle();
+	}
+
+	private void ApplyFocusStyle()
+	{
+		bool focused = _targetingFocus || _controllerFocus;
 
 		if (_frame == null)
 			return;
@@ -80,7 +96,7 @@ public partial class SmallCard : BaseCardView
 			return;
 
 		_frame.AddThemeStyleboxOverride("panel", focused ? _focusFrameStyle : _normalFrameStyle);
-		SetProcess(focused);
+		SetProcess(_targetingFocus);
 	}
 
 	public override void SetTooltipSuppressed(bool suppressed)

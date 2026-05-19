@@ -7,5 +7,7 @@ public abstract partial class BaseCardView : Control
 
 	public virtual void SetTargetingFocus(bool focused) { }
 
+	public virtual void SetControllerFocus(bool focused) { }
+
 	public virtual void SetTooltipSuppressed(bool suppressed) { }
 }

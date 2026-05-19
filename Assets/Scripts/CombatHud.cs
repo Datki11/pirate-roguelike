@@ -11,6 +11,8 @@ public partial class CombatHud : Control
 	private readonly Color _button = new(0.82f, 0.12f, 0.10f);
 	private readonly Color _buttonHover = new(0.95f, 0.18f, 0.14f);
 
+	private static Texture2D _endTurnPromptIcon;
+
 	private EnergyManager _energyManager;
 	private Rect2 _endTurnRect;
 	private bool _hoverEndTurn;
@@ -100,6 +102,15 @@ public partial class CombatHud : Control
 		}
 	}
 
+	public override void _UnhandledInput(InputEvent e)
+	{
+		if (IsControllerEndTurnPressed(e) && CanEndTurn())
+		{
+			_energyManager?.EndPlayerTurn();
+			GetViewport().SetInputAsHandled();
+		}
+	}
+
 	public override void _Draw()
 	{
 		Vector2 size = Size;
@@ -133,7 +144,19 @@ public partial class CombatHud : Control
 	{
 		DrawRect(_endTurnRect, _hoverEndTurn ? _buttonHover : _button, true);
 		DrawRect(_endTurnRect, _ink, false, 2);
-		DrawPixelText("END TURN", _endTurnRect.Position + new Vector2(25, 29), 18, Colors.White);
+
+		Texture2D promptIcon = LoadEndTurnPromptIcon();
+		Vector2 iconSize = promptIcon?.GetSize() ?? new Vector2(20, 16);
+		if (promptIcon != null)
+		{
+			var iconRect = new Rect2(
+				(_endTurnRect.Position + new Vector2(14, Mathf.Round((_endTurnRect.Size.Y - iconSize.Y) * 0.5f))).Floor(),
+				iconSize
+			);
+			DrawTextureRect(promptIcon, iconRect, false);
+		}
+
+		DrawPixelText("END TURN", _endTurnRect.Position + new Vector2(44, 29), 18, Colors.White);
 	}
 
 	private Rect2 GetEndTurnRect()
@@ -159,6 +182,12 @@ public partial class CombatHud : Control
 	{
 		return _energyManager != null && _energyManager.IsPlayerTurn && !Deck.IsDrawPileModalOpen;
 	}
+
+	private static Texture2D LoadEndTurnPromptIcon()
+		=> _endTurnPromptIcon ??= ResourceLoader.Load<Texture2D>("res://Assets/Sprites/Icons/ui_buttons_20x16/xbox-Y-16.png");
+
+	private bool IsControllerEndTurnPressed(InputEvent e)
+		=> e is InputEventJoypadButton button && button.Pressed && button.ButtonIndex == JoyButton.Y;
 
 	private void DrawPixelText(string text, Vector2 baseline, int size, Color color)
 	{

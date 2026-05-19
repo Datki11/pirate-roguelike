@@ -98,10 +98,9 @@ public partial class PauseMenu : CanvasLayer
 
 	public override void _Input(InputEvent e)
 	{
-		if (e is not InputEventKey key || !key.Pressed || key.Echo)
-			return;
-
-		if (key.Keycode != Key.Escape && !e.IsActionPressed("ui_cancel"))
+		bool pauseToggle = IsPauseTogglePressed(e);
+		bool menuCancel = IsMenuCancelPressed(e);
+		if (!pauseToggle && !menuCancel)
 			return;
 
 		if (_root != null && _root.Visible)
@@ -113,10 +112,32 @@ public partial class PauseMenu : CanvasLayer
 		}
 		else
 		{
+			if (!pauseToggle)
+				return;
+
 			ShowPause();
 		}
 
 		GetViewport().SetInputAsHandled();
+	}
+
+	private bool IsPauseTogglePressed(InputEvent e)
+	{
+		if (e is InputEventKey key)
+			return key.Pressed && !key.Echo && key.Keycode == Key.Escape;
+
+		return e is InputEventJoypadButton button && button.Pressed && button.ButtonIndex == JoyButton.Start;
+	}
+
+	private bool IsMenuCancelPressed(InputEvent e)
+	{
+		if (e is InputEventKey key && (!key.Pressed || key.Echo))
+			return false;
+
+		if (e.IsActionPressed("ui_cancel"))
+			return true;
+
+		return e is InputEventJoypadButton button && button.Pressed && button.ButtonIndex == JoyButton.B;
 	}
 
 	private void BuildOverlay()
@@ -241,7 +262,7 @@ public partial class PauseMenu : CanvasLayer
 		{
 			Text = text,
 			CustomMinimumSize = new Vector2(220, 38),
-			FocusMode = Control.FocusModeEnum.None,
+			FocusMode = Control.FocusModeEnum.All,
 			MouseFilter = Control.MouseFilterEnum.Stop
 		};
 		button.Pressed += pressed;
@@ -254,7 +275,7 @@ public partial class PauseMenu : CanvasLayer
 		var option = new OptionButton
 		{
 			CustomMinimumSize = new Vector2(220, 38),
-			FocusMode = Control.FocusModeEnum.None,
+			FocusMode = Control.FocusModeEnum.All,
 			MouseFilter = Control.MouseFilterEnum.Stop
 		};
 
@@ -1277,6 +1298,7 @@ public partial class PauseMenu : CanvasLayer
 		ShowMainMenu();
 		_root.Visible = true;
 		GetTree().Paused = true;
+		GrabFirstMenuFocus(_mainMenu);
 	}
 
 	private void HidePause()
@@ -1305,6 +1327,7 @@ public partial class PauseMenu : CanvasLayer
 		if (_heroesView != null)
 			_heroesView.Visible = false;
 		_activeAnimationPreviews.Clear();
+		GrabFirstMenuFocus(_mainMenu);
 	}
 
 	private void ShowSettings()
@@ -1318,6 +1341,7 @@ public partial class PauseMenu : CanvasLayer
 		if (_heroesView != null)
 			_heroesView.Visible = false;
 		_activeAnimationPreviews.Clear();
+		GrabFirstMenuFocus(_settingsMenu);
 	}
 
 	private void ShowCompendium()
@@ -1333,6 +1357,7 @@ public partial class PauseMenu : CanvasLayer
 			_heroesView.Visible = false;
 		_activeAnimationPreviews.Clear();
 		RefreshCompendiumCards();
+		GrabFirstMenuFocus(_compendiumView);
 	}
 
 	private void ShowBestiary()
@@ -1347,6 +1372,7 @@ public partial class PauseMenu : CanvasLayer
 		if (_heroesView != null)
 			_heroesView.Visible = false;
 		RefreshBestiaryEnemies();
+		GrabFirstMenuFocus(_bestiaryView);
 	}
 
 	private void ShowHeroes()
@@ -1362,6 +1388,29 @@ public partial class PauseMenu : CanvasLayer
 			_heroesView.Visible = true;
 		_activeAnimationPreviews.Clear();
 		RefreshHeroes();
+		GrabFirstMenuFocus(_heroesView);
+	}
+
+	private void GrabFirstMenuFocus(Control root)
+	{
+		if (root == null || !root.Visible)
+			return;
+
+		foreach (Node child in root.GetChildren())
+		{
+			if (child is Control control)
+			{
+				if (control.Visible && control.FocusMode != Control.FocusModeEnum.None)
+				{
+					control.GrabFocus();
+					return;
+				}
+
+				GrabFirstMenuFocus(control);
+				if (GetViewport().GuiGetFocusOwner() != null)
+					return;
+			}
+		}
 	}
 
 	private void QuitGame()

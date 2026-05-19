@@ -58,6 +58,7 @@ public partial class PlayerUnit : Node2D, IDamageable
 	private Rect2 _layoutSpriteRect;
 	private bool _groupTargetingHighlight;
 	private bool _intentTargetPreviewActive;
+	private bool _controllerFocusActive;
 	private readonly Dictionary<string, int> _statuses = new();
 
 	public int MaxHP { get; private set; }
@@ -315,6 +316,9 @@ public partial class PlayerUnit : Node2D, IDamageable
 		_deck?.SetBaseDrawPriority(priority);
 	}
 
+	public Deck GetDeck()
+		=> _deck;
+
 	public Vector2 GetDeckStackAnchorGlobal()
 	{
 		if (_deck != null)
@@ -335,8 +339,10 @@ public partial class PlayerUnit : Node2D, IDamageable
 		_intentTargetPreviewActive = false;
 		_groupTargetingHighlight = false;
 		ApplyFriendlyTargetRingStyle(groupHighlight: false);
-		_targetRing.Visible = on;
+		_targetRing.Visible = on || _controllerFocusActive;
 		_targetRing.SetHover(false);
+		if (_controllerFocusActive && !on)
+			ApplyControllerFocusRingStyle();
 	}
 
 	public void SetGroupFriendlyTargetable(bool on)
@@ -380,8 +386,10 @@ public partial class PlayerUnit : Node2D, IDamageable
 
 			_intentTargetPreviewActive = false;
 			_targetRing.SetHover(false);
-			_targetRing.Visible = false;
+			_targetRing.Visible = _controllerFocusActive;
 			ApplyFriendlyTargetRingStyle(groupHighlight: false);
+			if (_controllerFocusActive)
+				ApplyControllerFocusRingStyle();
 			return;
 		}
 
@@ -393,6 +401,33 @@ public partial class PlayerUnit : Node2D, IDamageable
 		_targetRing.Visible = true;
 		_targetRing.SetHover(true);
 		_targetRing.QueueRedraw();
+	}
+
+	public void SetControllerFocus(bool on)
+	{
+		if (_controllerFocusActive == on)
+			return;
+
+		_controllerFocusActive = on;
+		EnsureFriendlyTargetRing();
+		if (_targetRing == null || _intentTargetPreviewActive || _groupTargetingHighlight)
+			return;
+
+		if (on)
+		{
+			ApplyControllerFocusRingStyle();
+			if (TryGetSpriteRect(out Rect2 spriteRect))
+				ApplyFriendlyTargetRingLayout(spriteRect);
+			_targetRing.Visible = true;
+			_targetRing.SetHover(true);
+			_targetRing.QueueRedraw();
+		}
+		else
+		{
+			_targetRing.SetHover(false);
+			_targetRing.Visible = false;
+			ApplyFriendlyTargetRingStyle(groupHighlight: false);
+		}
 	}
 
 	public Rect2 GetTargetingCanvasRect()
@@ -735,6 +770,20 @@ public partial class PlayerUnit : Node2D, IDamageable
 		_targetRing.BaseColor = friendly ? new Color(0.22f, 0.68f, 1f, 1f) : new Color(0.9f, 0.08f, 0.06f, 1f);
 		_targetRing.FillColor = friendly ? new Color(0.22f, 0.68f, 1f, 0.25f) : new Color(0.9f, 0.08f, 0.06f, 0.25f);
 		_targetRing.ShadowColor = friendly ? new Color(0f, 0.05f, 0.14f, 0.9f) : new Color(0.18f, 0f, 0f, 0.9f);
+		_targetRing.Thickness = 2;
+		_targetRing.Pulse = true;
+		_targetRing.HoverFill = true;
+		_targetRing.QueueRedraw();
+	}
+
+	private void ApplyControllerFocusRingStyle()
+	{
+		if (_targetRing == null)
+			return;
+
+		_targetRing.BaseColor = new Color(0.93f, 0.66f, 0.12f, 1f);
+		_targetRing.FillColor = new Color(0.93f, 0.66f, 0.12f, 0.18f);
+		_targetRing.ShadowColor = new Color(0.18f, 0.10f, 0f, 0.9f);
 		_targetRing.Thickness = 2;
 		_targetRing.Pulse = true;
 		_targetRing.HoverFill = true;

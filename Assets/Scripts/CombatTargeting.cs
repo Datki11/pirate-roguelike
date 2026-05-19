@@ -36,7 +36,22 @@ public partial class CombatTargeting : Node
 	private TargetingMode _targetingMode;
 	private bool _allEnemiesGroupTargetingActive;
 	private bool _allPlayersGroupTargetingActive;
+	private int _controllerPlayerFocusIndex = -1;
+	private int _controllerTargetFocusIndex = -1;
+	private ulong _nextControllerMoveAtMs;
+	private bool _controllerTargeting;
+	private const float ControllerAxisThreshold = 0.55f;
+	private const ulong ControllerMoveCooldownMs = 180;
 	public bool IsTargetingActive => _targeting;
+
+	private sealed class ControllerFocusEntry
+	{
+		public PlayerUnit Player;
+		public Enemy Enemy;
+		public Deck Deck;
+		public float X;
+		public bool IsPlayer => Player != null;
+	}
 
 	public override void _Ready()
 	{
@@ -63,11 +78,17 @@ public partial class CombatTargeting : Node
 		}
 		_decks = tmp.ToArray();
 		_players = _decks.Select(GetDeckOwner).OfType<PlayerUnit>().Distinct().ToArray();
-		SetProcess(false);
+		SetProcess(true);
 	}
 
 	public override void _Process(double delta)
 	{
+		if (!_targeting)
+		{
+			UpdateControllerCardFocus();
+			return;
+		}
+
 		if (!_targeting)
 			return;
 
@@ -170,9 +191,12 @@ public partial class CombatTargeting : Node
 		GD.Print("BeginTargeting");
 		_targeting = true;
 		_targetingMode = mode;
+		_controllerTargeting = IsControllerCardFocusActive();
+		ClearControllerCardFocus();
 		_combat?.RefreshEnemyIntents();
 		_lockedTarget = null;
 		_lockedPlayerTarget = null;
+		_controllerTargetFocusIndex = -1;
 		SetAllEnemiesGroupTargeting(false);
 		SetAllPlayersGroupTargeting(false);
 		foreach (var e in _enemies)
@@ -196,6 +220,8 @@ public partial class CombatTargeting : Node
 		}
 
 		ApplyTargetingVisuals(true);
+		if (_controllerTargeting)
+			FocusDefaultControllerTarget();
 		SetProcess(true);
 		UpdateTargetingArrow();
 	}
@@ -221,11 +247,11 @@ public partial class CombatTargeting : Node
 		_pendingCard = null;
 		_pendingDeck = null;
 		_targeting = false;
+		_controllerTargeting = false;
 		_combat?.RefreshEnemyIntents();
 		_lockedTarget = null;
 		_lockedPlayerTarget = null;
 		_targetingArrow?.ClearArrow();
-		SetProcess(false);
 	}
 
 	private async void OnEnemyClicked(Enemy who)
@@ -302,7 +328,7 @@ public partial class CombatTargeting : Node
 		if (_targetingMode == TargetingMode.AllEnemies)
 		{
 			Vector2 allMouse = GetViewport().GetMousePosition();
-			bool active = IsActiveAllEnemiesTargetZone(allMouse);
+			bool active = _controllerTargeting ? HasAliveEnemyTargets() : IsActiveAllEnemiesTargetZone(allMouse);
 			SetAllEnemiesGroupTargeting(active);
 			Vector2 allEndPoint = active ? GetAllEnemiesTargetAnchor() : allMouse;
 			arrow.SetAllEnemiesZone(GetAllEnemiesZoneStartX(), active);
@@ -313,7 +339,7 @@ public partial class CombatTargeting : Node
 		if (_targetingMode == TargetingMode.AllPlayers)
 		{
 			Vector2 allMouse = GetViewport().GetMousePosition();
-			bool active = IsActiveAllPlayersTargetZone(allMouse);
+			bool active = _controllerTargeting ? HasAlivePlayerTargets() : IsActiveAllPlayersTargetZone(allMouse);
 			SetAllPlayersGroupTargeting(active);
 			Vector2 allEndPoint = active ? GetAllPlayersTargetAnchor() : allMouse;
 			arrow.SetAllAlliesZone(GetAllPlayersZoneStartX(), active);
@@ -327,7 +353,7 @@ public partial class CombatTargeting : Node
 		Vector2 mouse = GetViewport().GetMousePosition();
 		if (_targetingMode == TargetingMode.SelfPlayer || _targetingMode == TargetingMode.SinglePlayer)
 		{
-			if (_lockedPlayerTarget == null || !IsInstanceValid(_lockedPlayerTarget) || !_lockedPlayerTarget.Alive || !_lockedPlayerTarget.GetTargetingCanvasRect().HasPoint(mouse))
+			if (!_controllerTargeting && (_lockedPlayerTarget == null || !IsInstanceValid(_lockedPlayerTarget) || !_lockedPlayerTarget.Alive || !_lockedPlayerTarget.GetTargetingCanvasRect().HasPoint(mouse)))
 				_lockedPlayerTarget = GetFriendlyTargetUnderMouse(mouse);
 			ApplyFriendlyTargetHover(_lockedPlayerTarget);
 			Vector2 playerEndPoint = _lockedPlayerTarget != null ? _lockedPlayerTarget.GetTargetingAnchorCanvas() : mouse;
@@ -337,7 +363,7 @@ public partial class CombatTargeting : Node
 
 		ApplyFriendlyTargetHover(null);
 
-		if (_lockedTarget == null || !IsInstanceValid(_lockedTarget) || !_lockedTarget.Alive || !_lockedTarget.GetTargetingCanvasRect().HasPoint(mouse))
+		if (!_controllerTargeting && (_lockedTarget == null || !IsInstanceValid(_lockedTarget) || !_lockedTarget.Alive || !_lockedTarget.GetTargetingCanvasRect().HasPoint(mouse)))
 			_lockedTarget = GetTargetUnderMouse(mouse);
 		Vector2 endPoint = _lockedTarget != null ? _lockedTarget.GetTargetingAnchorCanvas() : mouse;
 		arrow.SetArrow(_pendingDeck.GetTopCardCanvasRect(), endPoint, _lockedTarget != null);
@@ -610,11 +636,346 @@ public partial class CombatTargeting : Node
 	public override void _UnhandledInput(InputEvent e)
 	{
 		if (Deck.IsDrawPileModalOpen)
+		{
+			if (IsControllerCancelPressed(e))
+			{
+				foreach (var deck in _decks)
+					deck?.CloseOpenPileModal();
+				GetViewport().SetInputAsHandled();
+			}
 			return;
+		}
 
 		if (_targeting && e.IsActionPressed("ui_cancel"))
+		{
 			EndTargeting(); // cancel: keep top card
+			GetViewport().SetInputAsHandled();
+			return;
+		}
+
+		if (_targeting)
+		{
+			if (TryGetControllerHorizontalMove(e, out int targetDirection))
+			{
+				MoveControllerTargetFocus(targetDirection);
+				GetViewport().SetInputAsHandled();
+				return;
+			}
+
+			if (IsControllerAcceptPressed(e))
+			{
+				ConfirmControllerTarget();
+				GetViewport().SetInputAsHandled();
+				return;
+			}
+
+			if (IsControllerCancelPressed(e))
+			{
+				EndTargeting();
+				GetViewport().SetInputAsHandled();
+				return;
+			}
+
+			return;
+		}
+
+		if (TryGetControllerHorizontalMove(e, out int direction))
+		{
+			MoveControllerCardFocus(direction);
+			GetViewport().SetInputAsHandled();
+			return;
+		}
+
+		if (IsControllerAcceptPressed(e))
+		{
+			GetFocusedControllerDeck()?.TryRequestControllerPlay();
+			GetViewport().SetInputAsHandled();
+			return;
+		}
+
+		if (IsControllerDrawPilePressed(e))
+		{
+			GetFocusedControllerDeck()?.OpenDrawPileModal();
+			GetViewport().SetInputAsHandled();
+			return;
+		}
+
+		if (IsControllerDiscardPilePressed(e))
+		{
+			GetFocusedControllerDeck()?.OpenDiscardPileModal();
+			GetViewport().SetInputAsHandled();
+		}
 	}
+
+	private void UpdateControllerCardFocus()
+	{
+		if (!IsPlayerTurn())
+		{
+			ClearControllerCardFocus();
+			return;
+		}
+
+		var focusable = GetControllerFocusableEntries();
+		if (focusable.Length == 0)
+		{
+			ClearControllerCardFocus();
+			return;
+		}
+
+		if (_controllerPlayerFocusIndex < 0 || _controllerPlayerFocusIndex >= focusable.Length)
+			_controllerPlayerFocusIndex = 0;
+
+		ApplyControllerCardFocus(focusable);
+	}
+
+	private void MoveControllerCardFocus(int direction)
+	{
+		var focusable = GetControllerFocusableEntries();
+		if (focusable.Length == 0)
+			return;
+
+		if (_controllerPlayerFocusIndex < 0 || _controllerPlayerFocusIndex >= focusable.Length)
+			_controllerPlayerFocusIndex = 0;
+		else
+			_controllerPlayerFocusIndex = PosMod(_controllerPlayerFocusIndex + direction, focusable.Length);
+
+		ApplyControllerCardFocus(focusable);
+	}
+
+	private void ApplyControllerCardFocus(ControllerFocusEntry[] focusable)
+	{
+		ControllerFocusEntry focused = _controllerPlayerFocusIndex >= 0 && _controllerPlayerFocusIndex < focusable.Length ? focusable[_controllerPlayerFocusIndex] : null;
+		foreach (var player in _players ?? System.Array.Empty<PlayerUnit>())
+		{
+			if (player == null || !IsInstanceValid(player))
+				continue;
+
+			Deck deck = player.GetDeck();
+			bool canFocus = focusable.Any(entry => entry.Player == player);
+			bool active = focused?.Player == player;
+			player.SetControllerFocus(active);
+			deck?.SetControllerFocus(active);
+			deck?.SetControllerUnfocused(focused != null && canFocus && !active);
+		}
+
+		foreach (var enemy in _enemies ?? System.Array.Empty<Enemy>())
+		{
+			if (enemy == null || !IsInstanceValid(enemy))
+				continue;
+
+			Deck deck = enemy.GetDeck();
+			bool canFocus = focusable.Any(entry => entry.Enemy == enemy);
+			bool active = focused?.Enemy == enemy;
+			enemy.SetControllerFocus(active);
+			deck?.SetControllerUnfocused(focused != null && canFocus && !active);
+		}
+	}
+
+	private void ClearControllerCardFocus()
+	{
+		_controllerPlayerFocusIndex = -1;
+		foreach (var player in _players ?? System.Array.Empty<PlayerUnit>())
+		{
+			if (player == null || !IsInstanceValid(player))
+				continue;
+
+			player.SetControllerFocus(false);
+			player.GetDeck()?.SetControllerFocus(false);
+			player.GetDeck()?.SetControllerUnfocused(false);
+		}
+
+		foreach (var enemy in _enemies ?? System.Array.Empty<Enemy>())
+		{
+			if (enemy == null || !IsInstanceValid(enemy))
+				continue;
+
+			enemy.SetControllerFocus(false);
+			enemy.GetDeck()?.SetControllerFocus(false);
+			enemy.GetDeck()?.SetControllerUnfocused(false);
+		}
+	}
+
+	private ControllerFocusEntry[] GetControllerFocusableEntries()
+	{
+		var entries = new System.Collections.Generic.List<ControllerFocusEntry>();
+		foreach (var player in _players ?? System.Array.Empty<PlayerUnit>())
+		{
+			Deck deck = player?.GetDeck();
+			if (player == null || !IsInstanceValid(player) || !player.Alive || deck?.CanControllerInspect() != true)
+				continue;
+
+			entries.Add(new ControllerFocusEntry
+			{
+				Player = player,
+				Deck = deck,
+				X = player.GetDeckStackAnchorGlobal().X
+			});
+		}
+
+		foreach (var enemy in _enemies ?? System.Array.Empty<Enemy>())
+		{
+			Deck deck = enemy?.GetDeck();
+			if (enemy == null || !IsInstanceValid(enemy) || !enemy.Alive || deck?.CanControllerInspect() != true)
+				continue;
+
+			entries.Add(new ControllerFocusEntry
+			{
+				Enemy = enemy,
+				Deck = deck,
+				X = enemy.GetDeckStackAnchorGlobal().X
+			});
+		}
+
+		return entries
+			.OrderBy(entry => entry.X)
+			.ThenBy(entry => entry.IsPlayer ? 0 : 1)
+			.ToArray();
+	}
+
+	private bool IsControllerCardFocusActive()
+		=> _controllerPlayerFocusIndex >= 0 && GetFocusedControllerDeck() != null;
+
+	private Deck GetFocusedControllerDeck()
+	{
+		var focusable = GetControllerFocusableEntries();
+		if (_controllerPlayerFocusIndex < 0 || _controllerPlayerFocusIndex >= focusable.Length)
+			return null;
+
+		return focusable[_controllerPlayerFocusIndex].Deck;
+	}
+
+	private bool IsPlayerTurn()
+		=> _energy == null || _energy.IsPlayerTurn;
+
+	private void FocusDefaultControllerTarget()
+	{
+		_controllerTargetFocusIndex = 0;
+		ApplyControllerTargetFocus();
+	}
+
+	private void MoveControllerTargetFocus(int direction)
+	{
+		if (!_controllerTargeting)
+			_controllerTargeting = true;
+
+		var count = GetControllerTargetCount();
+		if (count <= 0)
+			return;
+
+		if (_controllerTargetFocusIndex < 0 || _controllerTargetFocusIndex >= count)
+			_controllerTargetFocusIndex = 0;
+		else
+			_controllerTargetFocusIndex = PosMod(_controllerTargetFocusIndex + direction, count);
+
+		ApplyControllerTargetFocus();
+	}
+
+	private int GetControllerTargetCount()
+	{
+		return _targetingMode switch
+		{
+			TargetingMode.SingleEnemy => GetControllerEnemyTargets().Length,
+			TargetingMode.SinglePlayer or TargetingMode.SelfPlayer => GetControllerPlayerTargets().Length,
+			_ => 1
+		};
+	}
+
+	private void ApplyControllerTargetFocus()
+	{
+		if (_targetingMode == TargetingMode.SingleEnemy)
+		{
+			var targets = GetControllerEnemyTargets();
+			_lockedTarget = targets.Length > 0 ? targets[Mathf.Clamp(_controllerTargetFocusIndex, 0, targets.Length - 1)] : null;
+			UpdateTargetingArrow();
+			return;
+		}
+
+		if (_targetingMode == TargetingMode.SinglePlayer || _targetingMode == TargetingMode.SelfPlayer)
+		{
+			var targets = GetControllerPlayerTargets();
+			_lockedPlayerTarget = targets.Length > 0 ? targets[Mathf.Clamp(_controllerTargetFocusIndex, 0, targets.Length - 1)] : null;
+			UpdateTargetingArrow();
+			return;
+		}
+
+		UpdateTargetingArrow();
+	}
+
+	private Enemy[] GetControllerEnemyTargets()
+		=> (_enemies ?? System.Array.Empty<Enemy>())
+			.Where(enemy => enemy != null && IsInstanceValid(enemy) && enemy.Alive)
+			.OrderBy(enemy => enemy.GetTargetingAnchorCanvas().X)
+			.ToArray();
+
+	private PlayerUnit[] GetControllerPlayerTargets()
+	{
+		PlayerUnit owner = GetDeckOwner(_pendingDeck) as PlayerUnit;
+		return (_players ?? System.Array.Empty<PlayerUnit>())
+			.Where(player => player != null && IsInstanceValid(player) && player.Alive)
+			.Where(player => _targetingMode != TargetingMode.SelfPlayer || player == owner)
+			.Where(player => _targetingMode != TargetingMode.SinglePlayer || player != owner)
+			.OrderBy(player => player.GetTargetingAnchorCanvas().X)
+			.ToArray();
+	}
+
+	private void ConfirmControllerTarget()
+	{
+		if (!_targeting)
+			return;
+
+		if (_targetingMode == TargetingMode.AllEnemies)
+			ConfirmAllEnemiesTarget();
+		else if (_targetingMode == TargetingMode.AllPlayers)
+			ConfirmAllPlayersTarget();
+		else if (_targetingMode == TargetingMode.SelfPlayer)
+			ConfirmSelfTarget();
+		else if (_targetingMode == TargetingMode.SinglePlayer && _lockedPlayerTarget != null)
+			ConfirmPlayerTarget(_lockedPlayerTarget);
+		else if (_targetingMode == TargetingMode.SingleEnemy && _lockedTarget != null)
+			OnEnemyClicked(_lockedTarget);
+	}
+
+	private bool TryGetControllerHorizontalMove(InputEvent e, out int direction)
+	{
+		direction = 0;
+
+		if (e is InputEventJoypadButton button && button.Pressed)
+		{
+			if (button.ButtonIndex == JoyButton.DpadLeft)
+				direction = -1;
+			else if (button.ButtonIndex == JoyButton.DpadRight)
+				direction = 1;
+		}
+		else if (e is InputEventJoypadMotion motion && motion.Axis == JoyAxis.LeftX && Mathf.Abs(motion.AxisValue) >= ControllerAxisThreshold)
+		{
+			ulong now = Time.GetTicksMsec();
+			if (now < _nextControllerMoveAtMs)
+				return false;
+
+			_nextControllerMoveAtMs = now + ControllerMoveCooldownMs;
+			direction = motion.AxisValue < 0f ? -1 : 1;
+		}
+
+		return direction != 0;
+	}
+
+	private bool IsControllerAcceptPressed(InputEvent e)
+		=> e is InputEventJoypadButton button && button.Pressed && button.ButtonIndex == JoyButton.A;
+
+	private bool IsControllerCancelPressed(InputEvent e)
+		=> e is InputEventJoypadButton button && button.Pressed && button.ButtonIndex == JoyButton.B;
+
+	private bool IsControllerDrawPilePressed(InputEvent e)
+		=> IsControllerTriggerPressed(e, JoyAxis.TriggerLeft);
+
+	private bool IsControllerDiscardPilePressed(InputEvent e)
+		=> IsControllerTriggerPressed(e, JoyAxis.TriggerRight);
+
+	private bool IsControllerTriggerPressed(InputEvent e, JoyAxis axis)
+		=> e is InputEventJoypadMotion motion && motion.Axis == axis && motion.AxisValue >= ControllerAxisThreshold;
+
+	private int PosMod(int value, int length)
+		=> length <= 0 ? 0 : ((value % length) + length) % length;
 }
 
 public partial class TargetingArrowOverlay : Control

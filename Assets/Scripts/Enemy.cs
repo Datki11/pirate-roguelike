@@ -85,6 +85,7 @@ public partial class Enemy : Control, IDamageable
 	private bool _unitHovering;
 	private bool _groupTargetingHighlight;
 	private bool _intentTargetPreviewActive;
+	private bool _controllerFocusActive;
 	private readonly Dictionary<string, int> _statuses = new();
 
 	// --- Signals (ADD THIS BACK) ---
@@ -421,8 +422,10 @@ public partial class Enemy : Control, IDamageable
 		_intentTargetPreviewActive = false;
 		_groupTargetingHighlight = false;
 		ApplyTargetRingStyle(groupHighlight: false);
-		if (_ring != null) _ring.Visible = on;
+		if (_ring != null) _ring.Visible = on || _controllerFocusActive;
 		if (!on && _ring is TargetRing tr) tr.SetHover(false);
+		if (_controllerFocusActive && !on)
+			ApplyControllerFocusRingStyle();
 	}
 
 	public void SetGroupTargetable(bool on)
@@ -453,8 +456,10 @@ public partial class Enemy : Control, IDamageable
 
 			_intentTargetPreviewActive = false;
 			_ringTR?.SetHover(false);
-			_ring.Visible = false;
+			_ring.Visible = _controllerFocusActive;
 			ApplyTargetRingStyle(groupHighlight: false);
+			if (_controllerFocusActive)
+				ApplyControllerFocusRingStyle();
 			return;
 		}
 
@@ -505,6 +510,20 @@ public partial class Enemy : Control, IDamageable
 		_ringTR.QueueRedraw();
 	}
 
+	private void ApplyControllerFocusRingStyle()
+	{
+		if (_ringTR == null)
+			return;
+
+		_ringTR.BaseColor = new Color(0.93f, 0.66f, 0.12f, 1f);
+		_ringTR.FillColor = new Color(0.93f, 0.66f, 0.12f, 0.18f);
+		_ringTR.ShadowColor = new Color(0.18f, 0.10f, 0f, 0.9f);
+		_ringTR.Thickness = 2;
+		_ringTR.Pulse = true;
+		_ringTR.HoverFill = true;
+		_ringTR.QueueRedraw();
+	}
+
 	public void SetDeckTargetingDimmed(bool dimmed)
 	{
 		_deck?.SetTargetingDimmed(dimmed);
@@ -523,6 +542,36 @@ public partial class Enemy : Control, IDamageable
 	public void SetDeckTooltipSuppressed(bool suppressed)
 	{
 		_deck?.SetTopCardTooltipSuppressed(suppressed);
+	}
+
+	public Deck GetDeck()
+		=> _deck;
+
+	public void SetControllerFocus(bool focused)
+	{
+		if (_controllerFocusActive == focused)
+			return;
+
+		_controllerFocusActive = focused;
+		_deck?.SetControllerFocus(focused);
+		_deck?.SetOwnerHovering(focused);
+
+		if (_ring == null || _intentTargetPreviewActive || _groupTargetingHighlight)
+			return;
+
+		if (focused)
+		{
+			ApplyControllerFocusRingStyle();
+			_ring.Visible = true;
+			_ringTR?.SetHover(true);
+			_ring.QueueRedraw();
+		}
+		else
+		{
+			_ringTR?.SetHover(false);
+			_ring.Visible = false;
+			ApplyTargetRingStyle(groupHighlight: false);
+		}
 	}
 
 	public CardData PeekTopCard()
