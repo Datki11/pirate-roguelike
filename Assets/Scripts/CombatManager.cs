@@ -21,8 +21,8 @@ public partial class CombatManager : Node
 	[Export] public NodePath EnergyPath { get; set; }
 	[Export] public float EnemyTurnStartDelaySec { get; set; } = 0.35f;
 	[Export] public float StartOfTurnStatusEffectDelaySec { get; set; } = 0.9f;
-	[Export] public float EnemyIntentArrowDurationSec { get; set; } = 0.44f;
-	[Export] public float EnemyIntentTargetHoldSec { get; set; } = 0.24f;
+	[Export] public float EnemyIntentArrowDurationSec { get; set; } = 0.365f;
+	[Export] public float EnemyIntentTargetHoldSec { get; set; } = 0.20f;
 
 	private Node _vfx;
 	private CanvasLayer _popupLayer;

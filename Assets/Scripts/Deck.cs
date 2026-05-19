@@ -31,9 +31,9 @@ public partial class Deck : Control
 	[Export] public int DrawForwardOffset { get; set; } = 18;
 	[Export] public int DiscardBehindOffset { get; set; } = 44;
 	[Export] public int PileVerticalOffset { get; set; } = 16;
-	[Export] public float PlayMoveDurationSec { get; set; } = 0.32f;
-	[Export] public float PlayHoldDurationSec { get; set; } = 0.40f;
-	[Export] public float PlayFadeDurationSec { get; set; } = 0.36f;
+	[Export] public float PlayMoveDurationSec { get; set; } = 0.265f;
+	[Export] public float PlayHoldDurationSec { get; set; } = 0.335f;
+	[Export] public float PlayFadeDurationSec { get; set; } = 0.30f;
 
 	private Control _pile, _top;
 	private Vector2 _origTopPos;

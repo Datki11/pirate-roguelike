@@ -20,7 +20,7 @@ PilePath = NodePath("Draw Pile")
 TopHolderPath = NodePath("Top Card")
 BackOffset = Vector2i(2, -2)
 DiscardOnTopClick = false
-PlayMoveDurationSec = 0.64
+PlayMoveDurationSec = 0.535
 
 [node name="Draw Pile" type="Control" parent="."]
 anchors_preset = 0
