@@ -1,7 +1,7 @@
-[gd_resource type="Resource" script_class="EffectDef" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="EffectDef" load_steps=3 format=3 uid="uid://bdp2v72xswvyt"]
 
-[ext_resource type="Texture2D" path="res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/shield_padded.png" id="1_icon"]
-[ext_resource type="Script" path="res://Assets/Scripts/EffectDef.cs" id="2_script"]
+[ext_resource type="Texture2D" uid="uid://byf1n6tqjv6u3" path="res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/shield_padded.png" id="1_icon"]
+[ext_resource type="Script" uid="uid://bfxd4hm28vlf0" path="res://Assets/Scripts/EffectDef.cs" id="2_script"]
 
 [resource]
 script = ExtResource("2_script")
@@ -9,4 +9,4 @@ Id = "protect"
 DisplayName = "Protector"
 Icon = ExtResource("1_icon")
 ShortFormat = "{ICON} {AMOUNT}"
-LongFormat = "Redirect single-target attack damage to this unit for {AMOUNT} turns."
+LongFormat = "Redirect single-target harmful intents to this unit for {AMOUNT} turns."

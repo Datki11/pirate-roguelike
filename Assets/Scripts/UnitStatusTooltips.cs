@@ -22,7 +22,7 @@ public static class UnitStatusTooltips
 		if (block > 0)
 			entries.Add(new("Block", $"Prevents incoming attack damage. Current block: {block}. Block is cleared at the start of the player's turn.", GetIcon("block")));
 
-		AddStatus(entries, statuses, "protector", "Protector", "Single-target attack damage against this team is redirected to this unit. Loses 1 at the start of this unit's turn.");
+		AddStatus(entries, statuses, "protector", "Protector", "Single-target harmful intents against this team are redirected to this unit. Loses 1 at the start of this unit's turn.");
 		AddStatus(entries, statuses, "bleed", "Bleed", "At the start of this unit's turn, it takes damage equal to bleed.");
 		AddStatus(entries, statuses, "weak", "Weak", "This unit deals 50% less damage. At the start of its turn, it loses 1 weak.");
 		AddStatus(entries, statuses, "regen", "Regen", "At the start of this unit's turn, it gains HP equal to regen, then loses 1 regen.");

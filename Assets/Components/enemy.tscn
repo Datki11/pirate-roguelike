@@ -69,3 +69,4 @@ CardBack = ExtResource("8_8sbev")
 BackOffset = Vector2i(-2, -2)
 Side = 1
 EnableInput = false
+PlayMoveDurationSec = 0.64

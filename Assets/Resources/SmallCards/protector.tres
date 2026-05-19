@@ -1,26 +1,32 @@
-[gd_resource type="Resource" script_class="CardData" load_steps=7 format=3 uid="uid://cjdpr2jpwdvav"]
+[gd_resource type="Resource" script_class="CardData" load_steps=9 format=3 uid="uid://cjdpr2jpwdvav"]
 
 [ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_card"]
 [ext_resource type="Texture2D" uid="uid://4urtiikxxumr" path="res://Assets/Sprites/Cards/attack-art/64x64/rpg-items-all/book.png" id="2_art"]
 [ext_resource type="Script" uid="uid://d2ueo4m1lbc51" path="res://Assets/Scripts/EffectEntry.cs" id="3_entry"]
-[ext_resource type="Resource" path="res://Assets/Resources/Effects/protect.tres" id="4_protect"]
+[ext_resource type="Resource" uid="uid://bdp2v72xswvyt" path="res://Assets/Resources/Effects/protect.tres" id="4_protect"]
 [ext_resource type="Resource" uid="uid://dc0aw28r20f5m" path="res://Assets/Resources/Targets/self.tres" id="5_target"]
+[ext_resource type="Resource" uid="uid://euroqap1x1mh" path="res://Assets/Resources/Effects/block.tres" id="6_block"]
 
 [sub_resource type="Resource" id="Effect_protector_protect_1"]
 script = ExtResource("3_entry")
 Def = ExtResource("4_protect")
 Amount = 3
 
+[sub_resource type="Resource" id="Effect_protector_block_2"]
+script = ExtResource("3_entry")
+Def = ExtResource("6_block")
+Amount = 5
+
 [resource]
 script = ExtResource("1_card")
 Title = "Protector"
 Description = "Guard the crew."
-RulesText = "Single-target damage is redirected to this unit for 3 turns."
+RulesText = "Intercept single-target intents for 3 turns."
 Art = ExtResource("2_art")
 ManaCost = 0
 Class = 1
 TargetDef = ExtResource("5_target")
-Effects = [SubResource("Effect_protector_protect_1")]
+Effects = [SubResource("Effect_protector_protect_1"), SubResource("Effect_protector_block_2")]
 Trigger = 0
 TriggerText = ""
 LethalHealAmount = 0

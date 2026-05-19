@@ -394,7 +394,7 @@ public partial class CombatManager : Node
 		finally
 		{
 			_suppressEnemyHoverIntents = previousSuppressEnemyHoverIntents;
-			UpdateIntentOverlayVisibility();
+			RefreshEnemyIntents();
 		}
 	}
 
@@ -842,7 +842,7 @@ public partial class CombatManager : Node
 		if (IsAllTarget(targetId))
 			return opponents.Where(t => t != null && t.Alive).ToList();
 
-		return singleOpponent != null && singleOpponent.Alive ? new List<IDamageable> { singleOpponent } : new List<IDamageable>();
+		return ResolveSingleHarmfulTarget(opponents, singleOpponent);
 	}
 
 	private List<IDamageable> ResolveAttackTargets(string targetId, List<IDamageable> opponents, IDamageable singleOpponent)
@@ -850,6 +850,11 @@ public partial class CombatManager : Node
 		if (IsAllTarget(targetId))
 			return opponents.Where(t => t != null && t.Alive).ToList();
 
+		return ResolveSingleHarmfulTarget(opponents, singleOpponent);
+	}
+
+	private List<IDamageable> ResolveSingleHarmfulTarget(List<IDamageable> opponents, IDamageable singleOpponent)
+	{
 		var protector = opponents.FirstOrDefault(t => t != null && t.Alive && t.GetStatusAmount("protector") > 0);
 		if (protector != null)
 			return new List<IDamageable> { protector };
