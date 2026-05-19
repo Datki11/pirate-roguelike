@@ -17,6 +17,7 @@ public partial class CombatHud : Control
 	private Rect2 _endTurnRect;
 	private bool _hoverEndTurn;
 	private bool _lastCanEndTurn;
+	private ulong _lastControlSchemeRevision;
 	private int _current;
 	private int _max;
 
@@ -59,6 +60,12 @@ public partial class CombatHud : Control
 
 	public override void _Process(double delta)
 	{
+		if (_lastControlSchemeRevision != ControlSchemeFocus.Revision)
+		{
+			_lastControlSchemeRevision = ControlSchemeFocus.Revision;
+			QueueRedraw();
+		}
+
 		bool canEndTurn = CanEndTurn();
 		if (canEndTurn != _lastCanEndTurn)
 		{
@@ -89,6 +96,8 @@ public partial class CombatHud : Control
 
 	public override void _GuiInput(InputEvent e)
 	{
+		ControlSchemeFocus.UpdateFromInput(e);
+
 		if (Deck.IsDrawPileModalOpen)
 		{
 			AcceptEvent();
@@ -104,6 +113,8 @@ public partial class CombatHud : Control
 
 	public override void _UnhandledInput(InputEvent e)
 	{
+		ControlSchemeFocus.UpdateFromInput(e);
+
 		if (IsControllerEndTurnPressed(e) && CanEndTurn())
 		{
 			_energyManager?.EndPlayerTurn();
@@ -147,7 +158,7 @@ public partial class CombatHud : Control
 
 		Texture2D promptIcon = LoadEndTurnPromptIcon();
 		Vector2 iconSize = promptIcon?.GetSize() ?? new Vector2(20, 16);
-		if (promptIcon != null)
+		if (ControlSchemeFocus.IsXboxFocused && promptIcon != null)
 		{
 			var iconRect = new Rect2(
 				(_endTurnRect.Position + new Vector2(14, Mathf.Round((_endTurnRect.Size.Y - iconSize.Y) * 0.5f))).Floor(),
@@ -156,7 +167,8 @@ public partial class CombatHud : Control
 			DrawTextureRect(promptIcon, iconRect, false);
 		}
 
-		DrawPixelText("END TURN", _endTurnRect.Position + new Vector2(44, 29), 18, Colors.White);
+		float textX = ControlSchemeFocus.IsXboxFocused ? 44f : 18f;
+		DrawPixelText("END TURN", _endTurnRect.Position + new Vector2(textX, 29), 18, Colors.White);
 	}
 
 	private Rect2 GetEndTurnRect()

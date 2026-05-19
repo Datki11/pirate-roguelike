@@ -20,12 +20,15 @@ public partial class CombatIntentOverlay : Control
 	{
 		MouseFilter = MouseFilterEnum.Ignore;
 		SetAnchorsPreset(LayoutPreset.FullRect);
+		Position = Vector2.Zero;
 		SetProcess(true);
 	}
 
 	public override void _Process(double delta)
 	{
 		Vector2 viewportSize = GetViewportRect().Size;
+		if (Position != Vector2.Zero)
+			Position = Vector2.Zero;
 		if (Size != viewportSize)
 			Size = viewportSize;
 
@@ -189,7 +192,7 @@ public partial class CombatIntentOverlay : Control
 	}
 
 	private Vector2 ToOverlayLocal(Vector2 canvasPoint)
-		=> (GetGlobalTransformWithCanvas().AffineInverse() * canvasPoint).Floor();
+		=> canvasPoint.Floor();
 
 	private static Vector2 Cubic(Vector2 a, Vector2 b, Vector2 c, Vector2 d, float t)
 	{

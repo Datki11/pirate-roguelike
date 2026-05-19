@@ -2,10 +2,10 @@
 
 [ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_card"]
 [ext_resource type="Script" uid="uid://osm0e1rmrshh" path="res://Assets/Scripts/DeckList.cs" id="2_deck"]
-[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/rabid_bite.tres" id="3_bite"]
-[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/soul_steal.tres" id="4_soul"]
-[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/enemy_claw_swipe.tres" id="5_claw"]
-[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/shriek.tres" id="6_shriek"]
+[ext_resource type="Resource" uid="uid://dkl2buy8d24ck" path="res://Assets/Resources/SmallCards/rabid_bite.tres" id="3_bite"]
+[ext_resource type="Resource" uid="uid://dyv7gi3mnbicw" path="res://Assets/Resources/SmallCards/soul_steal.tres" id="4_soul"]
+[ext_resource type="Resource" uid="uid://dm17t8ljrvj5g" path="res://Assets/Resources/SmallCards/enemy_claw_swipe.tres" id="5_claw"]
+[ext_resource type="Resource" uid="uid://cg0ei6t78kk1f" path="res://Assets/Resources/SmallCards/shriek.tres" id="6_shriek"]
 
 [resource]
 script = ExtResource("2_deck")

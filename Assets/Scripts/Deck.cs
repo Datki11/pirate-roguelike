@@ -72,6 +72,8 @@ public partial class Deck : Control
 	private bool _topCardsDimmed;
 	private static int _openDrawPileModalCount;
 	private static int _nextHoverSerial;
+	private const int HoverCardCanvasLayer = 900;
+	private const int EnemyIntentHoverCardCanvasLayer = 1995;
 	private static readonly List<Deck> _hoverDecks = new();
 	private static Deck _activeHoverDeck;
 	private static CanvasLayer _hoverCardLayer;
@@ -150,6 +152,8 @@ public partial class Deck : Control
 	{
 		if (Engine.IsEditorHint())
 			return;
+
+		ControlSchemeFocus.UpdateFromInput(e);
 
 		if (_openDrawPileModalCount > 0 || e is not InputEventMouseButton mb || !mb.Pressed || mb.ButtonIndex != MouseButton.Left)
 			return;
@@ -1051,7 +1055,7 @@ public partial class Deck : Control
 		if (Engine.IsEditorHint() || !IsInsideTree())
 			return;
 
-		bool show = _controllerFocused && !_targetingDimmed && !Deck.IsDrawPileModalOpen && IsVisibleInTree();
+		bool show = ControlSchemeFocus.IsXboxFocused && _controllerFocused && !_targetingDimmed && !Deck.IsDrawPileModalOpen && IsVisibleInTree();
 		bool showDraw = show && _draw.Count > 0;
 		bool showDiscard = show && _discard.Count > 0;
 		if (!showDraw && !showDiscard)
@@ -1333,6 +1337,10 @@ public partial class Deck : Control
 				previewView.SetTooltipSuppressed(true);
 			GetHoverCardLayer().AddChild(_hoverPreviewCard);
 		}
+		else
+		{
+			ApplyHoverCardLayerPriority();
+		}
 
 		_hoverPreviewCard.Size = source.Size;
 		_hoverPreviewCard.Position = source.GetGlobalTransformWithCanvas().Origin.Floor();
@@ -1374,16 +1382,28 @@ public partial class Deck : Control
 	private CanvasLayer GetHoverCardLayer()
 	{
 		if (_hoverCardLayer != null && GodotObject.IsInstanceValid(_hoverCardLayer))
+		{
+			ApplyHoverCardLayerPriority();
 			return _hoverCardLayer;
+		}
 
 		_hoverCardLayer = new CanvasLayer
 		{
 			Name = "HoveredCardLayer",
-			Layer = 900
+			Layer = GetHoverCardLayerPriority()
 		};
 		(GetTree().CurrentScene as Node ?? GetTree().Root).AddChild(_hoverCardLayer);
 		return _hoverCardLayer;
 	}
+
+	private void ApplyHoverCardLayerPriority()
+	{
+		if (_hoverCardLayer != null && GodotObject.IsInstanceValid(_hoverCardLayer))
+			_hoverCardLayer.Layer = GetHoverCardLayerPriority();
+	}
+
+	private int GetHoverCardLayerPriority()
+		=> Side == DeckSide.Enemy && _isActiveHover ? EnemyIntentHoverCardCanvasLayer : HoverCardCanvasLayer;
 
 	private int GetEffectiveDrawPriority()
 		=> _isActiveHover ? HoverDrawPriority : BaseDrawPriority;

@@ -39,9 +39,11 @@ public partial class CombatTargeting : Node
 	private int _controllerPlayerFocusIndex = -1;
 	private int _controllerTargetFocusIndex = -1;
 	private ulong _nextControllerMoveAtMs;
+	private ulong _lastControlSchemeRevision;
 	private bool _controllerTargeting;
 	private const float ControllerAxisThreshold = 0.55f;
 	private const ulong ControllerMoveCooldownMs = 180;
+	private const int TargetingArrowCanvasLayer = 1990;
 	public bool IsTargetingActive => _targeting;
 
 	private sealed class ControllerFocusEntry
@@ -83,6 +85,16 @@ public partial class CombatTargeting : Node
 
 	public override void _Process(double delta)
 	{
+		if (_lastControlSchemeRevision != ControlSchemeFocus.Revision)
+		{
+			_lastControlSchemeRevision = ControlSchemeFocus.Revision;
+			if (!ControlSchemeFocus.IsXboxFocused)
+			{
+				ClearControllerCardFocus();
+				_controllerTargeting = false;
+			}
+		}
+
 		if (!_targeting)
 		{
 			UpdateControllerCardFocus();
@@ -423,9 +435,13 @@ public partial class CombatTargeting : Node
 	private TargetingArrowOverlay GetTargetingArrow()
 	{
 		if (_targetingArrow != null && IsInstanceValid(_targetingArrow))
+		{
+			if (_targetingVisualLayer != null && IsInstanceValid(_targetingVisualLayer))
+				_targetingVisualLayer.Layer = TargetingArrowCanvasLayer;
 			return _targetingArrow;
+		}
 
-		_targetingVisualLayer = new CanvasLayer { Layer = 80 };
+		_targetingVisualLayer = new CanvasLayer { Layer = TargetingArrowCanvasLayer };
 		_targetingArrow = new TargetingArrowOverlay
 		{
 			Name = "TargetingArrowOverlay",
@@ -578,6 +594,8 @@ public partial class CombatTargeting : Node
 
 	public override void _Input(InputEvent e)
 	{
+		ControlSchemeFocus.UpdateFromInput(e);
+
 		if (Deck.IsDrawPileModalOpen || !_targeting)
 			return;
 
@@ -635,6 +653,8 @@ public partial class CombatTargeting : Node
 
 	public override void _UnhandledInput(InputEvent e)
 	{
+		ControlSchemeFocus.UpdateFromInput(e);
+
 		if (Deck.IsDrawPileModalOpen)
 		{
 			if (IsControllerCancelPressed(e))
@@ -655,6 +675,12 @@ public partial class CombatTargeting : Node
 
 		if (_targeting)
 		{
+			if (ControlSchemeFocus.IsXboxFocused && !_controllerTargeting)
+			{
+				_controllerTargeting = true;
+				FocusDefaultControllerTarget();
+			}
+
 			if (TryGetControllerHorizontalMove(e, out int targetDirection))
 			{
 				MoveControllerTargetFocus(targetDirection);
@@ -678,6 +704,9 @@ public partial class CombatTargeting : Node
 
 			return;
 		}
+
+		if (ControlSchemeFocus.IsXboxFocused && !IsControllerCardFocusActive())
+			UpdateControllerCardFocus();
 
 		if (TryGetControllerHorizontalMove(e, out int direction))
 		{
@@ -709,6 +738,12 @@ public partial class CombatTargeting : Node
 
 	private void UpdateControllerCardFocus()
 	{
+		if (!ControlSchemeFocus.IsXboxFocused)
+		{
+			ClearControllerCardFocus();
+			return;
+		}
+
 		if (!IsPlayerTurn())
 		{
 			ClearControllerCardFocus();
@@ -730,6 +765,9 @@ public partial class CombatTargeting : Node
 
 	private void MoveControllerCardFocus(int direction)
 	{
+		if (!ControlSchemeFocus.IsXboxFocused)
+			return;
+
 		var focusable = GetControllerFocusableEntries();
 		if (focusable.Length == 0)
 			return;

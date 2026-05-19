@@ -2,13 +2,13 @@
 
 [ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_card"]
 [ext_resource type="Script" uid="uid://osm0e1rmrshh" path="res://Assets/Scripts/DeckList.cs" id="2_deck"]
-[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/guard.tres" id="3_guard"]
-[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/hook_hand.tres" id="4_hook_hand"]
-[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/iron_wave.tres" id="5_iron_wave"]
-[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/leap.tres" id="6_leap"]
+[ext_resource type="Resource" uid="uid://cebsoctxpyitu" path="res://Assets/Resources/SmallCards/guard.tres" id="3_guard"]
+[ext_resource type="Resource" uid="uid://cgy7vf3boucn1" path="res://Assets/Resources/SmallCards/hook_hand.tres" id="4_hook_hand"]
+[ext_resource type="Resource" uid="uid://brnj36oh4234b" path="res://Assets/Resources/SmallCards/iron_wave.tres" id="5_iron_wave"]
+[ext_resource type="Resource" uid="uid://d1kwo7hccl55e" path="res://Assets/Resources/SmallCards/leap.tres" id="6_leap"]
 [ext_resource type="Resource" uid="uid://b1wmy8b8r3c8o" path="res://Assets/Resources/SmallCards/rally.tres" id="7_rally"]
-[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/slash.tres" id="8_slash"]
-[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/spin_slash.tres" id="9_spin_slash"]
+[ext_resource type="Resource" uid="uid://bi281yd66bu0c" path="res://Assets/Resources/SmallCards/slash.tres" id="8_slash"]
+[ext_resource type="Resource" uid="uid://ovnu3cyijsje" path="res://Assets/Resources/SmallCards/spin_slash.tres" id="9_spin_slash"]
 
 [resource]
 script = ExtResource("2_deck")

@@ -9,7 +9,9 @@ public partial class CombatManager : Node
 	private const int PopupZIndex = 4096;
 	private const ulong PopupBurstWindowMsec = 250;
 	private const string PopupLayerName = "CombatPopupLayer";
-	private const int IntentZIndex = 1500;
+	private const int IntentCanvasLayer = 1990;
+	private const int IntentZIndex = 4096;
+	private const string IntentLayerName = "CombatIntentLayer";
 	private const string IntentOverlayName = "CombatIntentOverlay";
 
 	[Export] public NodePath VfxLayerPath { get; set; }          // optional CanvasLayer/Control for VFX
@@ -26,7 +28,9 @@ public partial class CombatManager : Node
 
 	private Node _vfx;
 	private CanvasLayer _popupLayer;
+	private CanvasLayer _intentLayer;
 	private CombatIntentOverlay _intentOverlay;
+	private bool _intentOverlayAddDeferred;
 	private Node _enemiesRoot;
 	private Node _playersRoot;
 	private EnergyManager _energy;
@@ -712,15 +716,21 @@ public partial class CombatManager : Node
 	private CombatIntentOverlay EnsureIntentOverlay()
 	{
 		if (_intentOverlay != null && GodotObject.IsInstanceValid(_intentOverlay))
+		{
+			EnsureIntentOverlayLayering();
 			return _intentOverlay;
+		}
 
 		var root = GetTree()?.Root;
-		Node parent = GetTree()?.CurrentScene ?? (Node)root ?? this;
+		CanvasLayer intentLayer = EnsureIntentLayer();
+		Node parent = intentLayer ?? GetTree()?.CurrentScene ?? (Node)root ?? this;
 		_intentOverlay = parent.GetNodeOrNull<CombatIntentOverlay>(IntentOverlayName);
 		if (_intentOverlay == null || !GodotObject.IsInstanceValid(_intentOverlay))
 		{
 			_intentOverlay = CreateIntentOverlay();
+			_intentOverlayAddDeferred = true;
 			parent.CallDeferred(Node.MethodName.AddChild, _intentOverlay);
+			return _intentOverlay;
 		}
 		else
 		{
@@ -730,7 +740,62 @@ public partial class CombatManager : Node
 			_intentOverlay.ZIndex = IntentZIndex;
 		}
 
+		EnsureIntentOverlayLayering();
 		return _intentOverlay;
+	}
+
+	private CanvasLayer EnsureIntentLayer()
+	{
+		if (_intentLayer != null && GodotObject.IsInstanceValid(_intentLayer))
+		{
+			_intentLayer.Layer = IntentCanvasLayer;
+			return _intentLayer;
+		}
+
+		var root = GetTree()?.Root;
+		if (root == null)
+			return null;
+
+		_intentLayer = root.GetNodeOrNull<CanvasLayer>(IntentLayerName);
+		if (_intentLayer == null || !GodotObject.IsInstanceValid(_intentLayer))
+		{
+			_intentLayer = new CanvasLayer
+			{
+				Name = IntentLayerName,
+				Layer = IntentCanvasLayer
+			};
+			root.CallDeferred(Node.MethodName.AddChild, _intentLayer);
+		}
+		else
+		{
+			_intentLayer.Layer = IntentCanvasLayer;
+		}
+
+		return _intentLayer;
+	}
+
+	private void EnsureIntentOverlayLayering()
+	{
+		CanvasLayer intentLayer = EnsureIntentLayer();
+		if (_intentOverlay == null || !GodotObject.IsInstanceValid(_intentOverlay))
+			return;
+
+		Node currentParent = _intentOverlay.GetParent();
+		if (currentParent != null)
+			_intentOverlayAddDeferred = false;
+
+		_intentOverlay.Combat = this;
+		_intentOverlay.TopLevel = true;
+		_intentOverlay.ZAsRelative = false;
+		_intentOverlay.ZIndex = IntentZIndex;
+		_intentOverlay.MouseFilter = Control.MouseFilterEnum.Ignore;
+
+		if (intentLayer != null && currentParent != intentLayer && !_intentOverlayAddDeferred)
+		{
+			currentParent?.RemoveChild(_intentOverlay);
+			_intentOverlayAddDeferred = true;
+			intentLayer.CallDeferred(Node.MethodName.AddChild, _intentOverlay);
+		}
 	}
 
 	private CombatIntentOverlay CreateIntentOverlay()
