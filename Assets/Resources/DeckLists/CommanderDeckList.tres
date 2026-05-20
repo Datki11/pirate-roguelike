@@ -3,10 +3,10 @@
 [ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_card"]
 [ext_resource type="Script" uid="uid://osm0e1rmrshh" path="res://Assets/Scripts/DeckList.cs" id="2_deck"]
 [ext_resource type="Resource" uid="uid://d1bk6btl5mf0o" path="res://Assets/Resources/SmallCards/strategist.tres" id="3_strategist"]
-[ext_resource type="Resource" uid="uid://c2dubraeslxq3" path="res://Assets/Resources/SmallCards/inspire.tres" id="4_inspire"]
-[ext_resource type="Resource" uid="uid://b1wmy8b8r3c8o" path="res://Assets/Resources/SmallCards/rally.tres" id="5_rally"]
 [ext_resource type="Resource" uid="uid://bi281yd66bu0c" path="res://Assets/Resources/SmallCards/slash.tres" id="6_slash"]
+[ext_resource type="Resource" path="res://Assets/Resources/SmallCards/enfeeble.tres" id="7_enfeeble"]
+[ext_resource type="Resource" uid="uid://cebsoctxpyitu" path="res://Assets/Resources/SmallCards/guard.tres" id="8_guard"]
 
 [resource]
 script = ExtResource("2_deck")
-Cards = Array[ExtResource("1_card")]([ExtResource("6_slash"), ExtResource("6_slash"), ExtResource("5_rally"), ExtResource("5_rally"), ExtResource("3_strategist"), ExtResource("4_inspire")])
+Cards = Array[ExtResource("1_card")]([ExtResource("6_slash"), ExtResource("6_slash"), ExtResource("8_guard"), ExtResource("8_guard"), ExtResource("3_strategist"), ExtResource("7_enfeeble")])

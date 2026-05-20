@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="HeroDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://Assets/Scripts/HeroDef.cs" id="1_hero"]
+[ext_resource type="Resource" path="res://Assets/Resources/DeckLists/CommanderDeckList.tres" id="2_deck"]
+
+[resource]
+script = ExtResource("1_hero")
+Id = "captain"
+HeroName = "Commander"
+HeroRole = "Crew Commander"
+HeroDescription = "A tactical leader who rallies the crew with cheers, battle cries, and precise cuts."
+StartingMaxHP = 25
+Deck = ExtResource("2_deck")
+SpriteRootPath = "res://Assets/Sprites/pirate-placeholder-sprites/Sprites/5-Enemy-Captain"
+IdleFolderName = "1-Idle"
+ActionFolderName = "7-Attack"
+DeadGroundFolderName = "9-Dead Ground"
+FaceRight = true

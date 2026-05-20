@@ -84,6 +84,41 @@ public partial class PlayerUnit : Node2D, IDamageable
 		return _deck?.DeckList as DeckList;
 	}
 
+	public string GetHeroDeckResourcePath()
+	{
+		Resource deck = DeckListOverride ?? _deck?.DeckList;
+		return deck?.ResourcePath ?? "";
+	}
+
+	public void ConfigureFromHeroDef(HeroDef hero)
+	{
+		if (hero == null)
+			return;
+
+		HeroName = hero.HeroName;
+		HeroRole = hero.HeroRole;
+		HeroDescription = hero.HeroDescription;
+		StartingMaxHP = Mathf.Max(1, hero.StartingMaxHP);
+		DeckListOverride = hero.Deck;
+		SpriteRootPath = hero.SpriteRootPath;
+		IdleFolderName = hero.IdleFolderName;
+		ActionFolderName = hero.ActionFolderName;
+		DeadGroundFolderName = hero.DeadGroundFolderName;
+		FaceRight = hero.FaceRight;
+
+		if (_deck != null && DeckListOverride != null)
+			_deck.RebuildFromDeckList(DeckListOverride);
+	}
+
+	public void ApplyRunHealth(int maxHp, int hp)
+	{
+		MaxHP = Mathf.Max(1, maxHp);
+		HP = Mathf.Clamp(hp, 0, MaxHP);
+		_hpBar?.Set(HP, MaxHP);
+		RefreshStatusBar();
+		_deck?.SetDeadDimmed(!Alive);
+	}
+
 	public Texture2D GetHeroPreviewTexture()
 	{
 		if (_idleFrames.Count > 0)

@@ -47,6 +47,7 @@ public partial class CombatManager : Node
 
 	private readonly RandomNumberGenerator _rng = new();
 	private readonly Dictionary<string, Texture2D> _popupIcons = new();
+	private bool _combatEnded;
 	private static readonly Color PopupBuffColor = new(0f, 1f, 1f);
 	private static readonly Color PopupCurseColor = new(1f, 0f, 1f);
 	private static readonly Color PopupBlockLossColor = new(0.52f, 0.84f, 1f);
@@ -64,6 +65,9 @@ public partial class CombatManager : Node
 		public ulong LastSpawnMsec;
 		public int NextSlot;
 	}
+
+	[Signal] public delegate void CombatWonEventHandler();
+	[Signal] public delegate void CombatLostEventHandler();
 
 	public override void _Ready()
 	{
@@ -110,7 +114,7 @@ public partial class CombatManager : Node
 		_enemies.Clear();
 		if (_enemiesRoot == null) return;
 		foreach (var n in _enemiesRoot.GetChildren())
-			if (n is Enemy e) _enemies.Add(e);
+			if (n is Enemy e && e.Visible) _enemies.Add(e);
 		foreach (var enemy in _plannedEnemyTargets.Keys.Where(enemy => !_enemies.Contains(enemy)).ToList())
 			_plannedEnemyTargets.Remove(enemy);
 		ApplyDeckStacking();
@@ -120,7 +124,11 @@ public partial class CombatManager : Node
 
 	public void RegisterEnemy(Enemy e)
 	{
-		if (e != null && !_enemies.Contains(e)) _enemies.Add(e);
+		if (e != null && !_enemies.Contains(e))
+		{
+			_enemies.Add(e);
+			e.Died += OnUnitDied;
+		}
 		ApplyDeckStacking();
 		ApplyTurnDeckStates();
 		RefreshEnemyIntents();
@@ -128,7 +136,11 @@ public partial class CombatManager : Node
 
 	public void UnregisterEnemy(Enemy e)
 	{
-		if (e != null) _enemies.Remove(e);
+		if (e != null)
+		{
+			e.Died -= OnUnitDied;
+			_enemies.Remove(e);
+		}
 		if (e != null) _plannedEnemyTargets.Remove(e);
 		ApplyDeckStacking();
 		ApplyTurnDeckStates();
@@ -144,7 +156,7 @@ public partial class CombatManager : Node
 		_players.Clear();
 		if (_playersRoot == null) return;
 		foreach (var n in _playersRoot.GetChildren())
-			if (n is IDamageable d && (n as Node) != null) _players.Add(d);
+			if (n is IDamageable d && n is CanvasItem item && item.Visible) _players.Add(d);
 		foreach (var enemy in _plannedEnemyTargets.Where(kvp => !_players.Contains(kvp.Value)).Select(kvp => kvp.Key).ToList())
 			_plannedEnemyTargets.Remove(enemy);
 		ApplyDeckStacking();
@@ -154,7 +166,12 @@ public partial class CombatManager : Node
 
 	public void RegisterPlayer(IDamageable d)
 	{
-		if (d != null && !_players.Contains(d)) _players.Add(d);
+		if (d != null && !_players.Contains(d))
+		{
+			_players.Add(d);
+			if (d is PlayerUnit player)
+				player.Died += OnUnitDied;
+		}
 		ApplyDeckStacking();
 		ApplyTurnDeckStates();
 		RefreshEnemyIntents();
@@ -162,7 +179,12 @@ public partial class CombatManager : Node
 
 	public void UnregisterPlayer(IDamageable d)
 	{
-		if (d != null) _players.Remove(d);
+		if (d != null)
+		{
+			if (d is PlayerUnit player)
+				player.Died -= OnUnitDied;
+			_players.Remove(d);
+		}
 		if (d != null)
 		{
 			foreach (var enemy in _plannedEnemyTargets.Where(kvp => kvp.Value == d).Select(kvp => kvp.Key).ToList())
@@ -175,6 +197,31 @@ public partial class CombatManager : Node
 
 	public IEnumerable<IDamageable> AlivePlayers() =>
 		_players.Where(p => p != null && (p as Node) != null && GodotObject.IsInstanceValid(p as Node) && p.Alive);
+
+	private async void OnUnitDied()
+	{
+		await ToSignal(GetTree().CreateTimer(0.45f), "timeout");
+		CheckCombatOutcome();
+	}
+
+	private void CheckCombatOutcome()
+	{
+		if (_combatEnded)
+			return;
+
+		if (!AliveEnemies().Any())
+		{
+			_combatEnded = true;
+			EmitSignal(SignalName.CombatWon);
+			return;
+		}
+
+		if (!AlivePlayers().Any())
+		{
+			_combatEnded = true;
+			EmitSignal(SignalName.CombatLost);
+		}
+	}
 
 	private void OnPlayerTurnStarted()
 	{

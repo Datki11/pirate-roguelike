@@ -200,6 +200,43 @@ public partial class Enemy : Control, IDamageable
 		FaceLeft = enemyDef.FaceLeft;
 	}
 
+	public void ConfigureFromEnemyDef(EnemyDef enemyDef)
+	{
+		if (enemyDef == null)
+			return;
+
+		Def = enemyDef;
+		SpriteSheet = enemyDef.SpriteSheet;
+		FrameSize = enemyDef.FrameSize;
+		IdleFrameCount = enemyDef.IdleFrameCount;
+		IdleSpriteSheet = enemyDef.IdleSpriteSheet;
+		IdleFrameSize = enemyDef.IdleFrameSize;
+		IdleSpriteFrameCount = enemyDef.IdleSpriteFrameCount;
+		AttackSpriteSheet = enemyDef.AttackSpriteSheet;
+		AttackFrameSize = enemyDef.AttackFrameSize;
+		AttackFrameCount = enemyDef.AttackFrameCount;
+		HitSpriteSheet = enemyDef.HitSpriteSheet;
+		HitFrameSize = enemyDef.HitFrameSize;
+		HitFrameCount = enemyDef.HitFrameCount;
+		IdleFrameSeconds = enemyDef.IdleFrameSeconds;
+		ActionFrameSeconds = enemyDef.ActionFrameSeconds;
+		FaceLeft = enemyDef.FaceLeft;
+		ApplyDefinitionHealth(enemyDef);
+		BuildAnimationFrames();
+		if (!HasAnimationFrames() && enemyDef.Art != null && _sprite != null)
+			_sprite.Texture = enemyDef.Art;
+		ApplyStandardLayout();
+		_hp?.Set(HP, MaxHP);
+		RefreshStatusBar();
+
+		if (_deck != null)
+		{
+			Resource effectiveDeck = DeckListOverride ?? enemyDef.Deck;
+			if (effectiveDeck != null)
+				_deck.RebuildFromDeckList(effectiveDeck);
+		}
+	}
+
 	private void ApplyDefinitionHealth(EnemyDef enemyDef)
 	{
 		MaxHP = enemyDef.RollMaxHP(_rng);

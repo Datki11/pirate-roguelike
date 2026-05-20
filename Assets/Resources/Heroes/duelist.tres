@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="HeroDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://Assets/Scripts/HeroDef.cs" id="1_hero"]
+[ext_resource type="Resource" path="res://Assets/Resources/DeckLists/DuelistDeckList.tres" id="2_deck"]
+
+[resource]
+script = ExtResource("1_hero")
+Id = "duelist"
+HeroName = "Duelist"
+HeroRole = "Hook-Hand Duelist"
+HeroDescription = "A quick front-line raider who chains leaps, hooks, and close-range shots."
+StartingMaxHP = 30
+Deck = ExtResource("2_deck")
+SpriteRootPath = "res://Assets/Sprites/pirate-placeholder-sprites/Sprites/2-Enemy-Bald Pirate"
+IdleFolderName = "1-Idle"
+ActionFolderName = "7-Attack"
+DeadGroundFolderName = "9-Dead Ground"
+FaceRight = true

@@ -1,4 +1,4 @@
-[gd_scene load_steps=17 format=3 uid="uid://blyun0sui4axj"]
+[gd_scene load_steps=18 format=3 uid="uid://blyun0sui4axj"]
 
 [ext_resource type="PackedScene" uid="uid://c341vh8po86n6" path="res://Assets/Components/CombatTargeting.tscn" id="5_tkjg1"]
 [ext_resource type="PackedScene" uid="uid://nu0fyjda0sg6" path="res://Assets/Components/enemy.tscn" id="6_y8d5v"]
@@ -10,6 +10,7 @@
 [ext_resource type="FontFile" uid="uid://b6nooaoreg886" path="res://Assets/Fonts/Minecraft.ttf" id="12_font"]
 [ext_resource type="Script" uid="uid://cmylq545442uv" path="res://Assets/Scripts/PauseMenu.cs" id="13_pause"]
 [ext_resource type="FontFile" uid="uid://b4dw7y3ang4m3" path="res://Assets/Fonts/upheaval/upheavtt.ttf" id="13_upheaval"]
+[ext_resource type="Script" uid="uid://bn81b8b60jvbk" path="res://Assets/Scripts/RunBattlefieldController.cs" id="14_run_controller"]
 [ext_resource type="Resource" path="res://Assets/Resources/DeckLists/DuelistDeckList.tres" id="25_dechkand_deck"]
 [ext_resource type="Resource" uid="uid://dnk7jcyyhn8jj" path="res://Assets/Resources/DeckLists/BruteDeckList.tres" id="26_brute_deck"]
 [ext_resource type="Resource" uid="uid://u10lwr86sfj2" path="res://Assets/Resources/DeckLists/CommanderDeckList.tres" id="27_captain_deck"]
@@ -18,6 +19,7 @@
 [ext_resource type="Resource" uid="uid://dtygjhfihr8mw" path="res://Assets/Resources/Enemies/fireworm.tres" id="30_fireworm"]
 
 [node name="Battlefield" type="Node2D"]
+script = ExtResource("14_run_controller")
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(-194, -100)

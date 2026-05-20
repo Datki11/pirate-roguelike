@@ -21,9 +21,11 @@ public partial class PauseMenu : CanvasLayer
 	private Control _compendiumView;
 	private Control _bestiaryView;
 	private Control _heroesView;
+	private Control _crewView;
 	private HFlowContainer _cardFlow;
 	private VBoxContainer _enemyList;
 	private VBoxContainer _heroList;
+	private VBoxContainer _crewList;
 	private LineEdit _cardSearch;
 	private OptionButton _cardSort;
 	private OptionButton _enemySort;
@@ -31,6 +33,7 @@ public partial class PauseMenu : CanvasLayer
 	private Label _compendiumCount;
 	private Label _bestiaryCount;
 	private Label _heroesCount;
+	private Label _crewCount;
 	private VBoxContainer _rarityFilterList;
 	private VBoxContainer _effectFilterList;
 	private OptionButton _speedSelect;
@@ -105,7 +108,7 @@ public partial class PauseMenu : CanvasLayer
 
 		if (_root != null && _root.Visible)
 		{
-			if ((_compendiumView != null && _compendiumView.Visible) || (_bestiaryView != null && _bestiaryView.Visible) || (_heroesView != null && _heroesView.Visible) || (_settingsMenu != null && _settingsMenu.Visible))
+			if ((_compendiumView != null && _compendiumView.Visible) || (_bestiaryView != null && _bestiaryView.Visible) || (_heroesView != null && _heroesView.Visible) || (_crewView != null && _crewView.Visible) || (_settingsMenu != null && _settingsMenu.Visible))
 				ShowMainMenu();
 			else
 				ResumeGame();
@@ -197,6 +200,10 @@ public partial class PauseMenu : CanvasLayer
 		_settingsMenu.AddChild(CreateLabel("Game Speed"));
 		_speedSelect = CreateSpeedSelect();
 		_settingsMenu.AddChild(_speedSelect);
+		_settingsMenu.AddChild(CreateButton("CREW", ShowCrew));
+		Button endRun = CreateButton("END RUN", EndRun);
+		ApplyRedButtonTheme(endRun);
+		_settingsMenu.AddChild(endRun);
 		_settingsMenu.AddChild(CreateButton("BACK", ShowMainMenu));
 
 		LoadCompendiumCards();
@@ -204,6 +211,7 @@ public partial class PauseMenu : CanvasLayer
 		BuildCompendiumView();
 		BuildBestiaryView();
 		BuildHeroesView();
+		BuildCrewView();
 	}
 
 	private VBoxContainer CreateMenuStack()
@@ -683,6 +691,86 @@ public partial class PauseMenu : CanvasLayer
 		RefreshHeroes();
 	}
 
+	private void BuildCrewView()
+	{
+		_crewView = new MarginContainer
+		{
+			Name = "CrewView",
+			Visible = false,
+			MouseFilter = Control.MouseFilterEnum.Stop
+		};
+		_crewView.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+		_crewView.AddThemeConstantOverride("margin_left", 24);
+		_crewView.AddThemeConstantOverride("margin_top", 24);
+		_crewView.AddThemeConstantOverride("margin_right", 24);
+		_crewView.AddThemeConstantOverride("margin_bottom", 24);
+		_root.AddChild(_crewView);
+
+		var panel = new PanelContainer
+		{
+			MouseFilter = Control.MouseFilterEnum.Stop,
+			SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+			SizeFlagsVertical = Control.SizeFlags.ExpandFill
+		};
+		panel.AddThemeStyleboxOverride("panel", CreatePanelStyle());
+		_crewView.AddChild(panel);
+
+		var content = new MarginContainer
+		{
+			SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+			SizeFlagsVertical = Control.SizeFlags.ExpandFill
+		};
+		content.AddThemeConstantOverride("margin_left", 18);
+		content.AddThemeConstantOverride("margin_top", 18);
+		content.AddThemeConstantOverride("margin_right", 18);
+		content.AddThemeConstantOverride("margin_bottom", 18);
+		panel.AddChild(content);
+
+		var stack = new VBoxContainer
+		{
+			SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+			SizeFlagsVertical = Control.SizeFlags.ExpandFill
+		};
+		stack.AddThemeConstantOverride("separation", 12);
+		content.AddChild(stack);
+
+		var header = new HBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+		header.AddThemeConstantOverride("separation", 12);
+		stack.AddChild(header);
+
+		var title = CreateTitle("CREW");
+		title.CustomMinimumSize = new Vector2(240, 32);
+		title.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+		header.AddChild(title);
+
+		_crewCount = CreateLabel("");
+		_crewCount.CustomMinimumSize = new Vector2(160, 28);
+		_crewCount.HorizontalAlignment = HorizontalAlignment.Right;
+		header.AddChild(_crewCount);
+
+		var back = CreateButton("BACK", ShowSettings);
+		back.CustomMinimumSize = new Vector2(120, 38);
+		header.AddChild(back);
+
+		var scroll = new ScrollContainer
+		{
+			SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+			SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+			MouseFilter = Control.MouseFilterEnum.Stop
+		};
+		stack.AddChild(scroll);
+
+		_crewList = new VBoxContainer
+		{
+			SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+			SizeFlagsVertical = Control.SizeFlags.ExpandFill
+		};
+		_crewList.AddThemeConstantOverride("separation", 14);
+		scroll.AddChild(_crewList);
+
+		RefreshCrew();
+	}
+
 	private void BuildEffectFilters()
 	{
 		_effectFilters.Clear();
@@ -800,6 +888,36 @@ public partial class PauseMenu : CanvasLayer
 			_heroesCount.Text = $"{count} HEROES";
 	}
 
+	private void RefreshCrew()
+	{
+		if (_crewList == null)
+			return;
+
+		ClearChildren(_crewList);
+		RunState run = GetRunState();
+		if (run == null || !run.HasActiveRun || run.Crew.Count == 0)
+		{
+			_crewList.AddChild(CreateLabel("No active crew"));
+			if (_crewCount != null)
+				_crewCount.Text = "0 CREW";
+			return;
+		}
+
+		int count = 0;
+		foreach (RunState.CrewMember member in run.Crew)
+		{
+			HeroDef hero = run.LoadHero(member.HeroId);
+			if (hero == null)
+				continue;
+
+			_crewList.AddChild(CreateCrewInfoPanel(hero, member));
+			count++;
+		}
+
+		if (_crewCount != null)
+			_crewCount.Text = $"{count} CREW";
+	}
+
 	private PanelContainer CreateHeroInfoPanel(PlayerUnit hero)
 	{
 		DeckList deck = hero.GetHeroDeckList();
@@ -810,6 +928,19 @@ public partial class PauseMenu : CanvasLayer
 			hero.HeroDescription,
 			deck,
 			summary => AddStaticPreview(summary, hero.GetHeroPreviewTexture(), new Vector2(190, 130))
+		);
+	}
+
+	private PanelContainer CreateCrewInfoPanel(HeroDef hero, RunState.CrewMember member)
+	{
+		DeckList deck = ResourceLoader.Load<DeckList>(member.DeckPath) ?? hero.Deck as DeckList;
+		return CreateUnitInfoPanel(
+			hero.HeroName,
+			hero.HeroRole,
+			$"{Mathf.Max(0, member.HP)}/{Mathf.Max(1, member.MaxHP)} HP",
+			hero.HeroDescription,
+			deck,
+			null
 		);
 	}
 
@@ -1224,6 +1355,13 @@ public partial class PauseMenu : CanvasLayer
 		button.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
 	}
 
+	private void ApplyRedButtonTheme(Button button)
+	{
+		button.AddThemeStyleboxOverride("normal", CreateButtonStyle(new Color(0.62f, 0.08f, 0.07f)));
+		button.AddThemeStyleboxOverride("hover", CreateButtonStyle(new Color(0.78f, 0.12f, 0.10f)));
+		button.AddThemeStyleboxOverride("pressed", CreateButtonStyle(new Color(0.42f, 0.04f, 0.04f)));
+	}
+
 	private void ApplyCheckButtonTheme(CheckButton button)
 	{
 		button.AddThemeFontOverride("font", BodyFont);
@@ -1326,6 +1464,8 @@ public partial class PauseMenu : CanvasLayer
 			_bestiaryView.Visible = false;
 		if (_heroesView != null)
 			_heroesView.Visible = false;
+		if (_crewView != null)
+			_crewView.Visible = false;
 		_activeAnimationPreviews.Clear();
 		GrabFirstMenuFocus(_mainMenu);
 	}
@@ -1340,6 +1480,8 @@ public partial class PauseMenu : CanvasLayer
 			_bestiaryView.Visible = false;
 		if (_heroesView != null)
 			_heroesView.Visible = false;
+		if (_crewView != null)
+			_crewView.Visible = false;
 		_activeAnimationPreviews.Clear();
 		GrabFirstMenuFocus(_settingsMenu);
 	}
@@ -1355,6 +1497,8 @@ public partial class PauseMenu : CanvasLayer
 			_bestiaryView.Visible = false;
 		if (_heroesView != null)
 			_heroesView.Visible = false;
+		if (_crewView != null)
+			_crewView.Visible = false;
 		_activeAnimationPreviews.Clear();
 		RefreshCompendiumCards();
 		GrabFirstMenuFocus(_compendiumView);
@@ -1371,6 +1515,8 @@ public partial class PauseMenu : CanvasLayer
 			_bestiaryView.Visible = true;
 		if (_heroesView != null)
 			_heroesView.Visible = false;
+		if (_crewView != null)
+			_crewView.Visible = false;
 		RefreshBestiaryEnemies();
 		GrabFirstMenuFocus(_bestiaryView);
 	}
@@ -1386,10 +1532,40 @@ public partial class PauseMenu : CanvasLayer
 			_bestiaryView.Visible = false;
 		if (_heroesView != null)
 			_heroesView.Visible = true;
+		if (_crewView != null)
+			_crewView.Visible = false;
 		_activeAnimationPreviews.Clear();
 		RefreshHeroes();
 		GrabFirstMenuFocus(_heroesView);
 	}
+
+	private void ShowCrew()
+	{
+		_mainMenu.Visible = false;
+		if (_settingsMenu != null)
+			_settingsMenu.Visible = false;
+		if (_compendiumView != null)
+			_compendiumView.Visible = false;
+		if (_bestiaryView != null)
+			_bestiaryView.Visible = false;
+		if (_heroesView != null)
+			_heroesView.Visible = false;
+		if (_crewView != null)
+			_crewView.Visible = true;
+		_activeAnimationPreviews.Clear();
+		RefreshCrew();
+		GrabFirstMenuFocus(_crewView);
+	}
+
+	private void EndRun()
+	{
+		RunState run = GetRunState();
+		run?.EndRun();
+		run?.GoToMainMenu();
+	}
+
+	private RunState GetRunState()
+		=> GetTree()?.Root?.GetNodeOrNull<RunState>("RunState");
 
 	private void GrabFirstMenuFocus(Control root)
 	{

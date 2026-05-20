@@ -11,9 +11,13 @@ config_version=5
 [application]
 
 config/name="Pirate Roguelike"
-run/main_scene="res://battlefield.tscn"
+run/main_scene="res://Assets/Scenes/MainMenu.tscn"
 config/features=PackedStringArray("4.4", "C#", "Mobile")
 config/icon="res://icon.svg"
+
+[autoload]
+
+RunState="*res://Assets/Scripts/RunState.cs"
 
 [display]
 

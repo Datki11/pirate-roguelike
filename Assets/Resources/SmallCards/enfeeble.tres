@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=7 format=3 uid="uid://cer3xlasnbg06"]
+
+[ext_resource type="Script" uid="uid://bvlphxjdc224b" path="res://Assets/Scripts/CardData.cs" id="1_card"]
+[ext_resource type="Texture2D" uid="uid://c2r8um4nqpdyd" path="res://Assets/Sprites/Cards/attack-art/64x64/Free Demo (4 potions) by Captainskeleto/freepotion4.png" id="2_art"]
+[ext_resource type="Script" uid="uid://d2ueo4m1lbc51" path="res://Assets/Scripts/EffectEntry.cs" id="3_entry"]
+[ext_resource type="Resource" path="res://Assets/Resources/Effects/weak.tres" id="4_weak"]
+[ext_resource type="Resource" path="res://Assets/Resources/Targets/all.tres" id="5_target"]
+
+[sub_resource type="Resource" id="Effect_enfeeble_weak_1"]
+script = ExtResource("3_entry")
+Def = ExtResource("4_weak")
+Amount = 1
+
+[resource]
+script = ExtResource("1_card")
+Title = "Enfeeble"
+Description = "Sap every foe's strength."
+RulesText = ""
+Art = ExtResource("2_art")
+ManaCost = 0
+Class = 1
+TargetDef = ExtResource("5_target")
+Effects = [SubResource("Effect_enfeeble_weak_1")]
+Trigger = 0
+TriggerText = ""
+LethalHealAmount = 0
+PierceHealAmount = 0
+ReturnToDrawOnLethal = false
+PlayTopCardOnShuffle = false
+Exhaust = false

@@ -61,8 +61,25 @@ public partial class CombatTargeting : Node
 		_energy = GetNodeOrNull<EnergyManager>(EnergyPath);
 		GD.Print($"CombatTargeting ready | combat? {(_combat != null)}");
 
+		RefreshBindings();
+		SetProcess(true);
+	}
+
+	public void RefreshBindings()
+	{
+		if (_decks != null)
+		{
+			foreach (Deck deck in _decks)
+			{
+				if (deck == null || !GodotObject.IsInstanceValid(deck))
+					continue;
+				deck.PlayRequested -= OnPlayRequested;
+				deck.Shuffled -= OnDeckShuffled;
+			}
+		}
+
 		_enemiesRoot = GetNode<Control>(EnemiesPath);
-		_enemies = _enemiesRoot.GetChildren().OfType<Enemy>().ToArray();
+		_enemies = _enemiesRoot.GetChildren().OfType<Enemy>().Where(e => e.Visible).ToArray();
 
 		// make sure rings start hidden
 		foreach (var e in _enemies)
@@ -80,7 +97,6 @@ public partial class CombatTargeting : Node
 		}
 		_decks = tmp.ToArray();
 		_players = _decks.Select(GetDeckOwner).OfType<PlayerUnit>().Distinct().ToArray();
-		SetProcess(true);
 	}
 
 	public override void _Process(double delta)
