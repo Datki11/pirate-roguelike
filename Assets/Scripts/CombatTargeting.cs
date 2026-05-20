@@ -1088,6 +1088,16 @@ public partial class TargetingArrowOverlay : Control
 	private bool _allEnemiesZoneActive;
 	private bool _allEnemiesZoneFriendly;
 	private float _allEnemiesZoneStartX;
+	private float _zonePulseTime;
+
+	public override void _Process(double delta)
+	{
+		if (!_hasAllEnemiesZone)
+			return;
+
+		_zonePulseTime += (float)delta;
+		QueueRedraw();
+	}
 
 	public void SetArrow(Rect2 cardRect, Vector2 endPoint, bool locked, bool friendly = false)
 	{
@@ -1164,7 +1174,7 @@ public partial class TargetingArrowOverlay : Control
 	private void DrawAllEnemiesZoneLine()
 	{
 		var viewport = GetViewport().GetVisibleRect();
-		float pulse = (Mathf.Sin(Time.GetTicksMsec() / 1000f * 5.5f) + 1f) * 0.5f;
+		float pulse = (Mathf.Sin(_zonePulseTime * 5.5f) + 1f) * 0.5f;
 		float alpha = _allEnemiesZoneActive ? 0.82f + pulse * 0.18f : 0.45f + pulse * 0.16f;
 		float width = _allEnemiesZoneActive ? 4f + pulse * 3f : 3f + pulse * 1.5f;
 		Color baseColor = _allEnemiesZoneFriendly ? FriendlyZoneBaseColor : ZoneBaseColor;

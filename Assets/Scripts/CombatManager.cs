@@ -668,15 +668,20 @@ public partial class CombatManager : Node
 			await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
 
 		float duration = Mathf.Max(0.01f, EnemyIntentArrowDurationSec);
-		ulong startMsec = Time.GetTicksMsec();
+		float elapsed = 0f;
+		ulong previousMsec = Time.GetTicksMsec();
 		while (GodotObject.IsInstanceValid(overlay) && overlay.IsInsideTree())
 		{
-			float elapsed = (Time.GetTicksMsec() - startMsec) / 1000f;
 			float progress = Mathf.Clamp(elapsed / duration, 0f, 1f);
 			overlay.SetPresentationLines(lines, EaseOutCubic(progress));
 			if (progress >= 1f)
 				break;
 			await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+			ulong nowMsec = Time.GetTicksMsec();
+			float realDelta = (nowMsec - previousMsec) / 1000f;
+			previousMsec = nowMsec;
+			elapsed += realDelta * Mathf.Max((float)Engine.TimeScale, 0f);
 		}
 
 		if (GodotObject.IsInstanceValid(overlay))
