@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="EffectDef" load_steps=3 format=3]
+
+[ext_resource type="Texture2D" path="res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/shield_03a.png" id="1_icon"]
+[ext_resource type="Script" path="res://Assets/Scripts/EffectDef.cs" id="2_script"]
+
+[resource]
+script = ExtResource("2_script")
+Id = "arm_hammer"
+DisplayName = "Arm & Hammer"
+Icon = ExtResource("1_icon")
+ShortFormat = "{ICON} {AMOUNT}"
+LongFormat = "At the end of each turn, gain {AMOUNT} block."

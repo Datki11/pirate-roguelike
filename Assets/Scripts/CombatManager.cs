@@ -241,6 +241,9 @@ public partial class CombatManager : Node
 		ClearEnemyIntents();
 		ApplyTurnDeckStates();
 
+		foreach (var player in AlivePlayers().ToList())
+			ApplyEndOfTurnStatuses(player);
+
 		await ToSignal(GetTree().CreateTimer(EnemyTurnStartDelaySec), "timeout");
 		foreach (var enemy in _enemies.ToList())
 		{
@@ -258,6 +261,8 @@ public partial class CombatManager : Node
 			}
 
 			await enemy.PlayTurnAsync();
+			ApplyEndOfTurnStatuses(enemy);
+			HalveStatus(enemy, "expose");
 			_enemiesPlayedThisTurn.Add(enemy);
 			ApplyTurnDeckStates();
 		}
@@ -366,12 +371,17 @@ public partial class CombatManager : Node
 					string effectId = effect.Def.Id;
 					switch (effectId)
 					{
+						case "peek":
+						{
+							await deck.PeekAndDiscardFromTopAsync(effect.Amount);
+							break;
+						}
 						case "attack":
 						{
 							int attack = GetAttackAmountAfterWeak(source, effect.Amount, pulse: true);
 							foreach (var target in ResolveAttackTargets(targetId, opponents, singleOpponent))
 							{
-								lethal |= DealAttackDamage(target, attack, out bool unblocked);
+								lethal |= DealAttackDamage(source, target, attack, out bool unblocked);
 								pierced |= unblocked;
 							}
 							break;
@@ -381,43 +391,54 @@ public partial class CombatManager : Node
 							int attack = GetAttackAmountAfterWeak(source, source?.Block ?? 0, pulse: true);
 							foreach (var target in ResolveAttackTargets(targetId, opponents, singleOpponent))
 							{
-								lethal |= DealAttackDamage(target, attack, out bool unblocked);
+								lethal |= DealAttackDamage(source, target, attack, out bool unblocked);
 								pierced |= unblocked;
 							}
 							break;
 						}
 						case "block":
 						{
-							foreach (var target in ResolveBeneficialTargets(targetId, allies, source))
+							foreach (var target in ResolveBeneficialTargets(targetId, allies, source, chosenTarget))
 								GainBlockWithPopup(target, effect.Amount);
 							break;
 						}
 						case "heal":
 						{
-							foreach (var target in ResolveBeneficialTargets(targetId, allies, source))
+							foreach (var target in ResolveBeneficialTargets(targetId, allies, source, chosenTarget))
 								HealWithPopup(target, effect.Amount);
 							break;
 						}
 						case "regen":
 						{
-							foreach (var target in ResolveBeneficialTargets(targetId, allies, source))
+							foreach (var target in ResolveBeneficialTargets(targetId, allies, source, chosenTarget))
 								ApplyStatusWithPopup(target, "regen", effect.Amount);
 							break;
 						}
 						case "protect":
 						{
-							foreach (var target in ResolveBeneficialTargets(targetId, allies, source))
+							foreach (var target in ResolveBeneficialTargets(targetId, allies, source, chosenTarget))
 								ApplyStatusWithPopup(target, "protector", effect.Amount);
 							break;
 						}
 						case "strategist":
+						case "thorns":
+						case "sickening_aura":
+						case "arm_hammer":
+						case "wall_of_flesh":
 						{
-							foreach (var target in ResolveBeneficialTargets(targetId, allies, source))
-								ApplyStatusWithPopup(target, "strategist", effect.Amount);
+							foreach (var target in ResolveBeneficialTargets(targetId, allies, source, chosenTarget))
+								ApplyStatusWithPopup(target, effectId, effect.Amount);
+							break;
+						}
+						case "add_goop":
+						{
+							foreach (var target in ResolveHarmfulTargets(targetId, opponents, singleOpponent))
+								AddStatusCardToTargetDeck(target, "res://Assets/Resources/SmallCards/goop.tres", effect.Amount);
 							break;
 						}
 						case "bleed":
 						case "weak":
+						case "expose":
 						{
 							foreach (var target in ResolveHarmfulTargets(targetId, opponents, singleOpponent))
 								ApplyStatusWithPopup(target, effectId, effect.Amount);
@@ -551,14 +572,20 @@ public partial class CombatManager : Node
 				{
 					int attack = GetAttackAmountAfterWeak(source, effect.Amount);
 					foreach (var target in ResolveAttackTargets(targetId, opponents, singleOpponent))
-						GetOrCreateIntent(byTarget, sourceEnemy, sourcePoint, target, friendly: false).AttackAmount += attack;
+					{
+						var resolvedTarget = ResolveWallOfFleshTarget(target, pulse: false);
+						GetOrCreateIntent(byTarget, sourceEnemy, sourcePoint, resolvedTarget, friendly: false).AttackAmount += GetAttackAmountAfterExpose(resolvedTarget, attack);
+					}
 					break;
 				}
 				case "body_slam":
 				{
 					int attack = GetAttackAmountAfterWeak(source, source?.Block ?? 0);
 					foreach (var target in ResolveAttackTargets(targetId, opponents, singleOpponent))
-						GetOrCreateIntent(byTarget, sourceEnemy, sourcePoint, target, friendly: false).AttackAmount += attack;
+					{
+						var resolvedTarget = ResolveWallOfFleshTarget(target, pulse: false);
+						GetOrCreateIntent(byTarget, sourceEnemy, sourcePoint, resolvedTarget, friendly: false).AttackAmount += GetAttackAmountAfterExpose(resolvedTarget, attack);
+					}
 					break;
 				}
 				case "bleed":
@@ -582,7 +609,7 @@ public partial class CombatManager : Node
 					if (!includePositive)
 						break;
 
-					foreach (var target in ResolveBeneficialTargets(targetId, allies, source))
+					foreach (var target in ResolveBeneficialTargets(targetId, allies, source, null))
 						GetOrCreateIntent(byTarget, sourceEnemy, sourcePoint, target, friendly: true);
 					break;
 				}
@@ -714,7 +741,7 @@ public partial class CombatManager : Node
 		=> card?.Effects != null && card.Effects.Any(effect =>
 			effect?.Def != null
 			&& effect.Amount > 0
-			&& effect.Def.Id is "attack" or "body_slam" or "bleed" or "weak");
+			&& effect.Def.Id is "attack" or "body_slam" or "bleed" or "weak" or "expose" or "add_goop");
 
 	private Vector2 GetUnitAnchorCanvas(IDamageable unit)
 	{
@@ -872,23 +899,25 @@ public partial class CombatManager : Node
 	// -------------------------------------------------------------------------
 	public bool DealDamage(IDamageable target, int amount)
 	{
-		return DealAttackDamage(target, amount, out _);
+		return DealAttackDamage(null, target, amount, out _);
 	}
 
 	public bool DealDamageMany(IEnumerable<IDamageable> targets, int amount)
 	{
 		bool anyLethal = false;
 		foreach (var t in targets)
-			anyLethal |= DealAttackDamage(t, amount, out _);
+			anyLethal |= DealAttackDamage(null, t, amount, out _);
 		return anyLethal;
 	}
 
-	private bool DealAttackDamage(IDamageable target, int amount, out bool unblocked)
+	private bool DealAttackDamage(IDamageable source, IDamageable target, int amount, out bool unblocked)
 	{
 		unblocked = false;
 		GD.Print($"CombatManager.DealAttackDamage -> {amount} on {target?.GetType().Name}");
 		if (target == null || !target.Alive || amount <= 0) return false;
 
+		target = ResolveWallOfFleshTarget(target, pulse: true);
+		amount = GetAttackAmountAfterExpose(target, amount, pulse: true);
 		int beforeBlock = target.Block;
 		int hpDamage = target.TakeAttackDamage(amount);
 		int blockedDamage = beforeBlock - target.Block;
@@ -897,6 +926,8 @@ public partial class CombatManager : Node
 			SpawnIconPopupAt(target, blockedDamage, "block", PopupBlockLossColor, positive: false);
 		if (hpDamage > 0)
 			SpawnDamagePopupAt(target, hpDamage, isHeal: false);
+		if (hpDamage > 0 && source != null && source.Alive)
+			ApplyThornsCounterattack(source, target);
 		return !target.Alive;
 	}
 
@@ -929,7 +960,7 @@ public partial class CombatManager : Node
 	{
 		if (target == null || !target.Alive || amount <= 0) return;
 		target.ApplyStatus(id, amount);
-		bool buff = id is "regen" or "protector";
+		bool buff = id is "regen" or "protector" or "thorns" or "sickening_aura" or "arm_hammer" or "wall_of_flesh";
 		SpawnIconPopupAt(target, amount, id, buff ? PopupBuffColor : PopupCurseColor);
 	}
 
@@ -941,6 +972,44 @@ public partial class CombatManager : Node
 		if (pulse)
 			PlayStatusPulse(source, "weak", negative: true);
 		return Mathf.Max(1, Mathf.CeilToInt(amount * 0.5f));
+	}
+
+	private int GetAttackAmountAfterExpose(IDamageable target, int amount, bool pulse = false)
+	{
+		int expose = target?.GetStatusAmount("expose") ?? 0;
+		if (expose <= 0)
+			return amount;
+
+		if (pulse)
+			PlayStatusPulse(target, "expose", negative: true);
+		return Mathf.CeilToInt(amount * (1f + expose * 0.1f));
+	}
+
+	private void ApplyThornsCounterattack(IDamageable attacker, IDamageable defender)
+	{
+		int thorns = defender?.GetStatusAmount("thorns") ?? 0;
+		if (thorns <= 0)
+			return;
+
+		PlayStatusPulse(defender, "thorns", negative: false);
+		DealDirectDamage(attacker, thorns);
+	}
+
+	private IDamageable ResolveWallOfFleshTarget(IDamageable target, bool pulse)
+	{
+		if (target == null)
+			return null;
+
+		var team = target is PlayerUnit ? AlivePlayers() : AliveEnemies();
+		var absorber = team.FirstOrDefault(unit => unit != null && unit.Alive && unit != target && unit.GetStatusAmount("wall_of_flesh") > 0);
+		if (absorber != null)
+		{
+			if (pulse)
+				PlayStatusPulse(absorber, "wall_of_flesh", negative: false);
+			return absorber;
+		}
+
+		return target;
 	}
 
 	private void PlayStatusPulse(IDamageable unit, string id, bool negative)
@@ -981,10 +1050,17 @@ public partial class CombatManager : Node
 		return singleOpponent != null && singleOpponent.Alive ? new List<IDamageable> { singleOpponent } : new List<IDamageable>();
 	}
 
-	private List<IDamageable> ResolveBeneficialTargets(string targetId, List<IDamageable> allies, IDamageable source)
+	private List<IDamageable> ResolveBeneficialTargets(string targetId, List<IDamageable> allies, IDamageable source, IDamageable chosenTarget)
 	{
 		if (IsAllTarget(targetId))
 			return allies.Where(t => t != null && t.Alive).ToList();
+
+		if (targetId == "ally")
+		{
+			if (chosenTarget != null && chosenTarget.Alive && allies.Contains(chosenTarget))
+				return new List<IDamageable> { chosenTarget };
+			return allies.Where(t => t != null && t.Alive).Take(1).ToList();
+		}
 
 		if (source != null && source.Alive)
 			return new List<IDamageable> { source };
@@ -1050,6 +1126,16 @@ public partial class CombatManager : Node
 		if (unit == null || !unit.Alive)
 			return;
 
+		int sickeningAura = unit.GetStatusAmount("sickening_aura");
+		if (sickeningAura > 0)
+		{
+			PlayStatusPulse(unit, "sickening_aura", negative: false);
+			var targets = unit is PlayerUnit ? AliveEnemies() : AlivePlayers();
+			foreach (var target in targets.ToList())
+				ApplyStatusWithPopup(target, "expose", sickeningAura);
+			await WaitForStatusEffectPresentation();
+		}
+
 		int bleed = unit.GetStatusAmount("bleed");
 		if (bleed > 0)
 		{
@@ -1072,6 +1158,50 @@ public partial class CombatManager : Node
 
 		unit.ReduceStatus("weak", 1);
 		unit.ReduceStatus("protector", 1);
+		unit.ReduceStatus("wall_of_flesh", unit.GetStatusAmount("wall_of_flesh"));
+	}
+
+	private void ApplyEndOfTurnStatuses(IDamageable unit)
+	{
+		int armHammer = unit?.GetStatusAmount("arm_hammer") ?? 0;
+		if (armHammer <= 0)
+			return;
+
+		PlayStatusPulse(unit, "arm_hammer", negative: false);
+		GainBlockWithPopup(unit, armHammer);
+	}
+
+	private void HalveStatus(IDamageable unit, string id)
+	{
+		int amount = unit?.GetStatusAmount(id) ?? 0;
+		if (amount <= 0)
+			return;
+
+		int remaining = amount / 2;
+		unit.ReduceStatus(id, amount - remaining);
+	}
+
+	private void AddStatusCardToTargetDeck(IDamageable target, string cardPath, int count)
+	{
+		if (target == null || count <= 0)
+			return;
+
+		var statusCard = ResourceLoader.Load<CardData>(cardPath);
+		if (statusCard == null)
+			return;
+
+		Deck targetDeck = target switch
+		{
+			PlayerUnit player => player.GetDeck(),
+			Enemy enemy => enemy.GetDeck(),
+			_ => null
+		};
+		if (targetDeck == null)
+			return;
+
+		for (int i = 0; i < count; i++)
+			targetDeck.AddCardToDrawPile(statusCard);
+		SpawnIconPopupAt(target, count, "goop", PopupCurseColor);
 	}
 
 	private async Task WaitForStatusEffectPresentation()

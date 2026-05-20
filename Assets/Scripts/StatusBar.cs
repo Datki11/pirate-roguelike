@@ -14,7 +14,12 @@ public partial class StatusBar : Control
 		["bleed"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/bleed_padded.png",
 		["weak"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/weak_padded.png",
 		["regen"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/regen_padded.png",
-		["strategist"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/book_04a.png"
+		["strategist"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/book_04a.png",
+		["expose"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/skull_01a.png",
+		["thorns"] = "res://Assets/Sprites/Icons/placeholder-icons/1-bit_Pixel_Icons/Sprites_Cropped/RPG_Skill_Bear_Trap_Foothold_Spikes_Gripping_Cripple_2.png",
+		["sickening_aura"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/potion_03g.png",
+		["arm_hammer"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/shield_03a.png",
+		["wall_of_flesh"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/shield_03e.png"
 	};
 
 	private static readonly Dictionary<string, Texture2D> Icons = new();
@@ -112,7 +117,7 @@ public partial class StatusBar : Control
 
 		ConfigurePixelFont(font);
 		float x = Mathf.Max(0f, Mathf.Round((Size.X - GetContentWidth(font, PixelFontSize)) * 0.5f));
-		foreach (string id in new[] { "protector", "bleed", "weak", "regen", "strategist" })
+		foreach (string id in new[] { "protector", "bleed", "weak", "regen", "strategist", "expose", "thorns", "sickening_aura", "arm_hammer", "wall_of_flesh" })
 		{
 			if (!_statuses.TryGetValue(id, out int amount) || amount <= 0)
 				continue;
@@ -149,7 +154,7 @@ public partial class StatusBar : Control
 	private float GetContentWidth(Font font, int fs)
 	{
 		float width = 0f;
-		foreach (string id in new[] { "protector", "bleed", "weak", "regen", "strategist" })
+		foreach (string id in new[] { "protector", "bleed", "weak", "regen", "strategist", "expose", "thorns", "sickening_aura", "arm_hammer", "wall_of_flesh" })
 		{
 			if (!_statuses.TryGetValue(id, out int amount) || amount <= 0)
 				continue;

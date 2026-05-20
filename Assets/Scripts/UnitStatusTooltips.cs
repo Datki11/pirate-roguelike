@@ -11,7 +11,13 @@ public static class UnitStatusTooltips
 		["bleed"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/bleed_padded.png",
 		["weak"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/weak_padded.png",
 		["regen"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/regen_padded.png",
-		["strategist"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/book_04a.png"
+		["strategist"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/book_04a.png",
+		["expose"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/skull_01a.png",
+		["thorns"] = "res://Assets/Sprites/Icons/placeholder-icons/1-bit_Pixel_Icons/Sprites_Cropped/RPG_Skill_Bear_Trap_Foothold_Spikes_Gripping_Cripple_2.png",
+		["sickening_aura"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/potion_03g.png",
+		["arm_hammer"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/shield_03a.png",
+		["wall_of_flesh"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/shield_03e.png",
+		["goop"] = "res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/potion_03f.png"
 	};
 
 	private static readonly Dictionary<string, Texture2D> Icons = new();
@@ -28,6 +34,11 @@ public static class UnitStatusTooltips
 		AddStatus(entries, statuses, "weak", "Weak", "This unit deals 50% less damage. At the start of its turn, it loses 1 weak.");
 		AddStatus(entries, statuses, "regen", "Regen", "At the start of this unit's turn, it gains HP equal to regen, then loses 1 regen.");
 		AddStatus(entries, statuses, "strategist", "Strategist", "This unit can see and play this many extra cards from the top of its draw pile.");
+		AddStatus(entries, statuses, "expose", "Expose", "This unit receives 10% more attack damage for each stack. Expose is halved after the enemy acts.");
+		AddStatus(entries, statuses, "thorns", "Thorns", "When this unit receives unblocked attack damage, it deals thorns damage back to the attacker.");
+		AddStatus(entries, statuses, "sickening_aura", "Sickening Aura", "At the start of this unit's turn, apply this much expose to all enemies.");
+		AddStatus(entries, statuses, "arm_hammer", "Arm & Hammer", "At the end of each turn, this unit gains this much block.");
+		AddStatus(entries, statuses, "wall_of_flesh", "Wall of Flesh", "This turn, incoming attack damage against allies is redirected to this unit.");
 		return entries;
 	}
 

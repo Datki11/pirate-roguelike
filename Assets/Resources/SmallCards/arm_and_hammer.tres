@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://Assets/Scripts/CardData.cs" id="1_card"]
+[ext_resource type="Texture2D" path="res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/shield_03a.png" id="2_art"]
+[ext_resource type="Script" path="res://Assets/Scripts/EffectEntry.cs" id="3_entry"]
+[ext_resource type="Resource" path="res://Assets/Resources/Effects/arm_hammer.tres" id="4_power"]
+[ext_resource type="Resource" path="res://Assets/Resources/Targets/self.tres" id="5_target"]
+
+[sub_resource type="Resource" id="Effect_arm_and_hammer"]
+script = ExtResource("3_entry")
+Def = ExtResource("4_power")
+Amount = 5
+
+[resource]
+script = ExtResource("1_card")
+Title = "Arm & Hammer"
+Description = "At the end of each turn, gain 5 block."
+Art = ExtResource("2_art")
+ManaCost = 0
+Class = 3
+TargetDef = ExtResource("5_target")
+Effects = Array[ExtResource("3_entry")]([SubResource("Effect_arm_and_hammer")])
+Exhaust = false

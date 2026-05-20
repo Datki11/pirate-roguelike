@@ -206,10 +206,10 @@ public partial class CombatTargeting : Node
 	}
 
 	private bool HasBeneficialEffect(CardData c)
-		=> c?.Effects != null && c.Effects.Any(e => e?.Def?.Id is "block" or "heal" or "regen" or "protect" or "play_top_cards" or "strategist");
+		=> c?.Effects != null && c.Effects.Any(e => e?.Def?.Id is "block" or "heal" or "regen" or "protect" or "play_top_cards" or "strategist" or "thorns" or "sickening_aura" or "arm_hammer" or "wall_of_flesh" or "peek");
 
 	private bool HasHarmfulEffect(CardData c)
-		=> c?.Effects != null && c.Effects.Any(e => e?.Def?.Id is "attack" or "body_slam" or "bleed" or "weak");
+		=> c?.Effects != null && c.Effects.Any(e => e?.Def?.Id is "attack" or "body_slam" or "bleed" or "weak" or "expose" or "add_goop");
 
 	private int GetAttackAmount(CardData c)
 		=> c.Effects.Where(e => e?.Def?.Id == "attack").Select(e => e.Amount).FirstOrDefault();

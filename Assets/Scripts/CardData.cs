@@ -1,7 +1,7 @@
 using Godot;
 using Godot.Collections;
 
-public enum CardClass { Basic, Common, Uncommon, Rare, Enemy }
+public enum CardClass { Basic, Common, Uncommon, Rare, Enemy, Status }
 public enum CardTrigger { None, Lethal, Revenge, Shuffle, Pierce }
 
 [GlobalClass] // so it shows up in "New Resource"

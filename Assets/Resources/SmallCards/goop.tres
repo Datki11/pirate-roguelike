@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://Assets/Scripts/CardData.cs" id="1_card"]
+[ext_resource type="Texture2D" path="res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/potion_03f.png" id="2_art"]
+
+[resource]
+script = ExtResource("1_card")
+Title = "Goop"
+Description = "Do nothing."
+RulesText = "Goop is a status card. It clogs a deck and does nothing when played."
+Art = ExtResource("2_art")
+ManaCost = 0
+Class = 5
+Exhaust = false

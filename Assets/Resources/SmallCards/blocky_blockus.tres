@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://Assets/Scripts/CardData.cs" id="1_card"]
+[ext_resource type="Texture2D" path="res://Assets/Sprites/Icons/placeholder-icons/icons/16x16/shield_02b.png" id="2_art"]
+[ext_resource type="Script" path="res://Assets/Scripts/EffectEntry.cs" id="3_entry"]
+[ext_resource type="Resource" path="res://Assets/Resources/Effects/block.tres" id="4_block"]
+[ext_resource type="Resource" path="res://Assets/Resources/Targets/self.tres" id="5_target"]
+
+[sub_resource type="Resource" id="Effect_blocky_blockus_block"]
+script = ExtResource("3_entry")
+Def = ExtResource("4_block")
+Amount = 15
+
+[resource]
+script = ExtResource("1_card")
+Title = "Blocky Blockus"
+Description = "Gain 15 block."
+Art = ExtResource("2_art")
+ManaCost = 0
+Class = 2
+TargetDef = ExtResource("5_target")
+Effects = Array[ExtResource("3_entry")]([SubResource("Effect_blocky_blockus_block")])
+Exhaust = false

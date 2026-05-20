@@ -27,3 +27,4 @@ LethalHealAmount = 0
 PierceHealAmount = 2
 ReturnToDrawOnLethal = false
 PlayTopCardOnShuffle = false
+Exhaust = false

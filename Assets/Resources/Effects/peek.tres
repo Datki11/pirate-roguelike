@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="EffectDef" load_steps=3 format=3]
+
+[ext_resource type="Texture2D" path="res://Assets/Sprites/Icons/placeholder-icons/1-bit_Pixel_Icons/Sprites/Media_Eyeball_Vision_Hidden_Disabled_Off.png" id="1_icon"]
+[ext_resource type="Script" path="res://Assets/Scripts/EffectDef.cs" id="2_script"]
+
+[resource]
+script = ExtResource("2_script")
+Id = "peek"
+DisplayName = "Peek"
+Icon = ExtResource("1_icon")
+ShortFormat = "{ICON} {AMOUNT}"
+LongFormat = "Look at the next {AMOUNT} cards in your draw pile. Discard any number of them."

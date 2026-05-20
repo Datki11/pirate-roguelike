@@ -1,6 +1,7 @@
 // Deck.cs
 using Godot;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 [Tool]
@@ -304,6 +305,32 @@ public partial class Deck : Control
 	{
 		if (c != null) _discard.Add(c);
 		RefreshView();
+	}
+
+	public void AddCardToDrawPile(CardData card)
+	{
+		if (card == null)
+			return;
+
+		int insertIndex = _draw.Count == 0 ? 0 : (int)_rng.RandiRange(0, _draw.Count);
+		_draw.Insert(insertIndex, card);
+		RefreshView();
+		EmitSignal(SignalName.TopChanged, Peek());
+	}
+
+	public async Task PeekAndDiscardFromTopAsync(int count)
+	{
+		if (count <= 0)
+			return;
+
+		EnsureVisibleTopCards(refresh: false, minimumVisibleCards: count);
+		int visibleCount = Mathf.Min(count, _draw.Count);
+		if (visibleCount <= 0)
+			return;
+
+		var completion = new TaskCompletionSource<bool>();
+		OpenPeekModal(visibleCount, completion);
+		await completion.Task;
 	}
 
 	public bool EnsureTop()
@@ -777,6 +804,131 @@ public partial class Deck : Control
 		TooltipDisplay.ModalTooltipScope = overlay;
 	}
 
+	private void OpenPeekModal(int count, TaskCompletionSource<bool> completion)
+	{
+		if (!IsInsideTree() || CardViewScene == null || count <= 0)
+		{
+			completion.TrySetResult(true);
+			return;
+		}
+
+		CloseDrawPileModal();
+
+		_drawPileModalLayer = new CanvasLayer { Layer = 200 };
+		_openDrawPileModalCount++;
+
+		var overlay = new Control
+		{
+			Name = "PeekModalOverlay",
+			MouseFilter = MouseFilterEnum.Stop,
+			Size = GetViewportRect().Size
+		};
+		overlay.SetAnchorsPreset(LayoutPreset.FullRect);
+		overlay.GuiInput += e =>
+		{
+			if (e is InputEventKey key && key.Pressed && key.Keycode == Key.Escape)
+			{
+				CloseDrawPileModal();
+				completion.TrySetResult(true);
+				AcceptEvent();
+				return;
+			}
+
+			AcceptEvent();
+		};
+
+		var shade = new ColorRect
+		{
+			Color = new Color(0f, 0f, 0f, 0.72f),
+			MouseFilter = MouseFilterEnum.Stop,
+			Size = GetViewportRect().Size
+		};
+		shade.SetAnchorsPreset(LayoutPreset.FullRect);
+		shade.GuiInput += EatModalInput;
+		overlay.AddChild(shade);
+
+		_drawPileModalLayer.AddChild(overlay);
+		(GetTree().CurrentScene as Node ?? GetTree().Root).AddChild(_drawPileModalLayer);
+		LayoutPeekModal(overlay, count, completion);
+		TooltipDisplay.ModalTooltipScope = overlay;
+	}
+
+	private void LayoutPeekModal(Control overlay, int count, TaskCompletionSource<bool> completion)
+	{
+		Vector2 viewport = GetViewportRect().Size;
+		const float cardGap = 12f;
+		const float modalGap = 16f;
+		Vector2 cardSize = GetCardViewSize();
+		float rowWidth = count * cardSize.X + Mathf.Max(0, count - 1) * cardGap;
+		float startX = Mathf.Round((viewport.X - rowWidth) * 0.5f);
+		float cardY = Mathf.Round((viewport.Y - cardSize.Y) * 0.5f - 24f);
+		var selectedDrawIndexes = new HashSet<int>();
+		var selectionFrames = new List<Panel>();
+
+		var heading = CreateModalLabel("Peek - choose cards to discard", 20);
+		heading.HorizontalAlignment = HorizontalAlignment.Center;
+		heading.Size = new Vector2(viewport.X, 28);
+		heading.Position = new Vector2(0, cardY - heading.Size.Y - modalGap).Floor();
+		overlay.AddChild(heading);
+
+		for (int i = 0; i < count; i++)
+		{
+			int drawIndex = _draw.Count - 1 - i;
+			var cardView = CreateCardView(_draw[drawIndex]);
+			if (cardView == null)
+				continue;
+
+			cardView.MouseFilter = MouseFilterEnum.Stop;
+			cardView.Position = new Vector2(startX + i * (cardSize.X + cardGap), cardY).Floor();
+			overlay.AddChild(cardView);
+
+			var frame = new Panel
+			{
+				MouseFilter = MouseFilterEnum.Ignore,
+				Position = cardView.Position,
+				Size = cardSize,
+				Visible = false
+			};
+			frame.AddThemeStyleboxOverride("panel", CreateButtonStyle(new Color(0.98f, 0.78f, 0.12f, 0.28f)));
+			overlay.AddChild(frame);
+			selectionFrames.Add(frame);
+
+			int capturedIndex = drawIndex;
+			int capturedFrame = selectionFrames.Count - 1;
+			cardView.GuiInput += e =>
+			{
+				if (e is not InputEventMouseButton mb || mb.ButtonIndex != MouseButton.Left || !mb.Pressed)
+					return;
+
+				if (!selectedDrawIndexes.Add(capturedIndex))
+					selectedDrawIndexes.Remove(capturedIndex);
+
+				selectionFrames[capturedFrame].Visible = selectedDrawIndexes.Contains(capturedIndex);
+				AcceptEvent();
+			};
+		}
+
+		var discard = CreateModalActionButton("DISCARD SELECTED", new Color(0.82f, 0.12f, 0.10f));
+		discard.Position = new Vector2(Mathf.Round((viewport.X - discard.CustomMinimumSize.X) * 0.5f), cardY + cardSize.Y + modalGap).Floor();
+		discard.Size = discard.CustomMinimumSize;
+		discard.Pressed += () =>
+		{
+			foreach (int drawIndex in selectedDrawIndexes.OrderByDescending(i => i))
+			{
+				if (drawIndex < 0 || drawIndex >= _draw.Count)
+					continue;
+				var card = _draw[drawIndex];
+				_draw.RemoveAt(drawIndex);
+				_discard.Add(card);
+			}
+			CloseDrawPileModal();
+			RefreshView();
+			EmitSignal(SignalName.TopChanged, Peek());
+			completion.TrySetResult(true);
+		};
+		overlay.AddChild(discard);
+	}
+
 	private void LayoutPileModal(Control overlay, PileModalSnapshot snapshot)
 	{
 		Vector2 viewport = GetViewportRect().Size;
@@ -954,6 +1106,31 @@ public partial class Deck : Control
 		close.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
 		ConfigurePixelFont(close.GetThemeFont("font"));
 		return close;
+	}
+
+	private Button CreateModalActionButton(string text, Color color)
+	{
+		var button = new Button
+		{
+			Text = text,
+			CustomMinimumSize = new Vector2(220, 38),
+			MouseFilter = MouseFilterEnum.Stop
+		};
+		button.AddThemeFontSizeOverride("font_size", 20);
+		button.AddThemeColorOverride("font_color", Colors.White);
+		button.AddThemeColorOverride("font_hover_color", Colors.White);
+		button.AddThemeColorOverride("font_pressed_color", Colors.White);
+
+		var font = LoadPixelFont();
+		if (font != null)
+			button.AddThemeFontOverride("font", font);
+
+		button.AddThemeStyleboxOverride("normal", CreateButtonStyle(color));
+		button.AddThemeStyleboxOverride("hover", CreateButtonStyle(color.Lightened(0.12f)));
+		button.AddThemeStyleboxOverride("pressed", CreateButtonStyle(color.Darkened(0.22f)));
+		button.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+		ConfigurePixelFont(button.GetThemeFont("font"));
+		return button;
 	}
 
 	private StyleBoxFlat CreateButtonStyle(Color color)
