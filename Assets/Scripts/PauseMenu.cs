@@ -5,7 +5,7 @@ using System.Linq;
 
 public partial class PauseMenu : CanvasLayer
 {
-	private readonly float[] _speedOptions = { 0.33f, 0.5f, 0.75f, 1f, 1.5f, 2f, 2.5f, 3f };
+	private readonly float[] _speedOptions = { 0.33f, 0.5f, 0.75f, 1f, 1.5f, 2f, 2.5f, 3f, 5f };
 	private const string CardResourceDir = "res://Assets/Resources/SmallCards";
 	private const string EnemyResourceDir = "res://Assets/Resources/Enemies";
 	private const string SmallCardScenePath = "res://Assets/Components/SmallCard.tscn";
@@ -73,6 +73,7 @@ public partial class PauseMenu : CanvasLayer
 		BoldFont ??= ResourceLoader.Load<FontFile>("res://Assets/Fonts/upheaval/upheavtt.ttf");
 		ConfigurePixelFont(BodyFont);
 		ConfigurePixelFont(BoldFont);
+		_currentSpeed = GameSettings.LoadGameSpeed();
 		Engine.TimeScale = _currentSpeed;
 		BuildOverlay();
 		HidePause();
@@ -191,6 +192,7 @@ public partial class PauseMenu : CanvasLayer
 		_mainMenu.AddChild(CreateButton("COMPENDIUM", ShowCompendium));
 		_mainMenu.AddChild(CreateButton("BESTIARY", ShowBestiary));
 		_mainMenu.AddChild(CreateButton("HEROES", ShowHeroes));
+		_mainMenu.AddChild(CreateButton("CREW", ShowCrew));
 		_mainMenu.AddChild(CreateButton("QUIT", QuitGame));
 
 		_settingsMenu = CreateMenuStack();
@@ -200,7 +202,6 @@ public partial class PauseMenu : CanvasLayer
 		_settingsMenu.AddChild(CreateLabel("Game Speed"));
 		_speedSelect = CreateSpeedSelect();
 		_settingsMenu.AddChild(_speedSelect);
-		_settingsMenu.AddChild(CreateButton("CREW", ShowCrew));
 		Button endRun = CreateButton("END RUN", EndRun);
 		ApplyRedButtonTheme(endRun);
 		_settingsMenu.AddChild(endRun);
@@ -933,7 +934,8 @@ public partial class PauseMenu : CanvasLayer
 
 	private PanelContainer CreateCrewInfoPanel(HeroDef hero, RunState.CrewMember member)
 	{
-		DeckList deck = ResourceLoader.Load<DeckList>(member.DeckPath) ?? hero.Deck as DeckList;
+		RunState run = GetRunState();
+		DeckList deck = run?.CreateDeckListForMember(member) ?? ResourceLoader.Load<DeckList>(member.DeckPath) ?? hero.Deck as DeckList;
 		return CreateUnitInfoPanel(
 			hero.HeroName,
 			hero.HeroRole,
@@ -1602,6 +1604,7 @@ public partial class PauseMenu : CanvasLayer
 
 		_currentSpeed = _speedOptions[index];
 		Engine.TimeScale = _currentSpeed;
+		GameSettings.SaveGameSpeed(_currentSpeed);
 	}
 
 	private int GetSpeedIndex(float speed)

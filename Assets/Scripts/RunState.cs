@@ -7,16 +7,19 @@ public partial class RunState : Node
 {
 	private const string SavePath = "user://run.cfg";
 	private const string HeroResourceDir = "res://Assets/Resources/Heroes";
+	private const string CardResourceDir = "res://Assets/Resources/SmallCards";
 	private const string BattlefieldPath = "res://battlefield.tscn";
 	private const string MapPath = "res://Assets/Scenes/RunMap.tscn";
 	private const string MainMenuPath = "res://Assets/Scenes/MainMenu.tscn";
 	private const string RecruitPath = "res://Assets/Scenes/RecruitReward.tscn";
+	private const string CardRewardPath = "res://Assets/Scenes/CardReward.tscn";
 
 	public sealed class CrewMember
 	{
 		public string HeroId = "";
 		public string HeroPath = "";
 		public string DeckPath = "";
+		public List<string> CardPaths = new();
 		public int MaxHP;
 		public int HP;
 	}
@@ -41,7 +44,9 @@ public partial class RunState : Node
 	public string CurrentEncounterDifficulty { get; private set; } = "";
 	public string[] CurrentEncounterEnemyPaths { get; private set; } = Array.Empty<string>();
 	public bool RecruitRewardPending { get; private set; }
+	public bool CardRewardPending { get; private set; }
 	public List<string> RecruitOfferHeroIds { get; private set; } = new();
+	public List<string> CardRewardCardPaths { get; private set; } = new();
 	public List<CrewMember> Crew { get; private set; } = new();
 	public List<CompletedLevel> CompletedLevels { get; private set; } = new();
 
@@ -61,7 +66,9 @@ public partial class RunState : Node
 		CurrentEncounterDifficulty = "";
 		CurrentEncounterEnemyPaths = Array.Empty<string>();
 		RecruitRewardPending = false;
+		CardRewardPending = false;
 		RecruitOfferHeroIds.Clear();
+		CardRewardCardPaths.Clear();
 		CompletedLevels.Clear();
 		Crew.Clear();
 
@@ -80,7 +87,9 @@ public partial class RunState : Node
 		CurrentEncounterDifficulty = "";
 		CurrentEncounterEnemyPaths = Array.Empty<string>();
 		RecruitRewardPending = false;
+		CardRewardPending = false;
 		RecruitOfferHeroIds.Clear();
+		CardRewardCardPaths.Clear();
 		Crew.Clear();
 		CompletedLevels.Clear();
 		if (FileAccess.FileExists(SavePath))
@@ -114,7 +123,6 @@ public partial class RunState : Node
 
 			member.MaxHP = Mathf.Max(1, player.MaxHP);
 			member.HP = Mathf.Clamp(player.HP, 0, member.MaxHP);
-			member.DeckPath = player.GetHeroDeckResourcePath();
 		}
 
 		CompletedLevels.Add(new CompletedLevel
@@ -124,13 +132,16 @@ public partial class RunState : Node
 			Difficulty = CurrentEncounterDifficulty
 		});
 
-		bool shouldOfferRecruit = CurrentFloor == 1 && Crew.Count == 1;
+		bool shouldOfferRecruit = IsRecruitRewardFloor(CurrentFloor);
+		bool shouldOfferCards = !shouldOfferRecruit;
 		CurrentFloor++;
 		CurrentEncounterId = "";
 		CurrentEncounterDifficulty = "";
 		CurrentEncounterEnemyPaths = Array.Empty<string>();
 		RecruitRewardPending = shouldOfferRecruit;
 		RecruitOfferHeroIds = shouldOfferRecruit ? PickRecruitOffers() : new List<string>();
+		CardRewardPending = shouldOfferCards;
+		CardRewardCardPaths = shouldOfferCards ? PickCardRewardPack() : new List<string>();
 		SaveRun();
 	}
 
@@ -148,6 +159,26 @@ public partial class RunState : Node
 		SaveRun();
 	}
 
+	public void ChooseCardReward(string cardPath, string heroId)
+	{
+		if (!CardRewardPending)
+			return;
+
+		if (!string.IsNullOrWhiteSpace(cardPath) && !string.IsNullOrWhiteSpace(heroId) && CardRewardCardPaths.Contains(cardPath))
+		{
+			CrewMember member = GetCrewMember(heroId);
+			if (member != null)
+			{
+				EnsureCrewMemberCardPaths(member);
+				member.CardPaths.Add(cardPath);
+			}
+		}
+
+		CardRewardPending = false;
+		CardRewardCardPaths.Clear();
+		SaveRun();
+	}
+
 	public void GoToMap()
 	{
 		GetTree().ChangeSceneToFile(MapPath);
@@ -156,6 +187,11 @@ public partial class RunState : Node
 	public void GoToRecruitReward()
 	{
 		GetTree().ChangeSceneToFile(RecruitPath);
+	}
+
+	public void GoToCardReward()
+	{
+		GetTree().ChangeSceneToFile(CardRewardPath);
 	}
 
 	public void GoToMainMenu()
@@ -202,6 +238,25 @@ public partial class RunState : Node
 	public List<HeroDef> GetRecruitOffers()
 		=> RecruitOfferHeroIds.Select(LoadHero).Where(h => h != null).ToList();
 
+	public List<CardData> GetCardRewardCards()
+		=> CardRewardCardPaths.Select(path => ResourceLoader.Load<CardData>(path)).Where(c => c != null).ToList();
+
+	public DeckList CreateDeckListForMember(CrewMember member)
+	{
+		var deck = new DeckList();
+		if (member == null)
+			return deck;
+
+		EnsureCrewMemberCardPaths(member);
+		foreach (string path in member.CardPaths)
+		{
+			CardData card = ResourceLoader.Load<CardData>(path);
+			if (card != null)
+				deck.Cards.Add(card);
+		}
+		return deck;
+	}
+
 	public void SaveRun()
 	{
 		var config = new ConfigFile();
@@ -212,6 +267,8 @@ public partial class RunState : Node
 		config.SetValue("run", "current_enemies", string.Join(",", CurrentEncounterEnemyPaths));
 		config.SetValue("run", "recruit_pending", RecruitRewardPending);
 		config.SetValue("run", "recruit_offers", string.Join(",", RecruitOfferHeroIds));
+		config.SetValue("run", "card_reward_pending", CardRewardPending);
+		config.SetValue("run", "card_reward_cards", string.Join(",", CardRewardCardPaths));
 
 		config.SetValue("crew", "count", Crew.Count);
 		for (int i = 0; i < Crew.Count; i++)
@@ -221,6 +278,7 @@ public partial class RunState : Node
 			config.SetValue(section, "hero_id", member.HeroId);
 			config.SetValue(section, "hero_path", member.HeroPath);
 			config.SetValue(section, "deck_path", member.DeckPath);
+			config.SetValue(section, "card_paths", string.Join(",", member.CardPaths));
 			config.SetValue(section, "max_hp", member.MaxHP);
 			config.SetValue(section, "hp", member.HP);
 		}
@@ -251,6 +309,8 @@ public partial class RunState : Node
 		CurrentEncounterEnemyPaths = SplitList((string)config.GetValue("run", "current_enemies", "")).ToArray();
 		RecruitRewardPending = (bool)config.GetValue("run", "recruit_pending", false);
 		RecruitOfferHeroIds = SplitList((string)config.GetValue("run", "recruit_offers", "")).ToList();
+		CardRewardPending = (bool)config.GetValue("run", "card_reward_pending", false);
+		CardRewardCardPaths = SplitList((string)config.GetValue("run", "card_reward_cards", "")).ToList();
 
 		Crew.Clear();
 		int crewCount = (int)config.GetValue("crew", "count", 0);
@@ -262,10 +322,14 @@ public partial class RunState : Node
 				HeroId = (string)config.GetValue(section, "hero_id", ""),
 				HeroPath = (string)config.GetValue(section, "hero_path", ""),
 				DeckPath = (string)config.GetValue(section, "deck_path", ""),
+				CardPaths = SplitList((string)config.GetValue(section, "card_paths", "")).ToList(),
 				MaxHP = (int)config.GetValue(section, "max_hp", 1),
 				HP = (int)config.GetValue(section, "hp", 1)
 			});
 		}
+
+		foreach (CrewMember member in Crew)
+			EnsureCrewMemberCardPaths(member);
 
 		CompletedLevels.Clear();
 		int levelCount = (int)config.GetValue("levels", "count", 0);
@@ -288,10 +352,14 @@ public partial class RunState : Node
 			HeroId = hero.Id,
 			HeroPath = hero.ResourcePath,
 			DeckPath = hero.Deck?.ResourcePath ?? "",
+			CardPaths = GetDeckCardPaths(hero.Deck as DeckList),
 			MaxHP = Mathf.Max(1, hero.StartingMaxHP),
 			HP = Mathf.Max(1, hero.StartingMaxHP)
 		};
 	}
+
+	private bool IsRecruitRewardFloor(int completedFloor)
+		=> completedFloor is 2 or 4;
 
 	private EncounterDef PickEncounter()
 	{
@@ -337,6 +405,83 @@ public partial class RunState : Node
 			candidates.RemoveAt(index);
 		}
 		return offers;
+	}
+
+	private List<string> PickCardRewardPack()
+	{
+		var byClass = LoadAllRewardCards()
+			.GroupBy(c => c.Class)
+			.ToDictionary(g => g.Key, g => g.ToList());
+
+		var pack = new List<string>();
+		for (int i = 0; i < 3; i++)
+		{
+			CardClass rarity = RollRewardRarity();
+			List<CardData> candidates = byClass.TryGetValue(rarity, out var exact) && exact.Count > 0
+				? exact
+				: byClass.Values.SelectMany(cards => cards).ToList();
+
+			if (candidates.Count == 0)
+				break;
+
+			CardData card = candidates[(int)_rng.RandiRange(0, candidates.Count - 1)];
+			if (!string.IsNullOrWhiteSpace(card.ResourcePath))
+				pack.Add(card.ResourcePath);
+		}
+		return pack;
+	}
+
+	private CardClass RollRewardRarity()
+	{
+		float roll = _rng.Randf();
+		if (roll < 0.50f)
+			return CardClass.Common;
+		if (roll < 0.85f)
+			return CardClass.Uncommon;
+		return CardClass.Rare;
+	}
+
+	private List<CardData> LoadAllRewardCards()
+	{
+		var cards = new List<CardData>();
+		using DirAccess dir = DirAccess.Open(CardResourceDir);
+		if (dir == null)
+			return cards;
+
+		dir.ListDirBegin();
+		for (string file = dir.GetNext(); !string.IsNullOrEmpty(file); file = dir.GetNext())
+		{
+			if (dir.CurrentIsDir() || !file.EndsWith(".tres", StringComparison.OrdinalIgnoreCase))
+				continue;
+
+			CardData card = ResourceLoader.Load<CardData>($"{CardResourceDir}/{file}");
+			if (card?.CanAppearInCardRewards() == true)
+				cards.Add(card);
+		}
+		return cards;
+	}
+
+	private void EnsureCrewMemberCardPaths(CrewMember member)
+	{
+		if (member == null || member.CardPaths.Count > 0)
+			return;
+
+		DeckList deck = ResourceLoader.Load<DeckList>(member.DeckPath);
+		if (deck == null)
+			deck = LoadHero(member.HeroId)?.Deck as DeckList;
+		member.CardPaths = GetDeckCardPaths(deck);
+	}
+
+	private static List<string> GetDeckCardPaths(DeckList deck)
+	{
+		var paths = new List<string>();
+		if (deck?.Cards == null)
+			return paths;
+
+		foreach (CardData card in deck.Cards)
+			if (!string.IsNullOrWhiteSpace(card?.ResourcePath))
+				paths.Add(card.ResourcePath);
+		return paths;
 	}
 
 	private string GetHeroIdForName(string heroName)

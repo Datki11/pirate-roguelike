@@ -4,6 +4,14 @@ using System.Collections.Generic;
 public partial class SmallCard : BaseCardView
 {
 	private static readonly Color TriggerColor = new(0.85f, 0.53f, 0.0f);
+	private static readonly Color BasicTitleColor = new(0.82f, 0.82f, 0.78f);
+	private static readonly Color CommonTitleColor = new(0.26f, 0.27f, 0.28f);
+	private static readonly Color UncommonTitleColor = new(0.43f, 0.72f, 0.93f);
+	private static readonly Color RareTitleColor = new(0.95f, 0.68f, 0.18f);
+	private static readonly Color EnemyTitleColor = new(0.42f, 0.07f, 0.08f);
+	private static readonly Color StatusTitleColor = new(0.49f, 0.31f, 0.16f);
+	private static readonly Color DarkTitleTextColor = new(0.96f, 0.92f, 0.82f);
+	private static readonly Color LightTitleTextColor = Colors.Black;
 	private const int PlaceholderArtSize = 64;
 	private static Texture2D _placeholderArt;
 
@@ -22,9 +30,10 @@ public partial class SmallCard : BaseCardView
 	private Label _title;
 	private RichTextLabel _body;
 	private TooltipDisplay _tooltipDisplay;
-	private Panel _frame;
+	private Panel _frame, _titleBox;
 	private StyleBoxFlat _normalFrameStyle;
 	private StyleBoxFlat _focusFrameStyle;
+	private StyleBoxFlat _titleBoxStyle;
 	private bool _targetingFocus;
 	private bool _controllerFocus;
 	private float _targetingFocusTime;
@@ -43,7 +52,9 @@ public partial class SmallCard : BaseCardView
 		_body = GetNode<RichTextLabel>(BodyPath);
 		_tooltipDisplay = GetNode<TooltipDisplay>(TooltipDisplayPath);
 		_frame = GetNodeOrNull<Panel>("Frame");
+		_titleBox = GetNodeOrNull<Panel>("Frame/Pad/VBoxContainer/TitleBox");
 		CaptureFrameStyles();
+		CaptureTitleBoxStyle();
 
 		MouseFilter = MouseFilterEnum.Pass;
 		_art.TextureFilter = TextureFilterEnum.Nearest;
@@ -123,6 +134,14 @@ public partial class SmallCard : BaseCardView
 		SetProcess(false);
 	}
 
+	private void CaptureTitleBoxStyle()
+	{
+		if (_titleBox == null)
+			return;
+
+		_titleBoxStyle = (_titleBox.GetThemeStylebox("panel") as StyleBoxFlat)?.Duplicate() as StyleBoxFlat;
+	}
+
 	private void ConfigurePixelFont(Font font)
 	{
 		if (font is FontFile fontFile)
@@ -150,11 +169,51 @@ public partial class SmallCard : BaseCardView
 	{
 		_title.Text = Data.Title ?? "";
 		_art.Texture = Data.Art ?? GetPlaceholderArt();
+		ApplyTitleStyle();
 
 		_badgeIcon.GetParent<CanvasItem>().Visible = false;
 
 		RenderBody();
 		_tooltipDisplay.SetEntries(BuildTooltipEntries());
+	}
+
+	private void ApplyTitleStyle()
+	{
+		if (Data == null)
+			return;
+
+		Color color = GetTitleColor(Data);
+		if (_titleBoxStyle != null && _titleBox != null)
+		{
+			var style = _titleBoxStyle.Duplicate() as StyleBoxFlat;
+			style.BgColor = color;
+			_titleBox.AddThemeStyleboxOverride("panel", style);
+		}
+
+		_title.AddThemeColorOverride("font_color", ShouldUseLightText(color) ? DarkTitleTextColor : LightTitleTextColor);
+	}
+
+	private static Color GetTitleColor(CardData data)
+	{
+		if (data is MonsterCardData)
+			return EnemyTitleColor;
+
+		return data.Class switch
+		{
+			CardClass.Basic => BasicTitleColor,
+			CardClass.Common => CommonTitleColor,
+			CardClass.Uncommon => UncommonTitleColor,
+			CardClass.Rare => RareTitleColor,
+			CardClass.Enemy => EnemyTitleColor,
+			CardClass.Status => StatusTitleColor,
+			_ => CommonTitleColor
+		};
+	}
+
+	private static bool ShouldUseLightText(Color color)
+	{
+		float luminance = color.R * 0.299f + color.G * 0.587f + color.B * 0.114f;
+		return luminance < 0.48f;
 	}
 
 	private void RenderBody()

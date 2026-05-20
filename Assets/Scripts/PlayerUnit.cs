@@ -90,6 +90,13 @@ public partial class PlayerUnit : Node2D, IDamageable
 		return deck?.ResourcePath ?? "";
 	}
 
+	public void SetDeckListOverride(Resource deckList)
+	{
+		DeckListOverride = deckList;
+		if (_deck != null && DeckListOverride != null)
+			_deck.RebuildFromDeckList(DeckListOverride);
+	}
+
 	public void ConfigureFromHeroDef(HeroDef hero)
 	{
 		if (hero == null)

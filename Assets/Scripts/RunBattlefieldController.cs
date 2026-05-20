@@ -87,6 +87,7 @@ public partial class RunBattlefieldController : Node
 			player.Visible = true;
 			player.ProcessMode = ProcessModeEnum.Inherit;
 			player.ConfigureFromHeroDef(hero);
+			player.SetDeckListOverride(run.CreateDeckListForMember(member));
 			player.ApplyRunHealth(member.MaxHP, member.HP);
 			player.Position = PlayerPositions[Mathf.Min(activeIndex, PlayerPositions.Length - 1)];
 			activeIndex++;
@@ -143,7 +144,9 @@ public partial class RunBattlefieldController : Node
 	{
 		RunState run = GetNode<RunState>("/root/RunState");
 		run.CompleteCombat(GetChildren().OfType<PlayerUnit>().Where(p => p.Alive));
-		if (run.RecruitRewardPending)
+		if (run.CardRewardPending)
+			run.GoToCardReward();
+		else if (run.RecruitRewardPending)
 			run.GoToRecruitReward();
 		else
 			run.GoToMap();
