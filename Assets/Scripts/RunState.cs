@@ -51,6 +51,7 @@ public partial class RunState : Node
 	public List<CompletedLevel> CompletedLevels { get; private set; } = new();
 
 	private readonly RandomNumberGenerator _rng = new();
+	private bool _sceneChangePending;
 
 	public override void _Ready()
 	{
@@ -100,13 +101,15 @@ public partial class RunState : Node
 	{
 		if (!HasActiveRun)
 			StartNewRun();
+		if (_sceneChangePending)
+			return;
 
 		EncounterDef encounter = PickEncounter();
 		CurrentEncounterId = encounter.Id;
 		CurrentEncounterDifficulty = encounter.Difficulty;
 		CurrentEncounterEnemyPaths = encounter.EnemyPaths;
 		SaveRun();
-		GetTree().ChangeSceneToFile(BattlefieldPath);
+		GoToScene(BattlefieldPath);
 	}
 
 	public void CompleteCombat(IEnumerable<PlayerUnit> survivingPlayers)
@@ -181,24 +184,39 @@ public partial class RunState : Node
 
 	public void GoToMap()
 	{
-		GetTree().ChangeSceneToFile(MapPath);
+		GoToScene(MapPath);
 	}
 
 	public void GoToRecruitReward()
 	{
-		GetTree().ChangeSceneToFile(RecruitPath);
+		GoToScene(RecruitPath);
 	}
 
 	public void GoToCardReward()
 	{
-		GetTree().ChangeSceneToFile(CardRewardPath);
+		GoToScene(CardRewardPath);
 	}
 
 	public void GoToMainMenu()
 	{
 		GetTree().Paused = false;
 		Engine.TimeScale = 1f;
-		GetTree().ChangeSceneToFile(MainMenuPath);
+		GoToScene(MainMenuPath);
+	}
+
+	private void GoToScene(string path)
+	{
+		if (_sceneChangePending || string.IsNullOrWhiteSpace(path))
+			return;
+
+		_sceneChangePending = true;
+		CallDeferred(nameof(ChangeSceneDeferred), path);
+	}
+
+	private void ChangeSceneDeferred(string path)
+	{
+		GetTree().ChangeSceneToFile(path);
+		_sceneChangePending = false;
 	}
 
 	public HeroDef LoadHero(string id)
@@ -355,12 +373,13 @@ public partial class RunState : Node
 
 	private CrewMember CreateCrewMember(HeroDef hero)
 	{
+		DeckList deck = ResolveHeroDeck(hero);
 		return new CrewMember
 		{
 			HeroId = hero.Id,
 			HeroPath = hero.ResourcePath,
-			DeckPath = hero.Deck?.ResourcePath ?? "",
-			CardPaths = GetDeckCardPaths(hero.Deck as DeckList),
+			DeckPath = deck?.ResourcePath ?? hero.Deck?.ResourcePath ?? "",
+			CardPaths = GetDeckCardPaths(deck),
 			MaxHP = Mathf.Max(1, hero.StartingMaxHP),
 			HP = Mathf.Max(1, hero.StartingMaxHP)
 		};
@@ -483,8 +502,17 @@ public partial class RunState : Node
 
 		DeckList deck = ResourceLoader.Load<DeckList>(member.DeckPath);
 		if (deck == null)
-			deck = LoadHero(member.HeroId)?.Deck as DeckList;
+			deck = ResolveHeroDeck(LoadHero(member.HeroId));
 		member.CardPaths = GetDeckCardPaths(deck);
+	}
+
+	private static DeckList ResolveHeroDeck(HeroDef hero)
+	{
+		if (hero?.Deck is DeckList deck)
+			return deck;
+
+		string deckPath = hero?.Deck?.ResourcePath ?? "";
+		return string.IsNullOrWhiteSpace(deckPath) ? null : ResourceLoader.Load<DeckList>(deckPath);
 	}
 
 	private static List<string> GetDeckCardPaths(DeckList deck)

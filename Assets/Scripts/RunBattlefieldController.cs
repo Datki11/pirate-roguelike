@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 public partial class RunBattlefieldController : Node
 {
 	private const string PlayerUnitScenePath = "res://Assets/Components/player_unit.tscn";
+	private bool _transitionHandled;
 
 	private static readonly Vector2[] PlayerPositions =
 	{
@@ -142,6 +143,10 @@ public partial class RunBattlefieldController : Node
 
 	private void OnCombatWon()
 	{
+		if (_transitionHandled)
+			return;
+		_transitionHandled = true;
+
 		RunState run = GetNode<RunState>("/root/RunState");
 		run.CompleteCombat(GetChildren().OfType<PlayerUnit>().Where(p => p.Alive));
 		if (run.CardRewardPending)
@@ -154,6 +159,10 @@ public partial class RunBattlefieldController : Node
 
 	private void OnCombatLost()
 	{
+		if (_transitionHandled)
+			return;
+		_transitionHandled = true;
+
 		RunState run = GetNode<RunState>("/root/RunState");
 		run.EndRun();
 		run.GoToMainMenu();

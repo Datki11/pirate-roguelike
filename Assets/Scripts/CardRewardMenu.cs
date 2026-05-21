@@ -36,6 +36,7 @@ public partial class CardRewardMenu : Control
 	private const int MaxVisibleDeckCards = 6;
 	private const int SmallCardWidth = 140;
 	private const int DeckCardGap = 10;
+	private const float CollapsedCrewAssignmentHeight = 414f;
 
 	private sealed class CardChoice
 	{
@@ -444,7 +445,7 @@ public partial class CardRewardMenu : Control
 		_backButton.Pressed += () => ShowCardPickView(_run.GetCardRewardCards());
 		AddChild(_backButton);
 
-		_assignmentTopSpacer = new Control { CustomMinimumSize = new Vector2(0, 122) };
+		_assignmentTopSpacer = new Control { CustomMinimumSize = new Vector2(0, GetCrewAssignmentTopGap(false)) };
 		_contentStack.AddChild(_assignmentTopSpacer);
 
 		var assignmentOuter = new CenterContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
@@ -638,15 +639,54 @@ public partial class CardRewardMenu : Control
 		var toggleCenter = new CenterContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
 		_crewDetail.AddChild(toggleCenter);
 
-		var toggle = CreateSmallButton(_deckExpanded ? "HIDE" : "SHOW");
-		toggle.Icon = ResourceLoader.Load<Texture2D>(_deckExpanded ? EyeHiddenIconPath : EyeIconPath);
-		toggle.CustomMinimumSize = new Vector2(112, 32);
+		var toggle = CreateIconTextButton(_deckExpanded ? "HIDE" : "SHOW", ResourceLoader.Load<Texture2D>(_deckExpanded ? EyeHiddenIconPath : EyeIconPath));
 		toggle.Pressed += () =>
 		{
 			_deckExpanded = !_deckExpanded;
 			ShowCrewDetails(hero, member);
 		};
 		toggleCenter.AddChild(toggle);
+	}
+
+	private Button CreateIconTextButton(string text, Texture2D icon)
+	{
+		var button = CreateButton("");
+		button.CustomMinimumSize = new Vector2(126, 36);
+
+		var center = new CenterContainer { MouseFilter = MouseFilterEnum.Ignore };
+		center.SetAnchorsPreset(LayoutPreset.FullRect);
+		button.AddChild(center);
+
+		var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+		row.AddThemeConstantOverride("separation", 8);
+		center.AddChild(row);
+
+		var iconWrap = new MarginContainer { CustomMinimumSize = new Vector2(30, 30), MouseFilter = MouseFilterEnum.Ignore };
+		iconWrap.AddThemeConstantOverride("margin_top", 2);
+		row.AddChild(iconWrap);
+
+		var iconCenter = new CenterContainer { MouseFilter = MouseFilterEnum.Ignore };
+		iconWrap.AddChild(iconCenter);
+
+		var iconView = new TextureRect
+		{
+			Texture = icon,
+			CustomMinimumSize = new Vector2(28, 28),
+			Size = new Vector2(28, 28),
+			TextureFilter = TextureFilterEnum.Nearest,
+			ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+			StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+			MouseFilter = MouseFilterEnum.Ignore
+		};
+		iconCenter.AddChild(iconView);
+
+		var label = CreateLabel(text, 16, BoldFont);
+		label.VerticalAlignment = VerticalAlignment.Center;
+		label.CustomMinimumSize = new Vector2(54, 30);
+		label.MouseFilter = MouseFilterEnum.Ignore;
+		row.AddChild(label);
+
+		return button;
 	}
 
 	private Button CreateSmallButton(string text)
@@ -662,9 +702,18 @@ public partial class CardRewardMenu : Control
 		if (_assignmentTopSpacer == null)
 			return;
 
-		_assignmentTopSpacer.CustomMinimumSize = _deckExpanded ? Vector2.Zero : new Vector2(0, 122);
+		_assignmentTopSpacer.CustomMinimumSize = new Vector2(0, GetCrewAssignmentTopGap(_deckExpanded));
 		_assignmentTopSpacer.Size = _assignmentTopSpacer.CustomMinimumSize;
 		_contentStack?.QueueSort();
+	}
+
+	private float GetCrewAssignmentTopGap(bool deckExpanded)
+	{
+		if (deckExpanded)
+			return 0f;
+
+		float viewportHeight = GetViewportRect().Size.Y;
+		return Mathf.Clamp((viewportHeight - CollapsedCrewAssignmentHeight) * 0.5f - 18f, 84f, 164f);
 	}
 
 	private void UpdateCrewDetailOffset(RunState.CrewMember selectedMember)
