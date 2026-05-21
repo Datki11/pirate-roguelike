@@ -198,6 +198,50 @@ public partial class CombatManager : Node
 	public IEnumerable<IDamageable> AlivePlayers() =>
 		_players.Where(p => p != null && (p as Node) != null && GodotObject.IsInstanceValid(p as Node) && p.Alive);
 
+	public bool TryExecuteDeveloperCommand(string command, out string response)
+	{
+		string normalized = command?.Trim().ToLowerInvariant() ?? "";
+		switch (normalized)
+		{
+			case "win":
+			case "killall":
+			{
+				int killed = KillAll(AliveEnemies().ToList());
+				response = killed == 1 ? "Killed 1 enemy." : $"Killed {killed} enemies.";
+				CheckCombatOutcome();
+				return true;
+			}
+			case "lose":
+			case "killme":
+			{
+				int killed = KillAll(AlivePlayers().ToList());
+				response = killed == 1 ? "Killed 1 player." : $"Killed {killed} players.";
+				CheckCombatOutcome();
+				return true;
+			}
+			default:
+				response = string.IsNullOrWhiteSpace(command)
+					? "Enter a command."
+					: $"Unknown command: {command.Trim()}";
+				return false;
+		}
+	}
+
+	private static int KillAll(IEnumerable<IDamageable> units)
+	{
+		int killed = 0;
+		foreach (var unit in units)
+		{
+			if (unit == null || !unit.Alive)
+				continue;
+
+			unit.TakeDamage(unit.HP);
+			killed++;
+		}
+
+		return killed;
+	}
+
 	private async void OnUnitDied()
 	{
 		await ToSignal(GetTree().CreateTimer(0.45f), "timeout");

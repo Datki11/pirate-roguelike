@@ -236,7 +236,15 @@ public partial class RunState : Node
 		=> Crew.FirstOrDefault(c => string.Equals(c.HeroId, heroId, StringComparison.OrdinalIgnoreCase));
 
 	public List<HeroDef> GetRecruitOffers()
-		=> RecruitOfferHeroIds.Select(LoadHero).Where(h => h != null).ToList();
+	{
+		if (RecruitRewardPending && RecruitOfferHeroIds.Count == 0)
+		{
+			RecruitOfferHeroIds = PickRecruitOffers();
+			SaveRun();
+		}
+
+		return RecruitOfferHeroIds.Select(LoadHero).Where(h => h != null).ToList();
+	}
 
 	public List<CardData> GetCardRewardCards()
 		=> CardRewardCardPaths.Select(path => ResourceLoader.Load<CardData>(path)).Where(c => c != null).ToList();
@@ -414,19 +422,26 @@ public partial class RunState : Node
 			.ToDictionary(g => g.Key, g => g.ToList());
 
 		var pack = new List<string>();
+		var selectedPaths = new HashSet<string>();
 		for (int i = 0; i < 3; i++)
 		{
 			CardClass rarity = RollRewardRarity();
-			List<CardData> candidates = byClass.TryGetValue(rarity, out var exact) && exact.Count > 0
-				? exact
-				: byClass.Values.SelectMany(cards => cards).ToList();
+			List<CardData> exactCandidates = byClass.TryGetValue(rarity, out var exact)
+				? exact.Where(c => !string.IsNullOrWhiteSpace(c.ResourcePath) && !selectedPaths.Contains(c.ResourcePath)).ToList()
+				: new List<CardData>();
+			List<CardData> candidates = exactCandidates.Count > 0
+				? exactCandidates
+				: byClass.Values
+					.SelectMany(cards => cards)
+					.Where(c => !string.IsNullOrWhiteSpace(c.ResourcePath) && !selectedPaths.Contains(c.ResourcePath))
+					.ToList();
 
 			if (candidates.Count == 0)
 				break;
 
 			CardData card = candidates[(int)_rng.RandiRange(0, candidates.Count - 1)];
-			if (!string.IsNullOrWhiteSpace(card.ResourcePath))
-				pack.Add(card.ResourcePath);
+			pack.Add(card.ResourcePath);
+			selectedPaths.Add(card.ResourcePath);
 		}
 		return pack;
 	}

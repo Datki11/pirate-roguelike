@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3 uid="uid://blyun0sui4axj"]
+[gd_scene load_steps=19 format=3 uid="uid://blyun0sui4axj"]
 
 [ext_resource type="PackedScene" uid="uid://c341vh8po86n6" path="res://Assets/Components/CombatTargeting.tscn" id="5_tkjg1"]
 [ext_resource type="PackedScene" uid="uid://nu0fyjda0sg6" path="res://Assets/Components/enemy.tscn" id="6_y8d5v"]
@@ -11,6 +11,7 @@
 [ext_resource type="Script" uid="uid://cmylq545442uv" path="res://Assets/Scripts/PauseMenu.cs" id="13_pause"]
 [ext_resource type="FontFile" uid="uid://b4dw7y3ang4m3" path="res://Assets/Fonts/upheaval/upheavtt.ttf" id="13_upheaval"]
 [ext_resource type="Script" uid="uid://bn81b8b60jvbk" path="res://Assets/Scripts/RunBattlefieldController.cs" id="14_run_controller"]
+[ext_resource type="Script" uid="uid://b4asdf7105nsw" path="res://Assets/Scripts/DeveloperConsole.cs" id="15_dev_console"]
 [ext_resource type="Resource" path="res://Assets/Resources/DeckLists/DuelistDeckList.tres" id="25_dechkand_deck"]
 [ext_resource type="Resource" uid="uid://dnk7jcyyhn8jj" path="res://Assets/Resources/DeckLists/BruteDeckList.tres" id="26_brute_deck"]
 [ext_resource type="Resource" uid="uid://u10lwr86sfj2" path="res://Assets/Resources/DeckLists/CommanderDeckList.tres" id="27_captain_deck"]
@@ -132,3 +133,9 @@ Font = ExtResource("12_font")
 script = ExtResource("13_pause")
 BodyFont = ExtResource("12_font")
 BoldFont = ExtResource("13_upheaval")
+
+[node name="DeveloperConsole" type="CanvasLayer" parent="."]
+script = ExtResource("15_dev_console")
+BodyFont = ExtResource("12_font")
+BoldFont = ExtResource("13_upheaval")
+CombatPath = NodePath("../CombatManager")
