@@ -6,6 +6,8 @@ public partial class CardRewardMenu : Control
 {
 	private const string SmallCardScenePath = "res://Assets/Components/SmallCard.tscn";
 	private const string CardCountIconPath = "res://Assets/Sprites/Icons/placeholder-icons/1-bit_Pixel_Icons/Sprites_Cropped/Boardgames_Cards_Deck_Pile.png";
+	private const string EyeIconPath = "res://Assets/Sprites/Icons/placeholder-icons/1-bit_Pixel_Icons/Sprites_Cropped/Media_Eyeball_Vision_Shown.png";
+	private const string EyeHiddenIconPath = "res://Assets/Sprites/Icons/placeholder-icons/1-bit_Pixel_Icons/Sprites_Cropped/Media_Eyeball_Vision_Hidden_Disabled_Off.png";
 
 	[Export] public FontFile BodyFont { get; set; }
 	[Export] public FontFile BoldFont { get; set; }
@@ -16,8 +18,14 @@ public partial class CardRewardMenu : Control
 	private RunState _run;
 	private VBoxContainer _contentStack;
 	private VBoxContainer _crewDetail;
+	private VBoxContainer _deckViewerRoot;
+	private Control _assignmentTopSpacer;
+	private MarginContainer _crewDetailOffset;
 	private Button _confirmCrewButton;
+	private Button _backButton;
 	private RunState.CrewMember _selectedMember;
+	private HeroDef _selectedHero;
+	private bool _deckExpanded;
 	private HBoxContainer _deckCardRow;
 	private Button _deckLeftButton;
 	private Button _deckRightButton;
@@ -370,18 +378,28 @@ public partial class CardRewardMenu : Control
 	private void ShowCardPickView(List<CardData> cards)
 	{
 		ClearChildren(_contentStack);
+		ClearCrewNavButtons();
 		_cardChoices.Clear();
 		_crewChoices.Clear();
 		_selectedCard = null;
 		_selectedCardPath = "";
 		_selectedMember = null;
+		_selectedHero = null;
+		_deckExpanded = false;
 
 		var center = new CenterContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
 		_contentStack.AddChild(center);
 
+		var rewardStack = new VBoxContainer();
+		rewardStack.AddThemeConstantOverride("separation", 20);
+		center.AddChild(rewardStack);
+
+		var prompt = CreateCenteredLabel("CHOOSE A CARD REWARD", 20, BoldFont);
+		rewardStack.AddChild(prompt);
+
 		var cardRow = new HBoxContainer();
 		cardRow.AddThemeConstantOverride("separation", 16);
-		center.AddChild(cardRow);
+		rewardStack.AddChild(cardRow);
 
 		foreach (CardData card in cards)
 		{
@@ -408,31 +426,36 @@ public partial class CardRewardMenu : Control
 		ClearChildren(_contentStack);
 		_crewChoices.Clear();
 		_selectedMember = null;
-		if (_confirmCrewButton != null && IsInstanceValid(_confirmCrewButton))
-		{
-			_confirmCrewButton.QueueFree();
-			_confirmCrewButton = null;
-		}
+		_selectedHero = null;
+		_deckExpanded = false;
+		_deckViewerRoot = null;
+		_assignmentTopSpacer = null;
+		_crewDetailOffset = null;
+		ClearCrewNavButtons();
 
-		var top = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(0, 42) };
-		_contentStack.AddChild(top);
+		_backButton = CreateButton("BACK");
+		_backButton.CustomMinimumSize = new Vector2(140, 42);
+		_backButton.Size = _backButton.CustomMinimumSize;
+		_backButton.SetAnchorsPreset(LayoutPreset.TopLeft);
+		_backButton.OffsetLeft = 28f;
+		_backButton.OffsetTop = 16f;
+		_backButton.OffsetRight = 168f;
+		_backButton.OffsetBottom = 58f;
+		_backButton.Pressed += () => ShowCardPickView(_run.GetCardRewardCards());
+		AddChild(_backButton);
 
-		var back = CreateButton("BACK");
-		back.CustomMinimumSize = new Vector2(140, 42);
-		back.Pressed += () => ShowCardPickView(_run.GetCardRewardCards());
-		top.AddChild(back);
+		_assignmentTopSpacer = new Control { CustomMinimumSize = new Vector2(0, 122) };
+		_contentStack.AddChild(_assignmentTopSpacer);
 
-		var prompt = CreateLabel("CHOOSE A CREW MEMBER", 20, BoldFont);
-		prompt.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-		prompt.HorizontalAlignment = HorizontalAlignment.Center;
-		top.AddChild(prompt);
+		var assignmentOuter = new CenterContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+		_contentStack.AddChild(assignmentOuter);
 
-		var topSpacer = new Control { CustomMinimumSize = new Vector2(140, 42) };
-		top.AddChild(topSpacer);
+		var assignmentStack = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ShrinkCenter };
+		assignmentStack.AddThemeConstantOverride("separation", 6);
+		assignmentOuter.AddChild(assignmentStack);
 
-		var assignmentStack = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
-		assignmentStack.AddThemeConstantOverride("separation", 2);
-		_contentStack.AddChild(assignmentStack);
+		var prompt = CreateCenteredLabel("CHOOSE A CREW MEMBER", 20, BoldFont);
+		assignmentStack.AddChild(prompt);
 
 		var selectedCenter = new CenterContainer();
 		assignmentStack.AddChild(selectedCenter);
@@ -443,12 +466,16 @@ public partial class CardRewardMenu : Control
 			selectedCenter.AddChild(selectedCard);
 		}
 
-		var crewCenter = new CenterContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-		assignmentStack.AddChild(crewCenter);
+		var crewStack = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ShrinkCenter };
+		crewStack.AddThemeConstantOverride("separation", 0);
+		assignmentStack.AddChild(crewStack);
+
+		var crewRowCenter = new CenterContainer { SizeFlagsHorizontal = SizeFlags.ShrinkCenter };
+		crewStack.AddChild(crewRowCenter);
 
 		var crewRow = new HBoxContainer();
 		crewRow.AddThemeConstantOverride("separation", 22);
-		crewCenter.AddChild(crewRow);
+		crewRowCenter.AddChild(crewRow);
 
 		foreach (RunState.CrewMember member in _run.Crew)
 		{
@@ -461,11 +488,18 @@ public partial class CardRewardMenu : Control
 			}
 		}
 
-		assignmentStack.AddChild(new Control { CustomMinimumSize = new Vector2(0, 24) });
+		_crewDetailOffset = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+		crewStack.AddChild(_crewDetailOffset);
 
-		_crewDetail = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
-		_crewDetail.AddThemeConstantOverride("separation", 4);
-		assignmentStack.AddChild(_crewDetail);
+		_crewDetail = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+		_crewDetail.AddThemeConstantOverride("separation", 0);
+		_crewDetailOffset.AddChild(_crewDetail);
+
+		_contentStack.AddChild(new Control { CustomMinimumSize = new Vector2(0, 4) });
+
+		_deckViewerRoot = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+		_deckViewerRoot.AddThemeConstantOverride("separation", 0);
+		_contentStack.AddChild(_deckViewerRoot);
 
 		CreateAnchoredConfirmButton();
 	}
@@ -516,6 +550,7 @@ public partial class CardRewardMenu : Control
 	private void SelectCrew(HeroDef hero, RunState.CrewMember member)
 	{
 		_selectedMember = member;
+		_selectedHero = hero;
 		foreach (CrewChoice choice in _crewChoices)
 		{
 			if (choice.Button != null)
@@ -543,28 +578,51 @@ public partial class CardRewardMenu : Control
 			return;
 
 		ClearChildren(_crewDetail);
+		ClearChildren(_deckViewerRoot);
+		UpdateCrewAssignmentOffset();
+		UpdateCrewDetailOffset(member);
 
-		var deckColumn = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
+		AddDeckToggle(hero, member);
+		if (!_deckExpanded)
+			return;
+
+		var deckColumn = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
 		deckColumn.AddThemeConstantOverride("separation", 0);
-		_crewDetail.AddChild(deckColumn);
+		_deckViewerRoot.AddChild(deckColumn);
 
 		DeckList deck = _run.CreateDeckListForMember(member);
+		_previewDeckCards = deck.Cards?.ToList() ?? new List<CardData>();
+		_deckScrollIndex = 0;
 
-		var deckScroller = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+		var deckArea = new Control
+		{
+			CustomMinimumSize = new Vector2(0, 210),
+			SizeFlagsHorizontal = SizeFlags.ExpandFill
+		};
+		deckColumn.AddChild(deckArea);
+
+		var deckCenter = new CenterContainer();
+		deckCenter.SetAnchorsPreset(LayoutPreset.FullRect);
+		deckArea.AddChild(deckCenter);
+
+		int visibleDeckCards = Mathf.Min(GetVisibleDeckCardCount(), Mathf.Max(1, _previewDeckCards.Count));
+		float deckScrollerWidth = 42f + 10f + visibleDeckCards * SmallCardWidth + Mathf.Max(0, visibleDeckCards - 1) * DeckCardGap + 10f + 42f;
+		var deckScroller = new HBoxContainer
+		{
+			CustomMinimumSize = new Vector2(deckScrollerWidth, 210),
+			SizeFlagsHorizontal = SizeFlags.ShrinkCenter
+		};
 		deckScroller.AddThemeConstantOverride("separation", 10);
-		deckColumn.AddChild(deckScroller);
+		deckCenter.AddChild(deckScroller);
 
 		_deckLeftButton = CreateButton("<");
 		_deckLeftButton.CustomMinimumSize = new Vector2(42, 210);
 		_deckLeftButton.Pressed += () => ScrollDeck(-1);
 		deckScroller.AddChild(_deckLeftButton);
 
-		var rowCenter = new CenterContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-		deckScroller.AddChild(rowCenter);
-
 		_deckCardRow = new HBoxContainer();
 		_deckCardRow.AddThemeConstantOverride("separation", 10);
-		rowCenter.AddChild(_deckCardRow);
+		deckScroller.AddChild(_deckCardRow);
 
 		_deckRightButton = CreateButton(">");
 		_deckRightButton.CustomMinimumSize = new Vector2(42, 210);
@@ -572,10 +630,69 @@ public partial class CardRewardMenu : Control
 		deckScroller.AddChild(_deckRightButton);
 
 		deckColumn.AddChild(new Control { CustomMinimumSize = new Vector2(0, 58) });
-
-		_previewDeckCards = deck.Cards?.ToList() ?? new List<CardData>();
-		_deckScrollIndex = 0;
 		RefreshDeckPreview();
+	}
+
+	private void AddDeckToggle(HeroDef hero, RunState.CrewMember member)
+	{
+		var toggleCenter = new CenterContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+		_crewDetail.AddChild(toggleCenter);
+
+		var toggle = CreateSmallButton(_deckExpanded ? "HIDE" : "SHOW");
+		toggle.Icon = ResourceLoader.Load<Texture2D>(_deckExpanded ? EyeHiddenIconPath : EyeIconPath);
+		toggle.CustomMinimumSize = new Vector2(112, 32);
+		toggle.Pressed += () =>
+		{
+			_deckExpanded = !_deckExpanded;
+			ShowCrewDetails(hero, member);
+		};
+		toggleCenter.AddChild(toggle);
+	}
+
+	private Button CreateSmallButton(string text)
+	{
+		var button = CreateButton(text);
+		button.CustomMinimumSize = new Vector2(142, 32);
+		button.AddThemeFontSizeOverride("font_size", 16);
+		return button;
+	}
+
+	private void UpdateCrewAssignmentOffset()
+	{
+		if (_assignmentTopSpacer == null)
+			return;
+
+		_assignmentTopSpacer.CustomMinimumSize = _deckExpanded ? Vector2.Zero : new Vector2(0, 122);
+		_assignmentTopSpacer.Size = _assignmentTopSpacer.CustomMinimumSize;
+		_contentStack?.QueueSort();
+	}
+
+	private void UpdateCrewDetailOffset(RunState.CrewMember selectedMember)
+	{
+		if (_crewDetailOffset == null)
+			return;
+
+		int selectedIndex = _crewChoices.FindIndex(choice => choice.Member == selectedMember);
+		int crewCount = _crewChoices.Count;
+		if (selectedIndex < 0 || crewCount <= 1)
+		{
+			_crewDetailOffset.AddThemeConstantOverride("margin_left", 0);
+			_crewDetailOffset.AddThemeConstantOverride("margin_right", 0);
+			return;
+		}
+
+		float slotWidth = 150f + 22f;
+		float offset = (selectedIndex - (crewCount - 1) * 0.5f) * slotWidth;
+		if (offset > 0f)
+		{
+			_crewDetailOffset.AddThemeConstantOverride("margin_left", Mathf.RoundToInt(offset * 2f));
+			_crewDetailOffset.AddThemeConstantOverride("margin_right", 0);
+		}
+		else
+		{
+			_crewDetailOffset.AddThemeConstantOverride("margin_left", 0);
+			_crewDetailOffset.AddThemeConstantOverride("margin_right", Mathf.RoundToInt(-offset * 2f));
+		}
 	}
 
 	private void CreateAnchoredConfirmButton()
@@ -592,9 +709,20 @@ public partial class CardRewardMenu : Control
 		_confirmCrewButton.AnchorRight = 0.5f;
 		_confirmCrewButton.OffsetLeft = -90f;
 		_confirmCrewButton.OffsetRight = 90f;
-		_confirmCrewButton.OffsetTop = -58f;
-		_confirmCrewButton.OffsetBottom = -16f;
+		_confirmCrewButton.OffsetTop = -54f;
+		_confirmCrewButton.OffsetBottom = -12f;
 		AddChild(_confirmCrewButton);
+	}
+
+	private void ClearCrewNavButtons()
+	{
+		if (_confirmCrewButton != null && IsInstanceValid(_confirmCrewButton))
+			_confirmCrewButton.QueueFree();
+		_confirmCrewButton = null;
+
+		if (_backButton != null && IsInstanceValid(_backButton))
+			_backButton.QueueFree();
+		_backButton = null;
 	}
 
 	private void ScrollDeck(int direction)
